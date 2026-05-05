@@ -47,5 +47,3 @@ Breaking the dopamine loop by moving beyond passive tracking to active, native-l
 
 ## 🏆 Submission Notes
 This monorepo represents a production-hardened version of the ReClaim suite. All native-to-flutter bridges have been verified for stability, and the enforcement engine is optimized for high-responsiveness and low battery consumption.
-
-
