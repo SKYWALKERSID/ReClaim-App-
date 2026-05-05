@@ -1,0 +1,964 @@
+import 'package:flutter/material.dart';
+import 'dart:ui';
+import '../../core/theme/colors.dart';
+import '../../services/backend_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:app_settings/app_settings.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import '../../screens/devices_screen.dart';
+import 'additional_features_screen.dart';
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final BackendService _backend = BackendService();
+  Map<String, dynamic> _stats = {};
+  Map<String, dynamic> _profile = {};
+  Map<String, dynamic> _rewards = {};
+  bool _isLoading = true;
+
+  double _dailyLimit = 2.0; 
+  int _emergencyUnlocksLeft = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final stats = await _backend.fetchDashboardStats();
+      final profile = await _backend.getUserProfile();
+      final rewards = await _backend.getRewardsData();
+      
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _profile = profile;
+          _rewards = rewards;
+          _dailyLimit = (profile['goal_seconds'] ?? 7200) / 3600.0;
+          _emergencyUnlocksLeft = stats['emergency_unlocks_left'] ?? 5;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Show the permissions bottom sheet with toggle switches
+  void _showPermissionsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const _PermissionsSheet(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildDailyLimitSection(),
+                  const SizedBox(height: 20),
+                  _buildEmergencyUnlockSection(),
+                  const SizedBox(height: 20),
+                  _buildManageDevicesTile(),
+                  const SizedBox(height: 20),
+                  _buildAdditionalFeaturesTile(),
+                  const SizedBox(height: 20),
+                  _buildStreakCard(),
+                  const SizedBox(height: 20),
+                  _buildProgressionSection(),
+                  const Spacer(),
+                  _buildRewardsCompact(),
+                  const SizedBox(height: 24),
+                  _buildDataPortabilitySection(),
+                ],
+              ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Profile",
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        _AnimatedSettingsButton(onTap: _showPermissionsSheet),
+      ],
+    );
+  }
+
+  Widget _buildDailyLimitSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Daily Screen Limit",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white70),
+            ),
+            Text(
+              "${_dailyLimit.toStringAsFixed(1)}h",
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: Colors.white.withOpacity(0.05),
+            thumbColor: Colors.white,
+            overlayColor: AppColors.primary.withOpacity(0.2),
+            trackHeight: 4,
+          ),
+          child: Slider(
+            value: _dailyLimit,
+            min: 1,
+            max: 8,
+            divisions: 14,
+            onChanged: (value) async {
+               setState(() => _dailyLimit = value);
+               await _backend.saveUserSettings(_profile['name'] ?? "[ENTER_NAME]", (value * 3600).toInt());
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmergencyUnlockSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Emergency Unlocks",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Use wisely, max 5 per day",
+                style: TextStyle(fontSize: 12, color: Colors.white38),
+              ),
+            ],
+          ),
+          Row(
+            children: List.generate(5, (index) {
+              final bool isAvailable = index < _emergencyUnlocksLeft;
+              return Container(
+                margin: const EdgeInsets.only(left: 6),
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isAvailable ? AppColors.accent : Colors.white.withOpacity(0.05),
+                  boxShadow: isAvailable ? [
+                    BoxShadow(color: AppColors.accent.withOpacity(0.4), blurRadius: 6)
+                  ] : null,
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManageDevicesTile() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const DevicesScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.cyanAccent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.devices_rounded, color: Colors.cyanAccent, size: 20),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Manage Devices",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                  Text(
+                    "Sync focus across all devices",
+                    style: TextStyle(fontSize: 12, color: Colors.white38),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdditionalFeaturesTile() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const AdditionalFeaturesScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.deepPurpleAccent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.explore_rounded, color: Colors.deepPurpleAccent, size: 20),
+            ),
+            const SizedBox(width: 16),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Additional Features",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                  Text(
+                    "Insights, Widgets, Alerts & Admin",
+                    style: TextStyle(fontSize: 12, color: Colors.white38),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataPortabilitySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Data Portability",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _ExportButton(
+                label: "Export CSV",
+                icon: Icons.table_chart_rounded,
+                onTap: () => _exportData("csv"),
+                color: const Color(0xFF10B981),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ExportButton(
+                label: "Export JSON",
+                icon: Icons.code_rounded,
+                onTap: () => _exportData("json"),
+                color: const Color(0xFF3B82F6),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _exportData(String format) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Preparing $format export...")),
+      );
+      
+      // In a real app, we'd fetch data from _backend and save to file
+      final directory = await getTemporaryDirectory();
+      final filePath = "${directory.path}/usage_export.$format";
+      final file = File(filePath);
+      
+      if (format == "json") {
+        await file.writeAsString('{"userId": "[ENTER_NAME]-123", "events": []}');
+      } else {
+        await file.writeAsString('userId,packageName,startedAt,duration\n[ENTER_NAME]-123,com.instagram,2024-03-20,120');
+      }
+
+      await Share.shareXFiles([XFile(filePath)], text: 'My ReClaim Export');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Export failed: $e")),
+      );
+    }
+  }
+
+  Widget _buildStreakCard() {
+    final streak = _rewards['streak'] ?? 0;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.15)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [const Color(0xFFF59E0B).withOpacity(0.2), Colors.transparent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+            ),
+            child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 26),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "$streak Day Streak",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  "Top 5% this week!",
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressionSection() {
+    final badges = _rewards['badges'] as List? ?? [];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Badges",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _BadgeItem(icon: Icons.auto_awesome_rounded, label: "Monk", color: const Color(0xFF8B5CF6), isUnlocked: badges.any((b) => b['id'] == 'monk_mode')),
+            _BadgeItem(icon: Icons.timer_rounded, label: "Time Lord", color: const Color(0xFF3B82F6), isUnlocked: badges.any((b) => b['id'] == 'time_lord')),
+            const _BadgeItem(icon: Icons.shield_rounded, label: "Defender", color: Color(0xFFEC4899), isUnlocked: false),
+            const _BadgeItem(icon: Icons.bolt_rounded, label: "Focus God", color: Color(0xFFF59E0B), isUnlocked: false),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Compact rewards row that fits on screen without scrolling
+  Widget _buildRewardsCompact() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Unlocked Rewards",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+        ),
+        SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _CompactRewardTile(
+                title: "Focus Sounds",
+                icon: Icons.library_music_rounded,
+                progress: 0.8,
+                color: Color(0xFF8B5CF6),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: _CompactRewardTile(
+                title: "App Themes",
+                icon: Icons.palette_rounded,
+                progress: 0.3,
+                color: Color(0xFFEC4899),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+
+// ── Animated Settings Button ──────────────────────────────────────────────────
+
+class _AnimatedSettingsButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _AnimatedSettingsButton({required this.onTap});
+
+  @override
+  State<_AnimatedSettingsButton> createState() => _AnimatedSettingsButtonState();
+}
+
+class _AnimatedSettingsButtonState extends State<_AnimatedSettingsButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        _controller.forward(from: 0.0);
+        widget.onTap();
+      },
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _controller.value * 1.2, // Subtle spin on tap
+            child: child,
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withOpacity(0.15),
+                blurRadius: 12,
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: const Icon(Icons.settings_outlined, color: Colors.white70, size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ── Permissions Bottom Sheet ──────────────────────────────────────────────────
+
+class _PermissionsSheet extends StatefulWidget {
+  const _PermissionsSheet();
+
+  @override
+  State<_PermissionsSheet> createState() => _PermissionsSheetState();
+}
+
+class _PermissionsSheetState extends State<_PermissionsSheet> {
+  final BackendService _backend = BackendService();
+  
+  bool _usageAccess = false;
+  bool _accessibilityAccess = false;
+  bool _overlayPermission = false;
+  bool _notificationPermission = false;
+  bool _batteryOptimization = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final status = await _backend.getPermissionStatus();
+
+    if (mounted) {
+      setState(() {
+        _usageAccess = status['usage_access'] as bool? ?? false;
+        _accessibilityAccess = status['accessibility_access'] as bool? ?? false;
+        _overlayPermission = status['overlay_access'] as bool? ?? false;
+        _notificationPermission = status['notification_access'] as bool? ?? false;
+        _batteryOptimization = status['battery_optimization_ignored'] as bool? ?? false;
+      });
+    }
+  }
+
+  Future<void> _handleToggle(String permType, bool newValue) async {
+    // When toggled, redirect to the appropriate system settings page
+    switch (permType) {
+      case 'usage':
+        await _backend.openPermissionSettings('usage');
+        break;
+      case 'accessibility':
+        await _backend.openPermissionSettings('accessibility');
+        break;
+      case 'overlay':
+        await _backend.openPermissionSettings('overlay');
+        break;
+      case 'notification':
+        if (!newValue) {
+          await AppSettings.openAppSettings(type: AppSettingsType.notification);
+        } else {
+          final result = await Permission.notification.request();
+          if (!result.isGranted) {
+            await AppSettings.openAppSettings(type: AppSettingsType.notification);
+          }
+        }
+        break;
+      case 'battery':
+        if (!newValue) {
+          await AppSettings.openAppSettings(type: AppSettingsType.batteryOptimization);
+        } else {
+          final result = await Permission.ignoreBatteryOptimizations.request();
+          if (!result.isGranted) {
+            await AppSettings.openAppSettings(type: AppSettingsType.batteryOptimization);
+          }
+        }
+        break;
+    }
+    // Re-check after returning from settings
+    await _checkPermissions();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161620),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 40,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary.withOpacity(0.1),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                      ),
+                      child: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "App Permissions",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          "Toggle to open system settings",
+                          style: TextStyle(fontSize: 12, color: Colors.white38),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _PermissionRow(
+                  icon: Icons.bar_chart_rounded,
+                  title: "Usage Access",
+                  subtitle: "Track screen time & app usage",
+                  isEnabled: _usageAccess,
+                  onChanged: (v) => _handleToggle('usage', v),
+                  accentColor: const Color(0xFF8B5CF6),
+                ),
+                const SizedBox(height: 12),
+                _PermissionRow(
+                  icon: Icons.accessibility_new_rounded,
+                  title: "Accessibility",
+                  subtitle: "Enforce app blocking in real time",
+                  isEnabled: _accessibilityAccess,
+                  onChanged: (v) => _handleToggle('accessibility', v),
+                  accentColor: const Color(0xFF14B8A6),
+                ),
+                const SizedBox(height: 12),
+                _PermissionRow(
+                  icon: Icons.layers_rounded,
+                  title: "Display Over Apps",
+                  subtitle: "Show focus overlays",
+                  isEnabled: _overlayPermission,
+                  onChanged: (v) => _handleToggle('overlay', v),
+                  accentColor: const Color(0xFF3B82F6),
+                ),
+                const SizedBox(height: 12),
+                _PermissionRow(
+                  icon: Icons.notifications_active_rounded,
+                  title: "Notifications",
+                  subtitle: "Send focus reminders",
+                  isEnabled: _notificationPermission,
+                  onChanged: (v) => _handleToggle('notification', v),
+                  accentColor: const Color(0xFFEC4899),
+                ),
+                const SizedBox(height: 12),
+                _PermissionRow(
+                  icon: Icons.battery_saver_rounded,
+                  title: "Battery Optimization",
+                  subtitle: "Keep tracking in background",
+                  isEnabled: _batteryOptimization,
+                  onChanged: (v) => _handleToggle('battery', v),
+                  accentColor: const Color(0xFFF59E0B),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ── Permission Row Widget ─────────────────────────────────────────────────────
+
+class _PermissionRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isEnabled;
+  final ValueChanged<bool> onChanged;
+  final Color accentColor;
+
+  const _PermissionRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isEnabled,
+    required this.onChanged,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isEnabled ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.04),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: isEnabled ? 0.12 : 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: isEnabled ? accentColor : Colors.white30, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isEnabled ? Colors.white : Colors.white60,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 11, color: Colors.white30),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isEnabled,
+            onChanged: onChanged,
+            activeThumbColor: accentColor,
+            activeTrackColor: accentColor.withOpacity(0.3),
+            inactiveThumbColor: Colors.white24,
+            inactiveTrackColor: Colors.white.withOpacity(0.05),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// ── Badge Item ────────────────────────────────────────────────────────────────
+
+class _BadgeItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isUnlocked;
+
+  const _BadgeItem({required this.icon, required this.label, required this.color, required this.isUnlocked});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: isUnlocked ? color.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isUnlocked ? color.withOpacity(0.4) : Colors.white.withOpacity(0.05),
+              width: 1.5,
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: isUnlocked ? color : Colors.white24,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isUnlocked ? Colors.white70 : Colors.white24,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+
+// ── Compact Reward Tile ───────────────────────────────────────────────────────
+
+class _CompactRewardTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final double progress;
+  final Color color;
+
+  const _CompactRewardTile({
+    required this.title,
+    required this.icon,
+    required this.progress,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.12)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color.withOpacity(0.7), size: 22),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 4,
+              backgroundColor: Colors.white.withOpacity(0.05),
+              valueColor: AlwaysStoppedAnimation<Color>(color.withOpacity(0.6)),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "${(progress * 100).toInt()}%",
+            style: TextStyle(fontSize: 10, color: color.withOpacity(0.7), fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExportButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _ExportButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+

@@ -1,0 +1,57 @@
+import 'package:flutter/material.dart';
+import 'dart:ui';
+import '../../core/theme/colors.dart';
+
+/// A standard surface card for high-performance lists and secondary UI.
+/// Does NOT use BackdropFilter by default to maintain 60fps.
+class CustomCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+  final double? borderRadius;
+  final VoidCallback? onTap;
+  final bool useGlass;
+
+  const CustomCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.color,
+    this.borderRadius,
+    this.onTap,
+    this.useGlass = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cardContent = Container(
+      padding: padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: color ?? (useGlass ? AppColors.glassBase : AppColors.surface),
+        borderRadius: BorderRadius.circular(borderRadius ?? 24),
+        border: Border.all(
+          color: useGlass ? AppColors.glassBorder : Colors.white.withOpacity(0.05),
+        ),
+      ),
+      child: child,
+    );
+
+    if (useGlass) {
+      return GestureDetector(
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius ?? 24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: cardContent,
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: cardContent,
+    );
+  }
+}

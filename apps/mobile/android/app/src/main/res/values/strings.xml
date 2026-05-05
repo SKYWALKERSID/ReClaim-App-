@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ReClaim</string>
+    <string name="accessibility_service_description">Blocks distracting apps when focus or lock policy is active.</string>
+</resources>
+

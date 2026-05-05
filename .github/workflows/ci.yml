@@ -1,0 +1,82 @@
+name: CI Workflow
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend:
+    name: Build & Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/api/package-lock.json
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build API
+        run: npm run build
+        
+      - name: Run tests
+        run: npm run test
+
+  android-native:
+    name: Build Android Native App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android-native
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+          
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+  flutter-app:
+    name: Build Flutter App
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build Debug APK
+        run: flutter build apk --debug

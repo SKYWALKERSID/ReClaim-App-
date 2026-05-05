@@ -1,0 +1,15 @@
+<resources>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#2F6F5E</item>
+        <item name="colorSecondary">#A35A2C</item>
+        <item name="android:statusBarColor">#F5F7F4</item>
+        <item name="android:navigationBarColor">#F5F7F4</item>
+    </style>
+
+    <style name="BlockTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:statusBarColor">#101A16</item>
+        <item name="android:navigationBarColor">#101A16</item>
+    </style>
+</resources>
