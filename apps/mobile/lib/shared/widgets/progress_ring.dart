@@ -31,7 +31,7 @@ class ProgressRing extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.05),
+                color: AppColors.primary.withValues(alpha: 0.05),
                 blurRadius: 30,
                 spreadRadius: 5,
               ),
@@ -72,7 +72,7 @@ class ProgressRing extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -122,7 +122,7 @@ class _Painter extends CustomPainter {
 
     // Neon Glow effect
     final glowPaint = Paint()
-      ..color = AppColors.primary.withOpacity(0.3)
+      ..color = AppColors.primary.withValues(alpha: 0.3)
       ..strokeWidth = strokeWidth + 4
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round

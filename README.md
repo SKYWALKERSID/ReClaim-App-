@@ -1,49 +1,37 @@
-# ReClaim: ReClaim Enforcement Suite
+# ReClaim Enforcement Suite
 
-**ReClaim** is a high-performance ReClaim platform designed to reclaim focus through strict native enforcement and beautiful, distraction-free design.
+**ReClaim** is a focus-enforcement platform built to move beyond passive screen-time tracking into real-time blocking, local analytics, and deliberate habit change.
 
-## 🚀 Vision
-Breaking the dopamine loop by moving beyond passive tracking to active, native-level focus enforcement.
+## Vision
+Break the dopamine loop by combining native Android enforcement with a calm, premium interface.
 
-## 📱 Project Architecture
+## Project Architecture
 
-1. **`apps/mobile` (The Premium Experience)**
-   - **Recommended Demo Path**: Our flagship Flutter implementation.
-   - **Tech**: Flutter (Dart) with a Native Kotlin bridge.
-   - **Features**: Immersive glassmorphism UI, real-time usage insights, and "Hard Mode" focus sessions.
-   
-2. **`apps/android-native` (The Core Engine)**
-   - Technical foundation providing the underlying Accessibility and Enforcement APIs.
-   - Directly interfaces with Android's `UsageStatsManager` and `WindowManager`.
+1. **`apps/mobile`**
+   The current ReClaim Flutter app with the native Kotlin enforcement bridge.
+2. **`apps/android-native`**
+   A legacy Kotlin-only prototype kept as a secondary reference path.
+3. **`services/api`**
+   The Node.js and TypeScript backend for auth, analytics, devices, and rewards.
 
-3. **`services/api` (The Intelligence Layer)**
-   - **Tech**: Node.js + TypeScript + PostgreSQL.
-   - **Role**: Secure data synchronization, cross-device trends, and rewards logic.
+## Key Features
+- **Native enforcement**: Blocks distracting apps through Android accessibility and overlay services.
+- **Usage insights**: Tracks daily and weekly behavior with local-first device data.
+- **Rewards and streaks**: Adds progression and accountability on top of strict limits.
+- **Premium UI**: Keeps the main product surface clean and intentional instead of utilitarian.
 
----
+## Tech Stack
+- **Frontend**: Flutter
+- **Native Android**: Kotlin
+- **Backend**: Express.js, TypeScript, PostgreSQL
+- **Infrastructure**: Docker-ready API service
 
-## ✨ Key Features
-- **Native Enforcement**: Unlike standard apps, ReClaim uses Android Accessibility hooks to physically block distracting apps during focus sessions.
-- **Usage Insights**: Deep-dive analytics into digital habits with local-first privacy.
-- **Gamified Discipline**: Earn Zen Points and badges for maintaining focus streaks.
-- **Premium Design**: Calming, high-end aesthetics designed to reduce digital anxiety.
-
-## 🛠 Tech Stack
-- **Frontend**: Flutter 3.x (Glassmorphism, Particle Systems)
-- **Native**: Kotlin (Accessibility Service, Foreground Services)
-- **Backend**: Express.js (TypeScript), PostgreSQL, JWT Auth
-- **Infrastructure**: Docker-ready for easy deployment
-
----
-
-## 📂 Documentation
+## Documentation
 - [Folder Architecture](docs/FOLDER_GUIDE.md)
 - [API Specification](docs/API_DESIGN.md)
 - [Database Schema](docs/DB_SCHEMA.md)
 - [Core Algorithms](docs/ALGORITHMS.md)
 - [Judges Guide](HACKATHON_STUDY_GUIDE.md)
 
----
-
-## 🏆 Submission Notes
-This monorepo represents a production-hardened version of the ReClaim suite. All native-to-flutter bridges have been verified for stability, and the enforcement engine is optimized for high-responsiveness and low battery consumption.
+## Submission Notes
+This monorepo contains the current ReClaim mobile app, the supporting API, and the Android enforcement layer that powers the live blocking experience.

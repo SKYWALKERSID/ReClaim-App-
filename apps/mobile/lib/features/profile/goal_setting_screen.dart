@@ -24,7 +24,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
   Future<void> _loadCurrent() async {
     final profile = await _backend.getUserProfile();
     setState(() {
-      _nameController.text = profile['name'] ?? "[ENTER_NAME]";
+      _nameController.text = (profile['name'] ?? '').toString();
       _goalHours = (profile['goal_seconds'] ?? 7200) / 3600.0;
     });
   }

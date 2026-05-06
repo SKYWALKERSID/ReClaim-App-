@@ -14,12 +14,21 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
+class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
-        const val DATABASE_VERSION = 6
+        const val DATABASE_VERSION = 8
         const val DATABASE_NAME = "ReClaim.db"
         
+        @Volatile
+        private var instance: DatabaseHelper? = null
+
+        fun getInstance(context: Context): DatabaseHelper {
+            return instance ?: synchronized(this) {
+                instance ?: DatabaseHelper(context.applicationContext).also { instance = it }
+            }
+        }
+
         fun getCurrentDateString(): String {
             return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         }
@@ -31,7 +40,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 ${BaseColumns._ID} INTEGER PRIMARY KEY AUTOINCREMENT,
                 ${UserSettings.COLUMN_USER_NAME} TEXT,
                 ${UserSettings.COLUMN_DAILY_GOAL_SECONDS} INTEGER DEFAULT 7200,
-                ${UserSettings.COLUMN_THEME} INTEGER DEFAULT 1
+                ${UserSettings.COLUMN_THEME} INTEGER DEFAULT 1,
+                ${UserSettings.COLUMN_SAFE_CODE} TEXT
             )
         """)
 
@@ -40,7 +50,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 ${AppSelection.COLUMN_PACKAGE_NAME} TEXT PRIMARY KEY,
                 ${AppSelection.COLUMN_IS_WHITELISTED} INTEGER DEFAULT 0,
                 ${AppSelection.COLUMN_IS_BLACKLISTED} INTEGER DEFAULT 0,
-                ${AppSelection.COLUMN_TEMP_UNLOCK_EXPIRY} INTEGER DEFAULT 0
+                ${AppSelection.COLUMN_TEMP_UNLOCK_EXPIRY} INTEGER DEFAULT 0,
+                ${AppSelection.COLUMN_CUSTOM_CATEGORY} TEXT
             )
         """)
 
@@ -85,16 +96,15 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             )
         """)
 
-        // Initialize with default settings
         val values = ContentValues().apply {
-            put(UserSettings.COLUMN_USER_NAME, "[ENTER_NAME]")
+            put(UserSettings.COLUMN_USER_NAME, "")
             put(UserSettings.COLUMN_DAILY_GOAL_SECONDS, 7200)
         }
         db.insert(UserSettings.TABLE_NAME, null, values)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 5) {
+        if (oldVersion < 7) {
             db.execSQL("DROP TABLE IF EXISTS ${UserSettings.TABLE_NAME}")
             db.execSQL("DROP TABLE IF EXISTS ${AppSelection.TABLE_NAME}")
             db.execSQL("DROP TABLE IF EXISTS ${UsageLogs.TABLE_NAME}")
@@ -102,6 +112,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             db.execSQL("DROP TABLE IF EXISTS ${Badges.TABLE_NAME}")
             db.execSQL("DROP TABLE IF EXISTS ${Contract.FocusSessions.TABLE_NAME}")
             onCreate(db)
+        } else if (oldVersion == 7) {
+            db.execSQL("ALTER TABLE ${AppSelection.TABLE_NAME} ADD COLUMN ${AppSelection.COLUMN_CUSTOM_CATEGORY} TEXT")
         }
     }
 
@@ -123,29 +135,47 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         if (cursor.moveToFirst()) {
             result["name"] = cursor.getString(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_USER_NAME))
             result["goal_seconds"] = cursor.getInt(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_DAILY_GOAL_SECONDS))
+            result["safe_code"] = cursor.getString(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_SAFE_CODE)) ?: ""
         }
         cursor.close()
         return result
     }
 
-    fun saveUserSettings(name: String, goalSeconds: Int) {
+    fun saveUserSettings(name: String, goalSeconds: Int, safeCode: String? = null) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
             put(UserSettings.COLUMN_USER_NAME, name)
             put(UserSettings.COLUMN_DAILY_GOAL_SECONDS, goalSeconds)
+            if (safeCode != null) {
+                put(UserSettings.COLUMN_SAFE_CODE, safeCode)
+            }
         }
         db.update(UserSettings.TABLE_NAME, values, null, null)
     }
 
     // --- App Selection (Whitelist/Blacklist) ---
-    fun setAppSelection(packageName: String, isWhitelisted: Boolean, isBlacklisted: Boolean) {
+    fun setAppSelection(packageName: String, isWhitelisted: Boolean, isBlacklisted: Boolean, customCategory: String? = null) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
             put(AppSelection.COLUMN_PACKAGE_NAME, packageName)
             put(AppSelection.COLUMN_IS_WHITELISTED, if (isWhitelisted) 1 else 0)
             put(AppSelection.COLUMN_IS_BLACKLISTED, if (isBlacklisted) 1 else 0)
+            if (customCategory != null) {
+                put(AppSelection.COLUMN_CUSTOM_CATEGORY, customCategory)
+            }
         }
         db.insertWithOnConflict(AppSelection.TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun getAppCategory(packageName: String): String? {
+        val db = this.readableDatabase
+        val cursor = db.query(AppSelection.TABLE_NAME, arrayOf(AppSelection.COLUMN_CUSTOM_CATEGORY), "${AppSelection.COLUMN_PACKAGE_NAME} = ?", arrayOf(packageName), null, null, null)
+        var category: String? = null
+        if (cursor.moveToFirst()) {
+            category = cursor.getString(0)
+        }
+        cursor.close()
+        return category
     }
 
     fun getWhitelistedApps(): List<String> {
@@ -173,7 +203,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     // --- Emergency Unlock Logic ---
     fun useEmergencyUnlock(packageName: String, durationMs: Long): Boolean {
         val date = getCurrentDateString()
-        ensureDailyRecordExists(date)
+        ensureDailyRecordExists(this.writableDatabase, date)
         val stats = getDailyAnalytics(date)
         val used = (stats["emergency_unlocks_used"] as? Int) ?: 0
         
@@ -278,6 +308,19 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
     }
 
+    fun updatePoints(points: Int) {
+        val date = getCurrentDateString()
+        val db = this.writableDatabase
+        db.beginTransaction()
+        try {
+            ensureDailyRecordExists(db, date)
+            db.execSQL("UPDATE ${DailyAnalytics.TABLE_NAME} SET ${DailyAnalytics.COLUMN_POINTS_EARNED} = ? WHERE ${DailyAnalytics.COLUMN_DATE} = ?", arrayOf(points, date))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     private fun ensureDailyRecordExists(db: SQLiteDatabase, date: String) {
         val values = ContentValues().apply { put(DailyAnalytics.COLUMN_DATE, date) }
         db.insertWithOnConflict(DailyAnalytics.TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE)
@@ -300,7 +343,3 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return result
     }
 }
-
-
-
-

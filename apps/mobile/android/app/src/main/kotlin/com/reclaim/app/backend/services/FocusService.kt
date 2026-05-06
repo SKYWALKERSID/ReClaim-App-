@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.content.pm.ServiceInfo
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -25,7 +26,7 @@ class FocusService : Service() {
                 updateNotification()
                 handler.postDelayed(this, 1000)
             } else {
-                FocusSessionManager.stopFocusSession(this@FocusService)
+                FocusSessionManager.stopFocusSession(this@FocusService.applicationContext)
                 stopSelf()
             }
         }
@@ -44,7 +45,12 @@ class FocusService : Service() {
             persistSession(System.currentTimeMillis() + (remainingSeconds * 1000L))
         }
         
-        startForeground(NOTIFICATION_ID, createNotification())
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
         handler.post(tickRunnable)
         
         return START_STICKY

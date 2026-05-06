@@ -8,8 +8,8 @@ export function rateLimiter(
     max: options.max,
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => `${options.keyPrefix ?? "rl"}:${req.ip}`,
-    validate: { ip: false },
+    keyGenerator: (req) => `${options.keyPrefix ?? "rl"}:${req.ip || "unknown"}`,
+    validate: { default: false },
     message: {
       error: "Too Many Requests",
       code: "RATE_LIMIT_EXCEEDED",

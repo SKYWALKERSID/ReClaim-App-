@@ -52,7 +52,7 @@ class _InterventionScreenState extends State<InterventionScreen> {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(color: AppColors.background.withOpacity(0.8)),
+              child: Container(color: AppColors.background.withValues(alpha: 0.8)),
             ),
           ),
           Center(
@@ -162,9 +162,9 @@ class _InterventionScreenState extends State<InterventionScreen> {
           child: OutlinedButton(
             onPressed: _secondsRemaining > 0 ? null : () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              disabledForegroundColor: Colors.white.withOpacity(0.2),
+              disabledForegroundColor: Colors.white.withValues(alpha: 0.2),
               foregroundColor: Colors.white70,
             ),
             child: Text(

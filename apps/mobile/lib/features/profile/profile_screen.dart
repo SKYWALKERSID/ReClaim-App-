@@ -7,6 +7,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:convert';
 import '../../screens/devices_screen.dart';
 import 'additional_features_screen.dart';
 class ProfileScreen extends StatefulWidget {
@@ -18,7 +19,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final BackendService _backend = BackendService();
-  Map<String, dynamic> _stats = {};
   Map<String, dynamic> _profile = {};
   Map<String, dynamic> _rewards = {};
   bool _isLoading = true;
@@ -40,7 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       if (mounted) {
         setState(() {
-          _stats = stats;
           _profile = profile;
           _rewards = rewards;
           _dailyLimit = (profile['goal_seconds'] ?? 7200) / 3600.0;
@@ -70,7 +69,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildStreakCard(),
                   const SizedBox(height: 20),
                   _buildProgressionSection(),
-                  const Spacer(),
+                  const SizedBox(height: 24),
                   _buildRewardsCompact(),
                   const SizedBox(height: 24),
                   _buildDataPortabilitySection(),
@@ -137,21 +136,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: AppColors.primary,
-            inactiveTrackColor: Colors.white.withOpacity(0.05),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.05),
             thumbColor: Colors.white,
-            overlayColor: AppColors.primary.withOpacity(0.2),
+            overlayColor: AppColors.primary.withValues(alpha: 0.2),
             trackHeight: 4,
           ),
           child: Slider(
             value: _dailyLimit,
             min: 1,
             max: 8,
-            divisions: 14,
-            onChanged: (value) async {
-               setState(() => _dailyLimit = value);
-               await _backend.saveUserSettings(_profile['name'] ?? "[ENTER_NAME]", (value * 3600).toInt());
-            },
-          ),
+             divisions: 14,
+             onChanged: (value) async {
+                setState(() => _dailyLimit = value);
+               await _backend.saveUserSettings((_profile['name'] ?? '').toString(), (value * 3600).toInt());
+             },
+           ),
         ),
       ],
     );
@@ -163,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -191,9 +190,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isAvailable ? AppColors.accent : Colors.white.withOpacity(0.05),
+                  color: isAvailable ? AppColors.accent : Colors.white.withValues(alpha: 0.05),
                   boxShadow: isAvailable ? [
-                    BoxShadow(color: AppColors.accent.withOpacity(0.4), blurRadius: 6)
+                    BoxShadow(color: AppColors.accent.withValues(alpha: 0.4), blurRadius: 6)
                   ] : null,
                 ),
               );
@@ -217,14 +216,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withOpacity(0.1),
+                color: Colors.cyanAccent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.devices_rounded, color: Colors.cyanAccent, size: 20),
@@ -265,14 +264,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent.withOpacity(0.1),
+                color: Colors.deepPurpleAccent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.explore_rounded, color: Colors.deepPurpleAccent, size: 20),
@@ -339,19 +338,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Preparing $format export...")),
       );
-      
-      // In a real app, we'd fetch data from _backend and save to file
+
+      final profile = await _backend.getUserProfile();
+      final usage = await _backend.fetchAppUsage();
+      final displayName = (profile['name'] ?? '').toString().trim();
+      final exportUser = displayName.isEmpty ? 'reclaim-user' : displayName;
+      final apps = List<Map<dynamic, dynamic>>.from(usage['apps'] ?? const []);
       final directory = await getTemporaryDirectory();
       final filePath = "${directory.path}/usage_export.$format";
       final file = File(filePath);
-      
+
       if (format == "json") {
-        await file.writeAsString('{"userId": "[ENTER_NAME]-123", "events": []}');
+        final payload = {
+          'userName': exportUser,
+          'totalDailySeconds': usage['total_daily_seconds'] ?? 0,
+          'apps': apps,
+        };
+        await file.writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
       } else {
-        await file.writeAsString('userId,packageName,startedAt,duration\n[ENTER_NAME]-123,com.instagram,2024-03-20,120');
+        final buffer = StringBuffer('userName,packageName,appName,durationSeconds\n');
+        for (final app in apps) {
+          buffer.writeln(
+            '$exportUser,${app['package_name'] ?? ''},${app['app_name'] ?? ''},${app['usage_seconds'] ?? 0}',
+          );
+        }
+        if (apps.isEmpty) {
+          buffer.writeln('$exportUser,,,0');
+        }
+        await file.writeAsString(buffer.toString());
       }
 
+      // ignore: deprecated_member_use
       await Share.shareXFiles([XFile(filePath)], text: 'My ReClaim Export');
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Export failed: $e")),
@@ -366,7 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.15)),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.15)),
       ),
       child: Row(
         children: [
@@ -376,11 +395,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [const Color(0xFFF59E0B).withOpacity(0.2), Colors.transparent],
+                colors: [const Color(0xFFF59E0B).withValues(alpha: 0.2), Colors.transparent],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
             ),
             child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 26),
           ),
@@ -515,10 +534,10 @@ class _AnimatedSettingsButtonState extends State<_AnimatedSettingsButton> with S
           decoration: BoxDecoration(
             color: AppColors.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 blurRadius: 12,
                 spreadRadius: 0,
               ),
@@ -614,10 +633,10 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
       decoration: BoxDecoration(
         color: const Color(0xFF161620),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.08),
+            color: AppColors.primary.withValues(alpha: 0.08),
             blurRadius: 40,
             offset: const Offset(0, -10),
           ),
@@ -637,7 +656,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -648,8 +667,8 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.primary.withOpacity(0.1),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                       ),
                       child: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
                     ),
@@ -753,10 +772,10 @@ class _PermissionRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isEnabled ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.04),
+          color: isEnabled ? accentColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.04),
         ),
       ),
       child: Row(
@@ -794,9 +813,9 @@ class _PermissionRow extends StatelessWidget {
             value: isEnabled,
             onChanged: onChanged,
             activeThumbColor: accentColor,
-            activeTrackColor: accentColor.withOpacity(0.3),
+            activeTrackColor: accentColor.withValues(alpha: 0.3),
             inactiveThumbColor: Colors.white24,
-            inactiveTrackColor: Colors.white.withOpacity(0.05),
+            inactiveTrackColor: Colors.white.withValues(alpha: 0.05),
           ),
         ],
       ),
@@ -823,10 +842,10 @@ class _BadgeItem extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: isUnlocked ? color.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+            color: isUnlocked ? color.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
             shape: BoxShape.circle,
             border: Border.all(
-              color: isUnlocked ? color.withOpacity(0.4) : Colors.white.withOpacity(0.05),
+              color: isUnlocked ? color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.05),
               width: 1.5,
             ),
           ),
@@ -873,17 +892,17 @@ class _CompactRewardTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.12)),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: color.withOpacity(0.7), size: 22),
+            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 22),
           ),
           const SizedBox(height: 10),
           Text(
@@ -901,14 +920,14 @@ class _CompactRewardTile extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 4,
-              backgroundColor: Colors.white.withOpacity(0.05),
-              valueColor: AlwaysStoppedAnimation<Color>(color.withOpacity(0.6)),
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.6)),
             ),
           ),
           const SizedBox(height: 4),
           Text(
             "${(progress * 100).toInt()}%",
-            style: TextStyle(fontSize: 10, color: color.withOpacity(0.7), fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7), fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -936,9 +955,9 @@ class _ExportButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
+          color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -43,14 +43,14 @@ All project documentation:
 | `DB_SCHEMA.md` | PostgreSQL schema — 12 tables, 22 indexes |
 | `FOLDER_GUIDE.md` | This file |
 | `STEP_BY_STEP_RUN.md` | How to run every component (Manual & Docker) |
-| `Digital_Minimalism_Hackathon_Pitch.docx` | Hackathon pitch deck |
+| `ReClaim_Hackathon_Pitch.docx` | Hackathon pitch deck |
 
 ---
 
 ## 2. Flutter + Android Hybrid App
 
 **Path:** `apps/mobile/`  
-**Package:** `com.minimalism.focus.flutter`
+**Package:** `com.reclaim.app`
 
 This is the **primary demo app**. It has a Flutter UI shell with native Kotlin enforcement services running underneath.
 
@@ -63,7 +63,7 @@ Declares all permissions, activities, services, and receivers:
 - `RECEIVE_BOOT_COMPLETED` — restart enforcement on reboot
 - Accessibility service declaration for `AppAccessibilityService`
 
-### `android/app/src/main/kotlin/com/minimalism/focus/flutter/`
+### `android/app/src/main/kotlin/com/reclaim/app/flutter/`
 
 Flutter host activities and enforcement:
 
@@ -82,7 +82,7 @@ Flutter host activities and enforcement:
 | `EnforcementManager.kt` | Lifecycle manager — initializes tracking, scheduling, policy store |
 | `FocusPolicyStore.kt` | SharedPreferences-backed policy cache with 60s TTL |
 
-### `android/app/src/main/kotlin/com/minimalism/focus/backend/`
+### `android/app/src/main/kotlin/com/reclaim/app/backend/`
 
 Native backend engine — data, tracking, gamification:
 
@@ -158,7 +158,7 @@ Platform bridge services — `MethodChannel` wrappers that call the native Kotli
 ## 3. Native Android App (Standalone)
 
 **Path:** `apps/android-native/`  
-**Package:** `com.minimalism.focus`
+**Package:** `com.reclaim.native`
 
 A standalone Kotlin-only Android app. Uses the same enforcement architecture as the Flutter hybrid but without the Flutter UI layer. Contains its own `MainActivity`, data layer, and enforcement services.
 

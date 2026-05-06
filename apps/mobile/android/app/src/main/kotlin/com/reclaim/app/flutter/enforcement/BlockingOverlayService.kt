@@ -13,6 +13,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
+import android.content.pm.ServiceInfo
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -46,6 +47,17 @@ class BlockingOverlayService : Service() {
         createNotificationChannel()
     }
 
+    private inner class InterceptingFrameLayout(context: Context) : FrameLayout(context) {
+        override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+            // Lock out Back and Home keys to ensure enforcement
+            if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK || 
+                event.keyCode == android.view.KeyEvent.KEYCODE_HOME) {
+                return true
+            }
+            return super.dispatchKeyEvent(event)
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_HIDE -> {
@@ -53,7 +65,9 @@ class BlockingOverlayService : Service() {
                 stopSelf()
             }
             ACTION_SHOW -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForeground(NOTIFICATION_ID, buildNotification())
                 }
                 currentPackageName = intent.getStringExtra(EXTRA_PACKAGE_NAME).orEmpty()
@@ -76,28 +90,6 @@ class BlockingOverlayService : Service() {
 
     private fun showOverlay() {
         if (!Settings.canDrawOverlays(this)) {
-            Log.e("BlockingOverlay", "Missing overlay permission, stopping service to avoid crash")
-            stopSelf()
-            return
-        }
-
-        // Already called in onStartCommand, but re-calling is safe and ensures the notification is updated
-        startForeground(NOTIFICATION_ID, buildNotification())
-
-    private inner class InterceptingFrameLayout(context: Context) : FrameLayout(context) {
-        override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-            // Lock out Back and Home keys to ensure enforcement
-            if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK || 
-                event.keyCode == android.view.KeyEvent.KEYCODE_HOME) {
-                return true
-            }
-            return super.dispatchKeyEvent(event)
-        }
-    }
-
-    private fun showOverlay() {
-        if (!Settings.canDrawOverlays(this)) {
-            Log.e("BlockingOverlay", "Missing overlay permission, stopping service to avoid crash")
             Log.e("BlockingOverlay", "Missing overlay permission, stopping service.")
             stopSelf()
             return
@@ -265,13 +257,53 @@ class BlockingOverlayService : Service() {
             }
         }
 
+        val safeCodeButton = TextView(this).apply {
+            text = "Emergency Bypass"
+            textSize = 12f
+            setTextColor(Color.parseColor("#40FFFFFF"))
+            gravity = Gravity.CENTER
+            setPadding(0, 32, 0, 0)
+            setOnClickListener {
+                showSafeCodeDialog()
+            }
+        }
+
         card.addView(title)
         card.addView(reasonText)
         card.addView(remainingText)
         card.addView(unlockButton)
         card.addView(homeButton)
+        card.addView(safeCodeButton)
         root.addView(card)
         return root
+    }
+
+    private fun showSafeCodeDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "Enter SafeCode"
+        }
+        
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("SafeCode Bypass")
+            .setMessage("Enter your emergency passcode to disable enforcement.")
+            .setView(input)
+            .setPositiveButton("Bypass") { _, _ ->
+                val code = input.text.toString()
+                if (EnforcementManager.verifySafeCode(code)) {
+                    Toast.makeText(this, "Enforcement disabled for today.", Toast.LENGTH_LONG).show()
+                    hideOverlay()
+                } else {
+                    Toast.makeText(this, "Invalid SafeCode.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
     }
 
     private fun beginCountdown() {
@@ -358,6 +390,7 @@ class BlockingOverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                 WindowManager.LayoutParams.FLAG_FULLSCREEN or
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_SECURE or
                 WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS,
             PixelFormat.TRANSLUCENT
         ).apply {

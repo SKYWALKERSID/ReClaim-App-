@@ -32,5 +32,5 @@ CREATE TABLE IF NOT EXISTS challenge_participants (
 );
 
 -- Create indexes
-CREATE INDEX idx_buddies_user ON buddies(user_id);
-CREATE INDEX idx_challenges_times ON challenges(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_buddies_user ON buddies(user_id);
+CREATE INDEX IF NOT EXISTS idx_challenges_times ON challenges(start_time, end_time);

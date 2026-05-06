@@ -263,7 +263,7 @@ flutter run
 
 This builds the app with both the Flutter UI and the native Kotlin enforcement engine.
 
-**Flutter package name:** `com.minimalism.focus.flutter`
+**Flutter package name:** `com.reclaim.app`
 
 ### What to expect
 
@@ -306,19 +306,19 @@ Use this sequence for the hackathon demo:
 
 ---
 
-## 9. Run the Native Android App (Alternative)
+## 9. Run the Native Android App (Legacy Alternative)
 
-If you need to test the standalone Kotlin-only version:
+If you need to test the older Kotlin-only prototype:
 
 ```powershell
 cd C:\Users\siddh\Desktop\Hackathon\apps\android-native
 $env:GRADLE_USER_HOME = "C:\Users\siddh\Desktop\Hackathon\.gradle-home"
 .\gradlew.bat :app:assembleDebug --no-daemon --console=plain
 & "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe" install -r app\build\outputs\apk\debug\app-debug.apk
-& "$env:LOCALAPPDATA\Android\sdk\platform-tools\adb.exe" shell am start -n com.minimalism.focus/.MainActivity
 ```
 
 APK output: `apps/android-native/app/build/outputs/apk/debug/app-debug.apk`
+Open the installed app from the Android launcher after install.
 
 ---
 

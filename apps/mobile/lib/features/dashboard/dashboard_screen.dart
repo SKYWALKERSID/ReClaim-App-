@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:ui';
-import 'dart:math' as Math;
+import 'dart:math' as math;
 import '../../shared/widgets/custom_card.dart';
 import '../../core/theme/colors.dart';
 import '../../services/backend_service.dart';
@@ -18,7 +18,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   final BackendService _backendService = BackendService();
   Map<String, dynamic>? _stats;
   Map<String, dynamic>? _userProfile;
-  bool _isLoading = true;
   bool isFocusModeOn = false; 
   Timer? _refreshTimer;
   late AnimationController _backgroundPulseController;
@@ -64,7 +63,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Future<void> _loadData({bool isSilent = false}) async {
-    if (!isSilent) setState(() => _isLoading = true);
     try {
       final stats = await _backendService.fetchDashboardStats();
       final profile = await _backendService.getUserProfile();
@@ -73,11 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           _stats = stats;
           _userProfile = profile;
           isFocusModeOn = (stats['remaining_focus_seconds'] as int? ?? 0) > 0;
-          _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      // Error handling
     }
   }
 
@@ -149,7 +146,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Widget _buildHeader() {
-    final userName = _userProfile?['name'] ?? "[ENTER_NAME]";
+    final rawName = (_userProfile?['name'] ?? '').toString().trim();
+    final userName = rawName.isEmpty ? 'there' : rawName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -157,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           "Hi, $userName",
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withOpacity(0.5),
+            color: Colors.white.withValues(alpha: 0.5),
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
           ),
@@ -193,7 +191,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
         child: Stack(
           children: [
@@ -233,7 +231,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   AnimatedBuilder(
                     animation: _backgroundPulseController,
                     builder: (context, child) {
-                      final double pulse = Math.sin(_backgroundPulseController.value * 2 * Math.pi);
+                      final double pulse = math.sin(_backgroundPulseController.value * 2 * math.pi);
                       final double scale = 1.0 + (isFocusModeOn ? (pulse * 0.015 + 0.015) : 0.0);
                       
                       return Transform.scale(
@@ -257,7 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Row(
@@ -328,18 +326,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           height: 56,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             gradient: LinearGradient(
               colors: [
-                const Color(0xFF8B5CF6).withOpacity(0.6),
-                const Color(0xFFEC4899).withOpacity(0.6),
+                const Color(0xFF8B5CF6).withValues(alpha: 0.6),
+                const Color(0xFFEC4899).withValues(alpha: 0.6),
               ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 6),
               ),
@@ -447,13 +445,17 @@ class _StatsCardState extends State<_StatsCard> with SingleTickerProviderStateMi
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    widget.label,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white54,
-                      letterSpacing: 0.5,
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white54,
+                        letterSpacing: 0.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                   Icon(widget.icon, size: 16, color: Colors.white54),
@@ -506,11 +508,11 @@ class _PlayButton extends StatelessWidget {
         height: 64,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           gradient: RadialGradient(
             colors: [
-              const Color(0xFF8B5CF6).withOpacity(0.2),
-              const Color(0xFF8B5CF6).withOpacity(0.0),
+              const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+              const Color(0xFF8B5CF6).withValues(alpha: 0.0),
             ],
           ),
         ),
@@ -563,7 +565,7 @@ class _ParticleWavePainter extends CustomPainter {
         ..shader = RadialGradient(
           colors: [
             (i == 0 ? const Color(0xFFD946EF) : const Color(0xFF8B5CF6)).withValues(alpha: opacity),
-            const Color(0xFF60A5FA).withOpacity(0),
+            const Color(0xFF60A5FA).withValues(alpha: 0),
           ],
         ).createShader(Rect.fromCircle(
           center: Offset(centerX, centerY),
@@ -606,9 +608,9 @@ class _ParticleWavePainter extends CustomPainter {
       
       // Combination of two sine waves for organic motion
       final wave1 = 12.0 * (isActive ? 1.8 : 1.0) * 
-                   Math.sin((normalizedX * 2.0 * Math.pi) + (pulseValue * 2.0 * Math.pi));
+                   math.sin((normalizedX * 2.0 * math.pi) + (pulseValue * 2.0 * math.pi));
       final wave2 = 6.0 * (isActive ? 1.4 : 1.0) * 
-                   Math.cos((normalizedX * 4.0 * Math.pi) - (pulseValue * 4.0 * Math.pi));
+                   math.cos((normalizedX * 4.0 * math.pi) - (pulseValue * 4.0 * math.pi));
       
       final y = centerY + (wave1 + wave2) * envelopeSq;
       
@@ -627,111 +629,6 @@ class _ParticleWavePainter extends CustomPainter {
       oldDelegate.pulseValue != pulseValue || oldDelegate.isActive != isActive;
 }
 
-class _SubtleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _SubtleIconButton({required this.icon, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 20, color: AppColors.textSecondary),
-      ),
-    );
-  }
-}
-
-class _GlassIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _GlassIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(50),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.glassBase,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.glassBorder),
-            ),
-            child: Icon(icon, size: 22, color: AppColors.textPrimary),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final Color color;
-  final double size;
-  const _GlowOrb({required this.color, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color, color.withOpacity(0)],
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassTrendPainter extends CustomPainter {
-  final List<int> trend;
-  _GlassTrendPainter({required this.trend});
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (trend.length < 2) return; // Need at least 2 points to draw a line
-    final paint = Paint()
-      ..shader = AppColors.primaryGradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-    
-    final maxVal = trend.reduce((a, b) => a > b ? a : b).toDouble();
-    final stepX = size.width / (trend.length - 1);
-    final path = Path();
-    for (var i = 0; i < trend.length; i++) {
-      final x = i * stepX;
-      final y = size.height - (trend[i] / (maxVal > 0 ? maxVal : 1) * size.height * 0.8) - (size.height * 0.1);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    canvas.drawPath(path, paint);
-
-    // Glow effect
-    final glowPaint = Paint()
-      ..color = AppColors.primary.withOpacity(0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawPath(path, glowPaint);
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
 
 

@@ -15,6 +15,7 @@ import com.reclaim.app.backend.engine.TrackingEngine
 import com.reclaim.app.backend.engine.GamificationEngine
 import com.reclaim.app.flutter.enforcement.AppAccessibilityService
 import com.reclaim.app.flutter.enforcement.EnforcementManager
+import com.reclaim.app.flutter.enforcement.FocusPolicyStore
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
@@ -24,9 +25,10 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
+
 class MethodChannelHandler(private val context: Context) : MethodChannel.MethodCallHandler {
 
-    private val dbHelper = DatabaseHelper(context)
+    private val dbHelper = DatabaseHelper.getInstance(context)
     private val apiClient = com.reclaim.app.data.ApiClient()
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -85,7 +87,11 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }.start()
                 }
                 "saveUserSettings" -> {
-                    dbHelper.saveUserSettings(call.argument<String>("name") ?: "[ENTER_NAME]", call.argument<Int>("goal_seconds") ?: 7200)
+                    dbHelper.saveUserSettings(
+                        call.argument<String>("name") ?: "",
+                        call.argument<Int>("goal_seconds") ?: 7200,
+                        call.argument<String>("safe_code")
+                    )
                     syncEnforcementPolicy()
                     result.success(true)
                 }
@@ -94,22 +100,19 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     syncEnforcementPolicy()
                     result.success(true)
                 }
+                "updateAppCategory" -> {
+                    val pkg = call.argument<String>("package_name") ?: ""
+                    val category = call.argument<String>("category") ?: ""
+                    dbHelper.setAppSelection(pkg, dbHelper.getWhitelistedApps().contains(pkg), dbHelper.getBlacklistedApps().contains(pkg), category)
+                    result.success(true)
+                }
                 "getAppSelections" -> {
                     Thread {
                         val selections = mapOf("whitelist" to dbHelper.getWhitelistedApps(), "blacklist" to dbHelper.getBlacklistedApps())
                         android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(selections) }
                     }.start()
                 }
-                "getDeviceInfo" -> {
-                    result.success(mapOf(
-                        "manufacturer" to Build.MANUFACTURER.lowercase(),
-                        "model" to Build.MODEL,
-                        "sdk" to Build.VERSION.SDK_INT,
-                        "isSamsung" to (Build.MANUFACTURER.lowercase().contains("samsung")),
-                        "isXiaomi" to (Build.MANUFACTURER.lowercase().contains("xiaomi")),
-                        "isOppo" to (Build.MANUFACTURER.lowercase().contains("oppo") || Build.MANUFACTURER.lowercase().contains("realme"))
-                    ))
-                }
+
                 "getRewardsData" -> {
                     Thread {
                         try {
@@ -123,15 +126,18 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
 
                             val points = GamificationEngine.calculatePoints(context, focusSeconds, goalSeconds, totalUsageSeconds)
                             
-                            // Persist points
-                            val db = dbHelper.writableDatabase
-                            db.execSQL("UPDATE daily_analytics SET points_earned = ? WHERE date = ?", arrayOf(points, date))
+                            // Persist points using the clean helper method
+                            dbHelper.updatePoints(points)
                             GamificationEngine.checkAndAwardBadges(dbHelper, focusSeconds)
 
                             val updatedStats = dbHelper.getDailyAnalytics(date)
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 try {
-                                    result.success(mapOf("points" to (updatedStats["points"] ?: points), "streak" to (updatedStats["streak"] ?: 0), "badges" to dbHelper.getBadges()))
+                                    result.success(mapOf(
+                                        "points" to (updatedStats["points"] ?: points),
+                                        "streak" to (updatedStats["streak"] ?: 0),
+                                        "badges" to dbHelper.getBadges()
+                                    ))
                                 } catch (e: Exception) {
                                     Log.e("MethodChannel", "Error returning rewards success", e)
                                 }
@@ -155,8 +161,31 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         }
                     }.start()
                 }
+                "getTopAppsForRange" -> {
+                    val start = call.argument<Long>("start") ?: 0L
+                    val end = call.argument<Long>("end") ?: System.currentTimeMillis()
+                    Thread {
+                        val topApps = TrackingEngine.getTopAppsWithMetadata(context, start, end)
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            result.success(topApps)
+                        }
+                    }.start()
+                }
+                "getUsageForDateRange" -> {
+                    val start = call.argument<Long>("start") ?: 0L
+                    val end = call.argument<Long>("end") ?: System.currentTimeMillis()
+                    result.success(TrackingEngine.getUsageForDateRange(context, start, end))
+                }
                 "getAppIcon" -> handleGetAppIcon(call, result)
                 "registerDevice" -> handleRegisterDevice(call, result)
+                "saveAuth" -> {
+                    val jwt = call.argument<String>("jwt_token")
+                    val userId = call.argument<String>("user_id")
+                    if (jwt != null && userId != null) {
+                        FocusPolicyStore.saveAuth(context, userId, jwt)
+                    }
+                    result.success(true)
+                }
                 "getDeviceInfo" -> handleGetDeviceInfo(result)
                 else -> result.notImplemented()
             }
@@ -196,10 +225,16 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             true
         }
 
+        val usage = hasUsageStatsPermission()
+        val accessibility = AppAccessibilityService.isEnabled(context)
+        val overlay = Settings.canDrawOverlays(context)
+
+        Log.d("ReClaimPermissions", "Status - Usage: $usage, Access: $accessibility, Overlay: $overlay")
+
         return mapOf(
-            "usage_access" to hasUsageStatsPermission(),
-            "accessibility_access" to AppAccessibilityService.isEnabled(context),
-            "overlay_access" to Settings.canDrawOverlays(context),
+            "usage_access" to usage,
+            "accessibility_access" to accessibility,
+            "overlay_access" to overlay,
             "notification_access" to notificationsEnabled,
             "battery_optimization_ignored" to ignoringBatteryOptimizations
         )
@@ -255,7 +290,8 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 "blockedPackages" to blacklist,
                 "enforcementMode" to currentPolicy.enforcementMode
             ),
-            "enforcementMode" to currentPolicy.enforcementMode
+            "enforcementMode" to currentPolicy.enforcementMode,
+            "safeCode" to (dbHelper.getUserSettings()["safe_code"] as? String)
         )
 
         EnforcementManager.syncPolicy(context, payload)
@@ -273,7 +309,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         
         // Calculate dynamic distraction score
         val sessionCount = (dailyDbStats["unlock_count"] as? Int ?: 0) + (dailyDbStats["pickup_count"] as? Int ?: 0)
-        val distractionScore = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionScore(usageMap, totalMs, goalSeconds)
+        val distractionScore = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionScore(context, usageMap, totalMs, goalSeconds)
 
         val statsMap = mapOf(
             "total_usage_seconds" to totalSeconds,
@@ -281,7 +317,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             "unlock_count" to (dailyDbStats["unlock_count"] ?: 0),
             "pickup_count" to (dailyDbStats["pickup_count"] ?: 0),
             "focus_time_seconds" to (dailyDbStats["focus_time_seconds"] ?: 0),
-            "remaining_focus_seconds" to FocusSessionManager.getRemainingSeconds(),
+            "remaining_focus_seconds" to FocusSessionManager.getRemainingSeconds(context),
             "emergency_unlocks_left" to com.reclaim.app.flutter.enforcement.EnforcementManager.overridesRemaining,
             "distraction_score" to distractionScore.toDouble(),
             "weekly_trend" to TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() }
@@ -297,13 +333,20 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         val totalMs = usageMap.values.sum()
         val appsList = mutableListOf<Map<String, Any>>()
         usageMap.forEach { (pkg, timeMs) ->
-            if (timeMs > 0 && pkg != context.packageName && pkg != "com.minimalism.focus.flutter" && pkg != "com.reclaim.app") {
+            if (timeMs > 0 && pkg != context.packageName) {
                 try {
                     if (pm.getLaunchIntentForPackage(pkg) == null) {
                         return@forEach
                     }
                     val appInfo = pm.getApplicationInfo(pkg, 0)
-                    appsList.add(mapOf("app_id" to pkg, "display_name" to pm.getApplicationLabel(appInfo).toString(), "usage_seconds" to (timeMs / 1000).toInt(), "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo))))
+                    val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
+                    appsList.add(mapOf(
+                        "app_id" to pkg, 
+                        "display_name" to pm.getApplicationLabel(appInfo).toString(), 
+                        "usage_seconds" to (timeMs / 1000).toInt(), 
+                        "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo)),
+                        "category" to category
+                    ))
                 } catch (e: Exception) {
                     Log.w("MethodChannelHandler", "skip $pkg", e)
                 }
@@ -357,6 +400,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
     }
     private fun handleGetInsightsData(call: MethodCall, result: MethodChannel.Result) {
         val period = call.argument<String>("period") ?: "Day"
+        val category = call.argument<String>("category")
         val cal = Calendar.getInstance()
         
         val trend: List<Int>
@@ -365,17 +409,17 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
 
         when (period) {
             "Day" -> {
-                trend = TrackingEngine.getHourlyUsageForDay(context, cal).map { (it / 1000).toInt() }
+                trend = TrackingEngine.getHourlyUsageForDay(context, cal, category).map { (it / 1000).toInt() }
                 cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
                 startTime = cal.timeInMillis
             }
             "Week" -> {
-                trend = TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() }
+                trend = TrackingEngine.getWeeklyBreakdown(context, category).map { (it / 1000).toInt() }
                 cal.add(Calendar.DAY_OF_YEAR, -6)
                 startTime = cal.timeInMillis
             }
             "Month" -> {
-                trend = TrackingEngine.getMonthlyBreakdown(context).map { (it / 1000).toInt() }
+                trend = TrackingEngine.getMonthlyBreakdown(context, category).map { (it / 1000).toInt() }
                 cal.add(Calendar.DAY_OF_YEAR, -29)
                 startTime = cal.timeInMillis
             }
@@ -385,7 +429,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             }
         }
 
-        val topApps = TrackingEngine.getTopAppsWithMetadata(context, startTime, endTime)
+        val topApps = TrackingEngine.getTopAppsWithMetadata(context, startTime, endTime, category)
         
         val resultMap = mapOf(
             "trend" to trend,
@@ -439,7 +483,3 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         ))
     }
 }
-
-
-
-

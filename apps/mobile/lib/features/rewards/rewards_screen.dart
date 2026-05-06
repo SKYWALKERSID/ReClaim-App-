@@ -142,7 +142,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -155,7 +155,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
+                        color: AppColors.primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                       ),
                     ],
@@ -194,9 +194,9 @@ class _RewardsScreenState extends State<RewardsScreen> {
               decoration: BoxDecoration(
                 color: AppColors.glassBase,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.amber.withOpacity(0.2)),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
                 boxShadow: [
-                  BoxShadow(color: Colors.amber.withOpacity(0.05), blurRadius: 10)
+                  BoxShadow(color: Colors.amber.withValues(alpha: 0.05), blurRadius: 10)
                 ],
               ),
               child: const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 32),

@@ -134,8 +134,54 @@ class ApiClient(
         )
     }
 
-    private fun postJson(path: String, payload: JSONObject) {
-        val connection = open(path)
+    fun registerDevice(
+        baseUrl: String,
+        jwtToken: String,
+        deviceId: String,
+        model: String,
+        osVersion: String,
+        fcmToken: String?
+    ) {
+        val payload = JSONObject().apply {
+            put("deviceId", deviceId)
+            put("model", model)
+            put("osVersion", osVersion)
+            if (!fcmToken.isNullOrBlank()) {
+                put("fcmToken", fcmToken)
+            }
+        }
+
+        executeWithRetry {
+            postJson(
+                path = "/devices",
+                payload = payload,
+                overrideBaseUrl = baseUrl,
+                bearerToken = jwtToken
+            )
+        }
+    }
+
+    fun sendNudge(userId: String, title: String, body: String, jwtToken: String? = null) {
+        val payload = JSONObject().apply {
+            put("title", title)
+            put("body", body)
+        }
+        executeWithRetry {
+            postJson(
+                path = "/analytics/nudge",
+                payload = payload,
+                bearerToken = jwtToken
+            )
+        }
+    }
+
+    private fun postJson(
+        path: String,
+        payload: JSONObject,
+        overrideBaseUrl: String? = null,
+        bearerToken: String? = null
+    ) {
+        val connection = open(path, overrideBaseUrl, bearerToken)
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
@@ -166,11 +212,19 @@ class ApiClient(
         throw lastException ?: IllegalStateException("Unknown error")
     }
 
-    private fun open(path: String): HttpURLConnection {
-        return (URL("$baseUrl$path").openConnection() as HttpURLConnection).apply {
+    private fun open(
+        path: String,
+        overrideBaseUrl: String? = null,
+        bearerToken: String? = null
+    ): HttpURLConnection {
+        val effectiveBaseUrl = (overrideBaseUrl ?: baseUrl).trimEnd('/')
+        return (URL("$effectiveBaseUrl$path").openConnection() as HttpURLConnection).apply {
             connectTimeout = 5000
             readTimeout = 7000
             setRequestProperty("x-api-key", apiKey)
+            if (!bearerToken.isNullOrBlank()) {
+                setRequestProperty("Authorization", "Bearer $bearerToken")
+            }
         }
     }
 

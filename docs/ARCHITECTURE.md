@@ -120,7 +120,7 @@ The user-facing interface. Communicates with the native engine via `MethodChanne
 #### MethodChannel Bridge Methods (14 total)
 
 ```
-com.minimalism.focus/bridge
+com.reclaim.app/bridge
   ├── getDashboardStats        → Map (today usage, goal, streak, blocked)
   ├── getTodayUsage            → Map<String, int> (per-app milliseconds)
   ├── getDailyLimit            → int (minutes)

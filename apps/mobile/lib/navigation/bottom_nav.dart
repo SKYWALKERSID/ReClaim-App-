@@ -7,6 +7,7 @@ import '../core/theme/colors.dart';
 
 
 import '../features/profile/profile_screen.dart';
+import '../services/backend_service.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -29,9 +30,9 @@ class BottomNavState extends State<BottomNav> {
   Future<void> _checkUserName() async {
     final backend = BackendService();
     final profile = await backend.getUserProfile();
-    final name = profile['name'] ?? "[ENTER_NAME]";
+    final name = (profile['name'] ?? '').toString().trim();
     
-    if (name == "[ENTER_NAME]" && mounted) {
+    if (name.isEmpty && mounted) {
       _showNamePrompt();
     }
   }
@@ -44,10 +45,10 @@ class BottomNavState extends State<BottomNav> {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: AlertDialog(
-          backgroundColor: Colors.black.withOpacity(0.8),
+          backgroundColor: Colors.black.withValues(alpha: 0.8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
           ),
           title: const Text("Welcome to ReClaim", 
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -62,9 +63,9 @@ class BottomNavState extends State<BottomNav> {
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: "Enter your name",
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.05),
+                  fillColor: Colors.white.withValues(alpha: 0.05),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -143,10 +144,10 @@ class BottomNavState extends State<BottomNav> {
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   width: 0.5,
                 ),
               ),
@@ -155,12 +156,12 @@ class BottomNavState extends State<BottomNav> {
                 onDestinationSelected: (i) => setState(() => index = i),
                 elevation: 0,
                 backgroundColor: Colors.transparent,
-                indicatorColor: AppColors.primary.withOpacity(0.15),
+                indicatorColor: AppColors.primary.withValues(alpha: 0.15),
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 height: 65,
                 destinations: [
                   _navItem(Icons.home_outlined, Icons.home, "Home"),
-                  _navItem(Icons.bar_chart_outlined, Icons.bar_chart, "Stats"),
+                  _navItem(Icons.bar_chart_outlined, Icons.bar_chart, "Insights"),
                   _navItem(Icons.shield_outlined, Icons.shield, "Block"),
                   _navItem(Icons.person_outline, Icons.person, "Profile"),
                 ],

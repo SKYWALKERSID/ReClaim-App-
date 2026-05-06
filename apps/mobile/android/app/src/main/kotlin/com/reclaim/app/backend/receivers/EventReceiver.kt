@@ -7,7 +7,7 @@ import com.reclaim.app.backend.db.DatabaseHelper
 
 class EventReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val dbHelper = DatabaseHelper(context)
+        val dbHelper = DatabaseHelper.getInstance(context)
         when (intent.action) {
             Intent.ACTION_USER_PRESENT -> {
                 // Device Unlocked

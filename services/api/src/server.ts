@@ -1,6 +1,6 @@
 import { buildApp } from "./app.js";
 import { env } from "./config/env.js";
-import { gracefulShutdownDB } from "./db/pool.js";
+import { pool, gracefulShutdownDB } from "./db/pool.js";
 import { logger } from "./infrastructure/logger.js";
 
 const app = buildApp();

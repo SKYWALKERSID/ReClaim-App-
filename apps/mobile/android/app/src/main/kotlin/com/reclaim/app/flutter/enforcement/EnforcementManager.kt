@@ -7,11 +7,13 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.ZonedDateTime
-import java.time.ZoneId
+import android.provider.Settings
+import android.util.Log
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.time.*
+import java.util.concurrent.atomic.AtomicLong
 
 object EnforcementManager {
     data class BlockDecision(
@@ -22,88 +24,86 @@ object EnforcementManager {
 
     private const val DEFAULT_UNLOCK_MINUTES = 5L
     private val monitor = Any()
+    private val mutex = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var appContext: Context? = null
+
     private var initialized = false
-    private var loadFailed = false
-    private var lastInitAttempt = 0L
+    private val lastRefreshTime = AtomicLong(0)
     private var policy: FocusPolicy = defaultPolicy()
     private val temporaryUnlockMap = mutableMapOf<String, Long>()
     private var overrideUsage = OverrideUsage("", 0)
-    private var refreshTimer: java.util.Timer? = null
+    private var isBypassedForToday = false
+    private var launcherPackage: String? = null
 
-    @Volatile
-    var isLocked: Boolean = false
+    @Volatile var isLocked: Boolean = false
         private set
 
-    @Volatile
-    var isFocusModeActive: Boolean = false
+    @Volatile var isFocusModeActive: Boolean = false
         private set
 
-    @Volatile
-    var overridesRemaining: Int = 5
+    @Volatile var overridesRemaining: Int = 5
         private set
+
+    private var cachedUsageMinutes: Int = 0
+    private var lastUsageQueryTime = 0L
+
+    // -------------------------------------------------------------------------
 
     fun initialize(context: Context) {
-        synchronized(monitor) {
-            if (initialized) return
-            val now = System.currentTimeMillis()
-            if (loadFailed && now - lastInitAttempt < 60000) return // 1 min backoff
-            lastInitAttempt = now
-            
-            val appContextInner = context.applicationContext
-            appContext = appContextInner
-            
-            Thread {
-                try {
-                    synchronized(monitor) {
-                        policy = FocusPolicyStore.loadPolicy(appContextInner)
-                        temporaryUnlockMap.clear()
-                        temporaryUnlockMap.putAll(FocusPolicyStore.loadTemporaryUnlockMap(appContextInner))
-                        overrideUsage = FocusPolicyStore.loadOverrideUsage(appContextInner)
-                        refreshStateLocked()
-                        
-                        refreshTimer?.cancel()
-                        refreshTimer = java.util.Timer().apply {
-                            scheduleAtFixedRate(object : java.util.TimerTask() {
-                                override fun run() {
-                                    synchronized(monitor) {
-                                        refreshStateLocked()
-                                    }
-                                }
-                            }, 60000, 60000)
-                        }
+        if (initialized) return
+        val appCtx = context.applicationContext
+        appContext = appCtx
 
-                        initialized = true
-                        loadFailed = false
-                        android.util.Log.d("EnforcementManager", "Initialized successfully in background")
-                    }
-                    scheduleNextRefresh(appContextInner)
+        scope.launch {
+            mutex.withLock {
+                if (initialized) return@withLock
+                try {
+                    val recoveredState = FocusPolicyStore.loadEnforcementState(appCtx)
+                    isLocked = recoveredState.isLocked
+                    isFocusModeActive = recoveredState.isFocusActive
+                    policy = FocusPolicyStore.loadPolicy(appCtx)
+                    temporaryUnlockMap.clear()
+                    temporaryUnlockMap.putAll(FocusPolicyStore.loadTemporaryUnlockMap(appCtx))
+                    overrideUsage = FocusPolicyStore.loadOverrideUsage(appCtx)
+                    detectLauncherPackage(appCtx)
+                    initialized = true
+                    refreshStateInternal(appCtx, forceUsageSync = true)
+                    EnforcementWorker.schedule(appCtx)
+                    Log.d("EnforcementManager", "Initialized successfully")
                 } catch (e: Exception) {
-                    android.util.Log.e("EnforcementManager", "Background init failed: ${e.message}")
-                    synchronized(monitor) { loadFailed = true }
+                    Log.e("EnforcementManager", "Init failed", e)
                 }
-            }.start()
+            }
+        }
+    }
+
+    fun onAppSwitch(context: Context, packageName: String) {
+        val appCtx = context.applicationContext
+        initialize(appCtx)
+        
+        val now = System.currentTimeMillis()
+        val last = lastRefreshTime.get()
+        if (now - last < 5000) return
+        
+        scope.launch {
+            refreshStateSuspended(appCtx, allowAlarm = false)
         }
     }
 
     fun syncPolicy(context: Context, payload: Map<*, *>) {
         val appCtx = context.applicationContext
-        FocusPolicyStore.savePolicy(appCtx, payload)
-        synchronized(monitor) {
-            if (initialized) {
-                policy = FocusPolicyStore.loadPolicy(appCtx)
-                refreshStateLocked()
-                return
-            } else {
-                loadFailed = false // Force immediate retry
+        scope.launch {
+            FocusPolicyStore.savePolicy(appCtx, payload)
+            val loadedPolicy = FocusPolicyStore.loadPolicy(appCtx)
+            mutex.withLock {
+                policy = loadedPolicy
+                refreshStateInternal(appCtx, forceUsageSync = true)
             }
         }
-        initialize(appCtx)
     }
 
-    fun shouldBlock(packageName: String): Boolean {
-        return blockDecision(packageName).shouldBlock
-    }
+    fun shouldBlock(packageName: String): Boolean = blockDecision(packageName).shouldBlock
 
     fun isWhitelisted(packageName: String): Boolean {
         synchronized(monitor) {
@@ -128,74 +128,92 @@ object EnforcementManager {
     }
 
     fun blockDecision(packageName: String, className: String? = null): BlockDecision {
-        synchronized(monitor) {
-            if (!initialized || appContext == null) {
-                return BlockDecision(false, "Initializing...")
-            }
+        if (!initialized) return BlockDecision(false, "Initializing...")
+        val pkg = packageName.lowercase()
 
-            val pkg = packageName.lowercase()
+        if (isBypassedForToday) return BlockDecision(false, "Bypassed via SafeCode")
+        if (pkg == launcherPackage) return BlockDecision(false, "Launcher allowed for viewing")
+        
+        // Essential checks use current in-memory state (fast)
+        if (isInternalPackage(pkg) || isWhitelisted(pkg) || isEssentialPackage(pkg)) return BlockDecision(false, "Whitelisted or Essential")
+        if (isTemporarilyUnlocked(pkg)) return BlockDecision(false, "Temporarily unlocked")
 
-            // Tier 1 — Whitelist
-            if (isInternalPackage(pkg) || isWhitelisted(pkg)) {
-                return BlockDecision(false, "Whitelisted")
-            }
+        if (isSensitiveBypassTarget(pkg, className)) {
+            return BlockDecision(true, "Enforcement settings are protected right now.", "hard")
+        }
 
-            // Tier 2 — Emergency Grace
-            if (isTemporarilyUnlocked(pkg)) {
-                return BlockDecision(false, "Temporarily unlocked")
-            }
+        if (policy.policyStatus.equals("LOCKED", ignoreCase = true)) {
+            return BlockDecision(true, "System is locked by your commitment.", "hard")
+        }
 
-            // Extra Protection — Sensitive Settings Bypass
-            // (Strict guard against tampering with the enforcer itself)
-            if (isSensitiveBypassTarget(pkg, className)) {
-                return BlockDecision(true, "Enforcement settings are protected right now.", "hard")
-            }
+        if (isFocusModeActive) {
+            return BlockDecision(true, "Focus window active. Essential apps only.", "hard")
+        }
 
-            // Tier 3 — Policy Locked
-            if (policy.policyStatus.equals("LOCKED", ignoreCase = true)) {
-                return BlockDecision(true, "System is locked by your commitment.", "hard")
-            }
-
-            // Tier 4 — Focus Window
-            if (isFocusModeActive) {
-                // Tier 1 already allowed whitelisted apps, so if we're here, it's a block
-                return BlockDecision(true, "Focus window active. Essential apps only.", "hard")
-            }
-
-            // Tier 5 — Daily Limit
-            val limitReached = cachedUsageMinutes >= policy.dailyLimitMinutes
-            if (limitReached && (policy.blockedPackages.contains(pkg) || policy.blacklistPackages.contains(pkg))) {
+        if (isLocked) {
+            if (policy.blockedPackages.contains(pkg) || policy.blacklistPackages.contains(pkg)) {
                 return if (policy.enforcementMode == "soft") {
                     BlockDecision(true, "Pause before opening this app.", "soft")
                 } else {
                     BlockDecision(true, "Daily limit reached for this app.", "hard")
                 }
             }
+        }
 
-            // Tier 6 — Default Allow
-            return BlockDecision(false, "Allowed")
+        return BlockDecision(false, "Allowed")
+    }
+
+    fun verifySafeCode(input: String): Boolean {
+        synchronized(monitor) {
+            val code = policy.safeCode ?: return false
+            if (input == code) {
+                disableEnforcementForToday()
+                return true
+            }
+            return false
+        }
+    }
+
+    fun disableEnforcementForToday() {
+        synchronized(monitor) {
+            isBypassedForToday = true
+            isLocked = false
+            isFocusModeActive = false
+            android.util.Log.i("EnforcementManager", "Enforcement disabled for today via SafeCode")
         }
     }
 
     fun requestTemporaryUnlock(context: Context, packageName: String, minutes: Long = DEFAULT_UNLOCK_MINUTES): Boolean {
+        val appCtx = context.applicationContext
+        initialize(appCtx)
+
+        val todayKey = LocalDate.now().toString()
+        val expiry = System.currentTimeMillis() + (minutes * 60_000L)
+
+        val unlockMapSnapshot: Map<String, Long>
+        val usageSnapshot: OverrideUsage
+
         synchronized(monitor) {
-            initialize(context.applicationContext)
-            val todayKey = LocalDate.now().toString()
             val currentCount = if (overrideUsage.dateKey == todayKey) overrideUsage.count else 0
             if (currentCount >= policy.maxOverridesPerDay) {
                 overridesRemaining = 0
                 return false
             }
 
-            val expiry = System.currentTimeMillis() + (minutes * 60_000L)
             temporaryUnlockMap[packageName] = expiry
-            FocusPolicyStore.saveTemporaryUnlockMap(context.applicationContext, temporaryUnlockMap)
-
             overrideUsage = OverrideUsage(todayKey, currentCount + 1)
-            FocusPolicyStore.saveOverrideUsage(context.applicationContext, overrideUsage)
             overridesRemaining = (policy.maxOverridesPerDay - overrideUsage.count).coerceAtLeast(0)
-            return true
+
+            unlockMapSnapshot = temporaryUnlockMap.toMap()
+            usageSnapshot = overrideUsage
         }
+
+        Thread {
+            FocusPolicyStore.saveTemporaryUnlockMap(appCtx, unlockMapSnapshot)
+            FocusPolicyStore.saveOverrideUsage(appCtx, usageSnapshot)
+        }.apply { isDaemon = true; start() }
+
+        return true
     }
 
     fun currentWhitelist(): Set<String> {
@@ -213,146 +231,207 @@ object EnforcementManager {
     }
 
     fun refreshState(context: Context, forceSync: Boolean = false) {
-        synchronized(monitor) {
-            initialize(context.applicationContext)
-            
-            // If forced or if stats are very stale (> 30s), do a quick sync-update
-            val now = System.currentTimeMillis()
-            if (forceSync || (now - lastUsageQueryTime > 30000)) {
-                readTodayUsageMinutes()
-            }
-            
-            refreshStateLocked()
+        val appCtx = context.applicationContext
+        scope.launch {
+            refreshStateSuspended(appCtx, forceUsageSync = forceSync, allowAlarm = true)
         }
+    }
+
+    suspend fun refreshStateSuspended(context: Context, forceUsageSync: Boolean = false, allowAlarm: Boolean = true) {
+        val now = System.currentTimeMillis()
+        val last = lastRefreshTime.get()
+        if (now - last < 5000) return
         
-        // Always schedule a deeper background update to keep things fresh
-        Thread { 
-            try {
-                updateUsageStatsBackground()
-                scheduleNextRefresh(context.applicationContext) 
-            } catch (e: Exception) {
-                android.util.Log.e("EnforcementManager", "Background refresh failed: ${e.message}")
-            }
-        }.start()
-    }
-
-    private fun updateUsageStatsBackground() {
-        synchronized(monitor) {
-            readTodayUsageMinutes()
+        mutex.withLock {
+            if (System.currentTimeMillis() - lastRefreshTime.get() < 5000) return@withLock
+            lastRefreshTime.set(System.currentTimeMillis())
+            
+            refreshStateInternal(context, forceUsageSync, allowAlarm)
         }
     }
 
-    fun scheduleNextRefresh(context: Context) {
+    private suspend fun refreshStateInternal(
+        context: Context,
+        forceUsageSync: Boolean,
+        allowAlarm: Boolean = true
+    ) {
         try {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+            pruneExpiredUnlocks()
+            
+            val now = LocalDateTime.now()
+            val isFocusActive = isFocusWindowActive(now)
+            
+            val queryNow = System.currentTimeMillis()
+            val needsUsageRefresh = forceUsageSync || (queryNow - lastUsageQueryTime > 60_000)
+            
+            if (needsUsageRefresh) {
+                cachedUsageMinutes = readTodayUsageMinutes()
+                lastUsageQueryTime = queryNow
+            }
+            
+            val limitReached = cachedUsageMinutes >= policy.dailyLimitMinutes
+            val newFocusActive = isFocusActive
+            val newLocked = isFocusActive || limitReached
+            
+            // Usage Milestones (Nudges)
+            checkAndSendUsageNudges(context, cachedUsageMinutes, policy.dailyLimitMinutes)
+            
+            if (newFocusActive != isFocusModeActive || newLocked != isLocked) {
+                isFocusModeActive = newFocusActive
+                isLocked = newLocked
+                FocusPolicyStore.saveEnforcementState(context, EnforcementState(
+                    isFocusActive = isFocusModeActive,
+                    isLocked = isLocked,
+                    lastEvaluatedAt = System.currentTimeMillis()
+                ))
+                Log.d("EnforcementManager", "State changed: locked=$isLocked, focus=$isFocusModeActive")
+                scheduleNextRefresh(context, allowAlarm)
+            }
+            
+            overridesRemaining = (policy.maxOverridesPerDay - overrideUsage.count).coerceAtLeast(0)
+        } catch (e: Exception) {
+            Log.e("EnforcementManager", "Refresh failed", e)
+        }
+    }
+
+    private suspend fun checkAndSendUsageNudges(context: Context, usedMins: Int, limitMins: Int) {
+        if (limitMins <= 0) return
+        val today = LocalDate.now().toString()
+        val nudgeState = FocusPolicyStore.loadNudgeState(context)
+        var newState = nudgeState
+
+        val pct = (usedMins.toDouble() / limitMins.toDouble()) * 100.0
+        val (userId, jwt) = FocusPolicyStore.loadAuth(context)
+        
+        if (userId == null) return
+
+        val apiClient = com.reclaim.app.data.ApiClient()
+
+        if (pct >= 100.0 && !nudgeState.sent100) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    apiClient.sendNudge(userId, "Daily Limit Reached", "You've used $usedMins mins today. System is now locked.", jwt)
+                    Log.d("EnforcementManager", "Sent 100% nudge")
+                } catch (e: Exception) { Log.e("EnforcementManager", "Nudge fail", e) }
+            }
+            newState = newState.copy(sent100 = true)
+        } else if (pct >= 90.0 && !nudgeState.sent90 && !nudgeState.sent100) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    apiClient.sendNudge(userId, "Almost there!", "You've used $usedMins mins ($pct%). Only ${limitMins - usedMins} mins left.", jwt)
+                    Log.d("EnforcementManager", "Sent 90% nudge")
+                } catch (e: Exception) { Log.e("EnforcementManager", "Nudge fail", e) }
+            }
+            newState = newState.copy(sent90 = true)
+        }
+
+        if (newState != nudgeState) {
+            FocusPolicyStore.saveNudgeState(context, newState)
+        }
+    }
+
+    private fun scheduleNextRefresh(context: Context, allowAlarm: Boolean) {
+        val appCtx = context.applicationContext
+        val nextTriggerAt = nextRefreshAtMillis()
+        val delayMs = nextTriggerAt - System.currentTimeMillis()
+        
+        EnforcementWorker.scheduleNext(appCtx, delayMs)
+        if (!allowAlarm) {
+            Log.d("EnforcementManager", "Skipping alarm (disallowed for this path)")
+            return
+        }
+        if (delayMs > 5 * 60_000L) {
+            Log.d("EnforcementManager", "Skipping alarm (boundary too far)")
+            return
+        }
+
+        val alarmManager = appCtx.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+
+        try {
+            val intent = Intent(appCtx, BootReceiver::class.java).apply {
+                action = BootReceiver.ACTION_REFRESH_ENFORCEMENT
+            }
             val pendingIntent = PendingIntent.getBroadcast(
-                context,
-                2003,
-                Intent(context, BootReceiver::class.java).setAction(BootReceiver.ACTION_REFRESH_ENFORCEMENT),
+                appCtx, 2003, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val triggerAt = nextRefreshAtMillis()
-            alarmManager.cancel(pendingIntent)
-
-            // Android 12+ (API 31) check for exact alarm permission
-            val canUseExact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                alarmManager.canScheduleExactAlarms()
-            } else {
-                true
-            }
-
-            if (canUseExact) {
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-                    } else {
-                        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-                    }
-                    return
-                } catch (e: SecurityException) {
-                    android.util.Log.e("EnforcementManager", "SecurityException scheduling exact alarm: ${e.message}")
-                    // Fall through to inexact fallback below
+            if (canUseExactAlarm(alarmManager)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
+                } else {
+                    alarmManager.setExact(AlarmManager.RTC_WAKEUP, nextTriggerAt, pendingIntent)
                 }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // If we're on Android 12+ and don't have permission, we should prompt the user
-                // via an intent (this must be called from an Activity context usually, 
-                // but since we are in a background service/receiver loop, we'll fire 
-                // it as a NEW_TASK or handle it in the next UI session).
-                android.util.Log.w("EnforcementManager", "SCHEDULE_EXACT_ALARM permission missing.")
-                try {
-                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                        data = android.net.Uri.parse("package:${context.packageName}")
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    android.util.Log.e("EnforcementManager", "Failed to request exact alarm permission", e)
-                }
-            }
-
-            // Safe inexact fallback — fires during Doze but maybe not at the EXACT second.
-            // This is sufficient for background sync if exact permission is denied.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                Log.d("EnforcementManager", "Scheduled precision alarm for boundary transition")
             } else {
-                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+                scheduleInexactAlarm(alarmManager, nextTriggerAt, pendingIntent)
+                Log.w("EnforcementManager", "Exact alarm unavailable, using inexact AlarmManager fallback")
+            }
+        } catch (e: SecurityException) {
+            Log.w("EnforcementManager", "Exact alarm permission denied, falling back: ${e.message}")
+            runCatching {
+                val intent = Intent(appCtx, BootReceiver::class.java).apply {
+                    action = BootReceiver.ACTION_REFRESH_ENFORCEMENT
+                }
+                val pendingIntent = PendingIntent.getBroadcast(
+                    appCtx, 2003, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                scheduleInexactAlarm(alarmManager, nextTriggerAt, pendingIntent)
+            }.onFailure { fallbackError ->
+                Log.w("EnforcementManager", "Fallback alarm schedule failed: ${fallbackError.message}")
             }
         } catch (e: Exception) {
-            android.util.Log.e("EnforcementManager", "scheduleNextRefresh fatal error: ${e.message}")
+            Log.w("EnforcementManager", "Alarm schedule failed: ${e.message}")
         }
     }
 
-    private fun refreshStateLocked() {
-        try {
-            val now = LocalDateTime.now()
-            val dayStart = now.toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            
-            pruneExpiredUnlocksLocked()
-
-            val isFocusActive = isFocusWindowActiveLocked(now)
-            val limitReached = if (hasUsagePermission()) {
-                cachedUsageMinutes >= policy.dailyLimitMinutes
-            } else false
-
-            this.isFocusModeActive = isFocusActive
-            this.isLocked = (isFocusActive || limitReached)
-            this.overridesRemaining = policy.maxOverridesPerDay - overrideUsage.count
-        } catch (e: Exception) {
-            android.util.Log.e("EnforcementManager", "Refresh failed: ${e.message}")
+    private suspend fun pruneExpiredUnlocks() {
+        val now = System.currentTimeMillis()
+        val toRemove = temporaryUnlockMap.filterValues { it <= now }.keys
+        if (toRemove.isNotEmpty()) {
+            toRemove.forEach { temporaryUnlockMap.remove(it) }
+            appContext?.let { ctx ->
+                FocusPolicyStore.saveTemporaryUnlockMap(ctx, temporaryUnlockMap.toMap())
+            }
         }
     }
 
     private fun pruneExpiredUnlocksLocked() {
         val now = System.currentTimeMillis()
-        val expiredKeys = temporaryUnlockMap.filterValues { it <= now }.keys
-        if (expiredKeys.isNotEmpty()) {
-            expiredKeys.forEach { temporaryUnlockMap.remove(it) }
-            appContext?.let { FocusPolicyStore.saveTemporaryUnlockMap(it, temporaryUnlockMap) }
+        val expiredPackages = temporaryUnlockMap.filterValues { it <= now }.keys.toList()
+        if (expiredPackages.isEmpty()) return
+
+        expiredPackages.forEach { temporaryUnlockMap.remove(it) }
+        val context = appContext ?: return
+        val snapshot = temporaryUnlockMap.toMap()
+        Thread {
+            FocusPolicyStore.saveTemporaryUnlockMap(context, snapshot)
+        }.apply { isDaemon = true; start() }
+    }
+
+    private fun canUseExactAlarm(alarmManager: AlarmManager): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return runCatching { alarmManager.canScheduleExactAlarms() }
+            .getOrElse {
+                Log.w("EnforcementManager", "Failed to query exact alarm capability: ${it.message}")
+                false
+            }
+    }
+
+    private fun scheduleInexactAlarm(
+        alarmManager: AlarmManager,
+        triggerAtMillis: Long,
+        pendingIntent: PendingIntent
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        } else {
+            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }
 
-    private fun computeFocusWindowState(currentPolicy: FocusPolicy): Boolean {
-        val now = java.time.ZonedDateTime.now()
-        val weekday = now.dayOfWeek.value
-        val localTime = now.toLocalTime()
-
-        return currentPolicy.focusWindows.any { window ->
-            if (!window.daysOfWeek.contains(weekday)) {
-                return@any false
-            }
-
-            val start = LocalTime.parse(window.start)
-            val end = LocalTime.parse(window.end)
-            if (start <= end) {
-                localTime >= start && localTime <= end
-            } else {
-                localTime >= start || localTime <= end
-            }
-        }
-    }
-
-    private fun isFocusWindowActiveLocked(now: LocalDateTime): Boolean {
+    private fun isFocusWindowActive(now: LocalDateTime): Boolean {
         val weekday = now.dayOfWeek.value
         val currentTime = now.toLocalTime()
 
@@ -360,11 +439,9 @@ object EnforcementManager {
             if (!window.daysOfWeek.contains(weekday)) return@any false
             val start = LocalTime.parse(window.start)
             val end = LocalTime.parse(window.end)
-            
             if (start <= end) {
                 currentTime in start..end
             } else {
-                // Overnight window
                 currentTime >= start || currentTime <= end
             }
         }
@@ -380,6 +457,7 @@ object EnforcementManager {
                 context.packageName
             )
         } else {
+            @Suppress("DEPRECATION")
             appOps.checkOpNoThrow(
                 AppOpsManager.OPSTR_GET_USAGE_STATS,
                 android.os.Process.myUid(),
@@ -389,33 +467,30 @@ object EnforcementManager {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private var cachedUsageMinutes: Int = 0
-    private var lastUsageQueryTime: Long = 0
-
     private fun readTodayUsageMinutes(): Int {
-        val now = System.currentTimeMillis()
         val context = appContext ?: return cachedUsageMinutes
-        val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager ?: return cachedUsageMinutes
-        
-        try {
-            val start = java.time.ZonedDateTime.now()
-                .toLocalDate()
+        if (!hasUsagePermission()) return 0
+
+        val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            ?: return cachedUsageMinutes
+
+        return try {
+            val start = LocalDate.now()
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
+            val now = System.currentTimeMillis()
 
             val stats = usageManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, now)
             val totalMs = stats
                 ?.filter { it.packageName != context.packageName }
                 ?.sumOf { it.totalTimeInForeground } ?: 0L
 
-            cachedUsageMinutes = (totalMs / 1000L / 60L).toInt()
-            lastUsageQueryTime = now
+            (totalMs / 60_000L).toInt()
         } catch (e: Exception) {
-            android.util.Log.e("EnforcementManager", "Usage query failed: ${e.message}")
+            Log.e("EnforcementManager", "Usage query failed: ${e.message}")
+            cachedUsageMinutes
         }
-        
-        return cachedUsageMinutes
     }
 
     private fun isSensitiveBypassTarget(packageName: String, className: String?): Boolean {
@@ -426,41 +501,85 @@ object EnforcementManager {
             "com.google.android.permissioncontroller",
             "com.android.permissioncontroller"
         )
-
-        if (packageName in bypassPackages) {
-            return isLocked || isFocusModeActive
-        }
+        if (packageName in bypassPackages) return isLocked || isFocusModeActive
 
         val classValue = className.orEmpty().lowercase()
         return (classValue.contains("uninstall") ||
-            classValue.contains("appinfo") ||
-            classValue.contains("installedappdetails")) && (isLocked || isFocusModeActive)
+                classValue.contains("appinfo") ||
+                classValue.contains("installedappdetails")) && (isLocked || isFocusModeActive)
+    }
+
+    private fun isEssentialPackage(packageName: String): Boolean {
+        val essentials = mutableSetOf(
+            "com.whatsapp",
+            "com.google.android.gm",
+            "com.google.android.googlequicksearchbox",
+            "com.android.settings",
+            "com.google.android.settings",
+            "com.android.deskclock",
+            "com.google.android.deskclock",
+            "com.android.camera",
+            "com.google.android.GoogleCamera",
+            "com.android.gallery3d",
+            "com.google.android.apps.photos"
+        )
+
+        appContext?.let { context ->
+            val pm = context.packageManager
+            try {
+                val dialerIntent = Intent(Intent.ACTION_DIAL)
+                pm.resolveActivity(dialerIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                    ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
+            } catch (e: Exception) { /* ignore */ }
+
+            try {
+                val smsIntent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_MESSAGING) }
+                pm.resolveActivity(smsIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                    ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
+            } catch (e: Exception) { /* ignore */ }
+
+            try {
+                val cameraIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                pm.resolveActivity(cameraIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+                    ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
+            } catch (e: Exception) { /* ignore */ }
+        }
+
+        return packageName in essentials
     }
 
     private fun isInternalPackage(packageName: String): Boolean {
         val context = appContext ?: return false
         return packageName == context.packageName ||
-            packageName == "android" ||
-            packageName == "com.android.systemui"
+                packageName == "android" ||
+                packageName == "com.android.systemui"
+    }
+
+    private fun detectLauncherPackage(context: Context) {
+        try {
+            val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
+            val resolveInfo = context.packageManager.resolveActivity(
+                intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY
+            )
+            launcherPackage = resolveInfo?.activityInfo?.packageName?.lowercase()
+            android.util.Log.d("EnforcementManager", "Detected launcher: $launcherPackage")
+        } catch (e: Exception) {
+            android.util.Log.e("EnforcementManager", "Failed to detect launcher: ${e.message}")
+        }
     }
 
     private fun nextRefreshAtMillis(): Long {
         val now = LocalDateTime.now()
         val candidates = mutableListOf<LocalDateTime>()
-        val currentPolicy = policy
 
         candidates.add(LocalDate.now().plusDays(1).atStartOfDay())
 
-        currentPolicy.focusWindows.forEach { window ->
+        policy.focusWindows.forEach { window ->
             val start = LocalTime.parse(window.start)
             val end = LocalTime.parse(window.end)
-
             for (offset in 0..1) {
                 val day = LocalDate.now().plusDays(offset.toLong())
-                val weekday = day.dayOfWeek.value
-                if (!window.daysOfWeek.contains(weekday)) {
-                    continue
-                }
+                if (!window.daysOfWeek.contains(day.dayOfWeek.value)) continue
                 candidates.add(day.atTime(start))
                 candidates.add(day.atTime(end))
             }
@@ -468,8 +587,7 @@ object EnforcementManager {
 
         val next = candidates
             .filter { it.isAfter(now.plusSeconds(5)) }
-            .minOrNull()
-            ?: now.plusMinutes(30)
+            .minOrNull() ?: now.plusMinutes(30)
 
         return next.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
@@ -478,7 +596,6 @@ object EnforcementManager {
 
     private fun ensureInitialized() {
         if (!initialized || appContext == null) {
-            // Log but don't crash the background service
             android.util.Log.w("EnforcementManager", "EnforcementManager not yet initialized")
         }
     }
@@ -492,9 +609,8 @@ object EnforcementManager {
             maxOverridesPerDay = 5,
             policyStatus = "normal",
             blockedPackages = emptySet(),
-            enforcementMode = "hard"
+            enforcementMode = "hard",
+            safeCode = null
         )
     }
 }
-
-

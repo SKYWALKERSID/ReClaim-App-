@@ -3,19 +3,14 @@ package com.reclaim.app.backend.engine
 object AnalyticsEngine {
     
     // Calculates a distraction score (0 to 100) based on frequent context switching and goal adherence
-    fun calculateDistractionScore(allAppUsage: Map<String, Long>, totalUsageMs: Long, goalSeconds: Int): Float {
+    fun calculateDistractionScore(context: android.content.Context, allAppUsage: Map<String, Long>, totalUsageMs: Long, goalSeconds: Int): Float {
         if (totalUsageMs == 0L) return 0f
         
-        // Define distracting categories/packages (Common Social, Games, Entertainment)
-        val distractingPackages = setOf(
-            "com.instagram.android", "com.facebook.katana", "com.twitter.android", "com.tiktok.android",
-            "com.zhiliaoapp.musically", "com.google.android.youtube", "com.netflix.mediaclient",
-            "com.snapchat.android", "com.whatsapp", "com.reddit.frontpage"
-        )
-        
+        val dbHelper = com.reclaim.app.backend.db.DatabaseHelper.getInstance(context)
         var distractingTimeMs = 0L
         allAppUsage.forEach { (pkg, time) ->
-            if (distractingPackages.contains(pkg)) {
+            val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
+            if (category == "Social" || category == "Entertainment") {
                 distractingTimeMs += time
             }
         }

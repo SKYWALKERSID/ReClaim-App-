@@ -14,7 +14,7 @@ class AppUsageScreen extends StatefulWidget {
   State<AppUsageScreen> createState() => _AppUsageScreenState();
 }
 
-class _AppUsageScreenState extends State<AppUsageScreen> {
+class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObserver {
   final BackendService _backendService = BackendService();
 
   List<Map<String, dynamic>> _apps = [];
@@ -27,6 +27,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
     _refreshTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
       if (mounted) {
@@ -38,7 +39,15 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData(isSilent: true);
+    }
   }
 
   Future<void> _loadData({bool isSilent = false}) async {
@@ -55,10 +64,11 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
         return;
       }
 
+      debugPrint("Loaded permission status: $permissionStatus");
       setState(() {
         _apps = List<Map<String, dynamic>>.from(usageData['apps'] ?? []);
         _blacklist = Set<String>.from(selections['blacklist'] ?? []);
-        _permissionStatus = permissionStatus;
+        _permissionStatus = Map<String, dynamic>.from(permissionStatus);
         _totalDailySeconds = usageData['total_daily_seconds'] as int? ?? 0;
         _isLoading = false;
       });
@@ -163,10 +173,12 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
                     padding: const EdgeInsets.all(20),
                     borderRadius: 28,
                     child: _apps.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
-                              'No app usage found yet. Grant Usage Access and reopen this tab.',
-                              style: TextStyle(color: Colors.white38),
+                              (_permissionStatus['usage_access'] as bool? ?? false)
+                                  ? 'No usage data recorded for today yet.'
+                                  : 'No app usage found. Grant Usage Access to see your stats.',
+                              style: const TextStyle(color: Colors.white38),
                               textAlign: TextAlign.center,
                             ),
                           )
@@ -175,7 +187,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
                             itemCount: _apps.length,
                             separatorBuilder: (_, __) => Divider(
                               height: 1,
-                              color: Colors.white.withOpacity(0.06),
+                              color: Colors.white.withValues(alpha: 0.06),
                             ),
                             itemBuilder: (context, index) {
                               final app = _apps[index];
@@ -269,14 +281,74 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
     );
   }
 
+  void _handlePermissionTap(String type) {
+    String title = '';
+    String description = '';
+    IconData icon = Icons.security;
+
+    switch (type) {
+      case 'accessibility':
+        title = 'Accessibility Service';
+        description = 'ReClaim uses the Accessibility Service to detect when you open a distracting app so we can show a blocking overlay. This service is required for real-time enforcement.\n\n• No personal data is collected or stored.\n• No keystrokes are recorded.\n• We only monitor which app is currently open.';
+        icon = Icons.accessibility_new;
+        break;
+      case 'usage':
+        title = 'Usage Access';
+        description = 'To show your screen time stats and daily limits, we need access to your device usage history.\n\n• Your data stays on your device.\n• We only use this to calculate minutes spent in apps.';
+        icon = Icons.bar_chart;
+        break;
+      case 'overlay':
+        title = 'Display Over Apps';
+        description = 'This allows ReClaim to show the focus timer and blocking screens on top of other applications.';
+        icon = Icons.layers;
+        break;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A22),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Row(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 28),
+            const SizedBox(width: 12),
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 20)),
+          ],
+        ),
+        content: Text(
+          description,
+          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _backendService.openPermissionSettings(type);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Agree & Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPermissionWarning() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withOpacity(0.1),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.warning.withOpacity(0.25)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,17 +370,17 @@ class _AppUsageScreenState extends State<AppUsageScreen> {
               if (!(_permissionStatus['usage_access'] as bool? ?? false))
                 _PermissionChip(
                   label: 'Usage Access',
-                  onTap: () => _backendService.openPermissionSettings('usage'),
+                  onTap: () => _handlePermissionTap('usage'),
                 ),
               if (!(_permissionStatus['accessibility_access'] as bool? ?? false))
                 _PermissionChip(
                   label: 'Accessibility',
-                  onTap: () => _backendService.openPermissionSettings('accessibility'),
+                  onTap: () => _handlePermissionTap('accessibility'),
                 ),
               if (!(_permissionStatus['overlay_access'] as bool? ?? false))
                 _PermissionChip(
                   label: 'Overlay',
-                  onTap: () => _backendService.openPermissionSettings('overlay'),
+                  onTap: () => _handlePermissionTap('overlay'),
                 ),
             ],
           ),
@@ -357,7 +429,7 @@ class _AppBlockRow extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: icon),
@@ -385,7 +457,7 @@ class _AppBlockRow extends StatelessWidget {
             value: isBlocked,
             onChanged: (_) => onChanged(),
             activeThumbColor: const Color(0xFFFF7A7A),
-            activeTrackColor: const Color(0xFFFF7A7A).withOpacity(0.35),
+            activeTrackColor: const Color(0xFFFF7A7A).withValues(alpha: 0.35),
           ),
         ],
       ),
@@ -407,7 +479,7 @@ class _PermissionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(

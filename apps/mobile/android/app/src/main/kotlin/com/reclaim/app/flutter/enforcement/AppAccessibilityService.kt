@@ -9,12 +9,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.reclaim.app.flutter.MainActivity
 import kotlinx.coroutines.*
@@ -23,7 +25,10 @@ class AppAccessibilityService : AccessibilityService() {
     private var lastPackageName: String? = null
     private var lastEventAtElapsedMs: Long = 0L
     private var eventReceiver: com.reclaim.app.backend.receivers.EventReceiver? = null
-    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val handler = CoroutineExceptionHandler { _, exception ->
+        Log.e("AppAccessibilityService", "Unhandled coroutine exception: ${exception.message}", exception)
+    }
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob() + handler)
 
     companion object {
         private const val CHANNEL_ID = "reclaim_accessibility_v1"
@@ -36,7 +41,15 @@ class AppAccessibilityService : AccessibilityService() {
             ) ?: return false
 
             val expected = ComponentName(context, AppAccessibilityService::class.java).flattenToString()
-            return enabledServices.split(':').any { it.equals(expected, ignoreCase = true) }
+            val expectedShort = ComponentName(context, AppAccessibilityService::class.java).flattenToShortString()
+            
+            val className = AppAccessibilityService::class.java.name
+            
+            return enabledServices.split(':').any { 
+                it.equals(expected, ignoreCase = true) || 
+                it.equals(expectedShort, ignoreCase = true) ||
+                it.contains(className)
+            }
         }
     }
 
@@ -44,8 +57,11 @@ class AppAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         EnforcementManager.initialize(this)
         
-        // Android 8+ requires startForeground to prevent silent kills
-        startForeground(NOTIFICATION_ID, createNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
         checkBatteryOptimization()
         
         try {
@@ -66,95 +82,65 @@ class AppAccessibilityService : AccessibilityService() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         serviceScope.cancel()
-        BlockingOverlayService.hide(this)
-        eventReceiver?.let { 
-            try { unregisterReceiver(it) } catch (e: Exception) {} 
-        }
+        try {
+            eventReceiver?.let { unregisterReceiver(it) }
+        } catch (e: Exception) { /* ignore */ }
         return super.onUnbind(intent)
     }
 
-    override fun onDestroy() {
-        serviceScope.cancel()
-        super.onDestroy()
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        
+        val packageName = event.packageName?.toString() ?: return
+        if (packageName == lastPackageName && SystemClock.elapsedRealtime() - lastEventAtElapsedMs < 200) return
+        
+        lastPackageName = packageName
+        lastEventAtElapsedMs = SystemClock.elapsedRealtime()
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        try {
-            if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-
-            val packageName = event.packageName?.toString()?.trim().orEmpty()
-            if (packageName.isBlank() || packageName == this.packageName || packageName == "com.android.systemui") return
-
-            val now = SystemClock.elapsedRealtime()
-            if (lastPackageName == packageName && now - lastEventAtElapsedMs < 300L) return
-            lastPackageName = packageName
-            lastEventAtElapsedMs = now
-
-            // Offload to background thread to prevent blocking the accessibility loop
-            serviceScope.launch(Dispatchers.Default) {
-                EnforcementManager.refreshState(this@AppAccessibilityService, forceSync = true)
-                val decision = EnforcementManager.blockDecision(packageName, event.className?.toString())
-                
-                withContext(Dispatchers.Main) {
-                    if (!decision.shouldBlock) {
-                        BlockingOverlayService.hide(this@AppAccessibilityService)
-                        return@withContext
-                    }
-
-                    FocusPolicyStore.enqueueEvent(
-                        context = this@AppAccessibilityService,
-                        eventType = "blocked_attempt",
-                        packageName = packageName,
-                        metadata = mapOf("reason" to decision.reason, "className" to (event.className?.toString() ?: ""))
-                    )
-
-                    BlockingOverlayService.show(
-                        context = this@AppAccessibilityService,
-                        packageName = packageName,
-                        reason = decision.reason,
-                        mode = decision.mode
-                    )
-                }
+        serviceScope.launch {
+            val decision = EnforcementManager.blockDecision(packageName)
+            if (decision.shouldBlock) {
+                BlockingOverlayService.show(this@AppAccessibilityService, packageName, decision.reason, decision.mode)
             }
-        } catch (e: Exception) {
-            Log.e("AppAccessibilityService", "Error in event loop: ${e.message}", e)
         }
     }
 
-    override fun onInterrupt() = Unit
+    override fun onInterrupt() {
+        Log.d("AppAccessibility", "Interrupted")
+    }
 
     private fun createNotification(): Notification {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "ReClaim Protection", NotificationManager.IMPORTANCE_LOW)
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+            val channel = NotificationChannel(CHANNEL_ID, "ReClaim Active", NotificationManager.IMPORTANCE_LOW)
+            manager.createNotificationChannel(channel)
         }
 
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("ReClaim is active")
-            .setContentText("Focus enforcement is monitoring your usage.")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("ReClaim Protection")
+            .setContentText("Focus mode and usage limits are active.")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
             .setOngoing(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
             .setContentIntent(pendingIntent)
             .build()
     }
 
     private fun checkBatteryOptimization() {
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent()
+            val packageName = packageName
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             if (!pm.isIgnoringBatteryOptimizations(packageName)) {
-                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = android.net.Uri.parse("package:$packageName")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                try { startActivity(intent) } catch (e: Exception) { Log.w("AppAccessibility", "Failed to request battery bypass") }
+                intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                intent.data = Uri.parse("package:$packageName")
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                // startActivity(intent) // Disabled for auto-run, but available in logs
+                Log.w("AppAccessibility", "Battery optimization is active. Service might be killed.")
             }
         }
     }
 }
-

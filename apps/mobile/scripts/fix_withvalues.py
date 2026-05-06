@@ -5,8 +5,8 @@ def fix_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    # Replace .withValues(alpha: X) with .withOpacity(X)
-    new_content = re.sub(r'\.withValues\(alpha:\s*([\d.]+)\)', r'.withOpacity(\1)', content)
+    # Replace .withOpacity(X) with .withValues(alpha: X)
+    new_content = re.sub(r'\.withOpacity\(([\d.]+)\)', r'.withValues(alpha: \1)', content)
     
     if new_content != content:
         with open(filepath, 'w', encoding='utf-8') as f:

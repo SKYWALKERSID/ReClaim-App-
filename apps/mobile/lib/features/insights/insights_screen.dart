@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../core/theme/colors.dart';
 import '../../services/backend_service.dart';
+import 'widgets/usage_calendar.dart';
+import 'services/goal_recommendation_service.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
@@ -12,9 +14,12 @@ class InsightsScreen extends StatefulWidget {
 
 class _InsightsScreenState extends State<InsightsScreen> {
   final BackendService _backend = BackendService();
+  final GoalRecommendationService _recommendationsService = GoalRecommendationService();
   String _activeTab = "Day";
+  String? _selectedCategory;
   Map<String, dynamic>? _insightsData;
   Map<String, dynamic> _stats = {};
+  List<String> _recommendations = [];
   bool _isLoading = true;
   Timer? _refreshTimer;
   final Map<String, ImageProvider> _iconCache = {};
@@ -34,11 +39,31 @@ class _InsightsScreenState extends State<InsightsScreen> {
     super.dispose();
   }
 
+  Future<void> _showCalendar() async {
+    try {
+      final userProfile = await _backend.getUserProfile();
+      
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => UsageCalendar(
+          goalSeconds: userProfile['goal_seconds'] as int? ?? 7200,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error showing calendar: $e");
+    }
+  }
+
   Future<void> _loadData({bool isSilent = false}) async {
     if (!isSilent) setState(() => _isLoading = true);
     try {
-      final insights = await _backend.getInsightsData(_activeTab);
+      final insights = await _backend.getInsightsData(_activeTab, category: _selectedCategory);
       final stats = await _backend.fetchDashboardStats();
+      final recs = await _recommendationsService.getPersonalizedRecommendations();
       
       // Prefetch icons
       if (insights['top_apps'] != null) {
@@ -57,6 +82,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         setState(() {
           _insightsData = insights;
           _stats = stats;
+          _recommendations = recs;
           _isLoading = false;
         });
       }
@@ -84,10 +110,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      const Text(
                         "Insights", 
                         style: TextStyle(
                           fontSize: 32, 
@@ -95,14 +121,19 @@ class _InsightsScreenState extends State<InsightsScreen> {
                           color: Colors.white, 
                         )
                       ),
-                      Icon(Icons.calendar_today_outlined, color: Colors.white, size: 24),
+                      IconButton(
+                        onPressed: _showCalendar,
+                        icon: const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 24),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
                   _buildTabSelector(),
+                  const SizedBox(height: 24),
+                  _buildCategoryFilter(),
                   const SizedBox(height: 32),
                   _buildInsightsCard(
-                    title: "Screen Time",
+                    title: _selectedCategory == null ? "Total Screen Time" : "$_selectedCategory Time",
                     value: _formatUsage(_insightsData?['total_usage_seconds'] as int? ?? 0),
                     trend: "${_stats['percentage_change_vs_yesterday']}% from yesterday",
                     isPositiveTrend: (_stats['percentage_change_vs_yesterday'] as int? ?? 0) <= 0,
@@ -111,6 +142,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   ),
                   const SizedBox(height: 24),
                   _buildTopAppsCard(),
+                  const SizedBox(height: 24),
+                  _buildRecommendationsSection(),
                   const SizedBox(height: 24),
                   _buildInsightsCard(
                     title: "Distraction Score",
@@ -128,14 +161,60 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Widget _buildCategoryFilter() {
+    final categories = [
+      {"label": "All", "icon": Icons.all_inclusive},
+      {"label": "Social", "icon": Icons.people_outline},
+      {"label": "Entertainment", "icon": Icons.play_circle_outline},
+      {"label": "Productivity", "icon": Icons.lightbulb_outline},
+      {"label": "Utility", "icon": Icons.category_outlined},
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = (_selectedCategory == null && cat['label'] == "All") || 
+                            (_selectedCategory == cat['label']);
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilterChip(
+              label: Text(cat['label'] as String),
+              avatar: Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : Colors.white38),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedCategory = cat['label'] == "All" ? null : cat['label'] as String;
+                });
+                _loadData();
+              },
+              backgroundColor: Colors.white.withValues(alpha: 0.03),
+              selectedColor: AppColors.primary,
+              checkmarkColor: Colors.white,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.white60,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08)),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildTabSelector() {
     return Container(
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03), 
+        color: Colors.white.withValues(alpha: 0.03), 
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         children: ["Day", "Week", "Month"].map((tab) => Expanded(
@@ -166,6 +245,39 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
+  Widget _buildRecommendationsSection() {
+    if (_recommendations.isEmpty) return const SizedBox.shrink();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Recommended for You", style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 16),
+        ..._recommendations.map((tip) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  tip,
+                  style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        )),
+      ],
+    );
+  }
+
   Widget _buildInsightsCard({
     required String title,
     required String value,
@@ -183,7 +295,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +307,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(value, style: const TextStyle(color: Colors.white60, fontSize: 12)),
@@ -212,27 +324,29 @@ class _InsightsScreenState extends State<InsightsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    text: TextSpan(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(text: value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                          if (subValue != null)
+                            TextSpan(text: subValue, style: const TextStyle(color: Colors.white38, fontSize: 18)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        TextSpan(text: value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-                        if (subValue != null)
-                          TextSpan(text: subValue, style: const TextStyle(color: Colors.white38, fontSize: 18)),
+                        Icon(trendIcon, size: 14, color: trendColor),
+                        const SizedBox(width: 4),
+                        Text("↓ $trend", style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(trendIcon, size: 14, color: trendColor),
-                      const SizedBox(width: 4),
-                      Text("↓ $trend", style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
               SizedBox(
                 width: 140,
@@ -257,7 +371,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,16 +411,19 @@ class _TopAppRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
+      padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (icon != null)
-                Image(image: icon!, width: 24, height: 24)
-              else
-                const Icon(Icons.android, size: 24, color: Colors.white54),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: icon != null
+                  ? Image(image: icon!, width: 22, height: 22, fit: BoxFit.cover)
+                  : const Icon(Icons.android, size: 22, color: Colors.white54),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Row(
@@ -315,42 +432,38 @@ class _TopAppRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         name,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white, 
+                          fontSize: 14, 
+                          fontWeight: FontWeight.w400,
+                        ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(time, style: const TextStyle(color: Colors.white60, fontSize: 13)),
+                    const SizedBox(width: 12),
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        color: Colors.white60, 
+                        fontSize: 13,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Stack(
-            children: [
-              Container(
-                height: 4,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 4,
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+            ),
           ),
         ],
       ),
@@ -391,7 +504,7 @@ class _GlowingDataPainter extends CustomPainter {
 
     // Glow effect
     final glowPaint = Paint()
-      ..color = const Color(0xFF8B5CF6).withOpacity(0.3)
+      ..color = const Color(0xFF8B5CF6).withValues(alpha: 0.3)
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
@@ -405,30 +518,11 @@ class _GlowingDataPainter extends CustomPainter {
     
     final dotPaint = Paint()..color = const Color(0xFFD946EF);
     canvas.drawCircle(Offset(lastX, lastY), 4, dotPaint);
-    canvas.drawCircle(Offset(lastX, lastY), 8, Paint()..color = const Color(0xFFD946EF).withOpacity(0.3));
+    canvas.drawCircle(Offset(lastX, lastY), 8, Paint()..color = const Color(0xFFD946EF).withValues(alpha: 0.3));
   }
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-class _SubtleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _SubtleIconButton({required this.icon, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 20, color: Colors.white),
-      ),
-    );
-  }
-}

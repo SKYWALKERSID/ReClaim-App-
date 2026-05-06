@@ -19,12 +19,25 @@ data class FocusPolicy(
     val maxOverridesPerDay: Int,
     val policyStatus: String,
     val blockedPackages: Set<String>,
-    val enforcementMode: String
+    val enforcementMode: String,
+    val safeCode: String?
 )
 
 data class OverrideUsage(
     val dateKey: String,
     val count: Int
+)
+
+data class EnforcementState(
+    val isFocusActive: Boolean,
+    val isLocked: Boolean,
+    val lastEvaluatedAt: Long
+)
+
+data class NudgeState(
+    val dateKey: String,
+    val sent90: Boolean,
+    val sent100: Boolean
 )
 
 object FocusPolicyStore {
@@ -34,6 +47,22 @@ object FocusPolicyStore {
     private const val OVERRIDE_COUNT = "override_count"
     private const val GRACE_JSON = "grace_json"
     private const val EVENT_QUEUE = "event_queue_json"
+    private const val STATE_JSON = "enforcement_state_json"
+    private const val AUTH_USER_ID = "auth_user_id"
+    private const val AUTH_JWT = "auth_jwt"
+    private const val NUDGE_STATE = "nudge_state_json"
+
+    fun saveAuth(context: Context, userId: String, jwt: String) {
+        prefs(context).edit()
+            .putString(AUTH_USER_ID, userId)
+            .putString(AUTH_JWT, jwt)
+            .apply()
+    }
+
+    fun loadAuth(context: Context): Pair<String?, String?> {
+        val p = prefs(context)
+        return Pair(p.getString(AUTH_USER_ID, null), p.getString(AUTH_JWT, null))
+    }
 
     fun savePolicy(context: Context, payload: Map<*, *>) {
         val json = JSONObject()
@@ -56,7 +85,8 @@ object FocusPolicyStore {
                 maxOverridesPerDay = 5,
                 policyStatus = "normal",
                 blockedPackages = emptySet(),
-                enforcementMode = "hard"
+                enforcementMode = "hard",
+                safeCode = null
             )
 
         val json = try {
@@ -75,7 +105,8 @@ object FocusPolicyStore {
             maxOverridesPerDay = json.optInt("maxOverridesPerDay", 5),
             policyStatus = policyJson.optString("status", "normal"),
             blockedPackages = policyJson.optJSONArray("blockedPackages").toStringSet(),
-            enforcementMode = policyJson.optString("enforcementMode", json.optString("enforcementMode", "hard"))
+            enforcementMode = policyJson.optString("enforcementMode", json.optString("enforcementMode", "hard")),
+            safeCode = json.optString("safeCode", null)
         )
     }
 
@@ -123,6 +154,62 @@ object FocusPolicyStore {
             .putString(OVERRIDE_DATE, usage.dateKey)
             .putInt(OVERRIDE_COUNT, usage.count)
             .commit()
+    }
+
+    fun saveEnforcementState(context: Context, state: EnforcementState) {
+        val json = JSONObject().apply {
+            put("isFocusActive", state.isFocusActive)
+            put("isLocked", state.isLocked)
+            put("lastEvaluatedAt", state.lastEvaluatedAt)
+        }
+        prefs(context).edit().putString(STATE_JSON, json.toString()).apply()
+    }
+
+    fun loadEnforcementState(context: Context): EnforcementState {
+        val raw = prefs(context).getString(STATE_JSON, null)
+        if (raw == null) {
+            return EnforcementState(isFocusActive = false, isLocked = false, lastEvaluatedAt = 0L)
+        }
+        return try {
+            val json = JSONObject(raw)
+            EnforcementState(
+                isFocusActive = json.optBoolean("isFocusActive", false),
+                isLocked = json.optBoolean("isLocked", false),
+                lastEvaluatedAt = json.optLong("lastEvaluatedAt", 0L)
+            )
+        } catch (e: Exception) {
+            EnforcementState(isFocusActive = false, isLocked = false, lastEvaluatedAt = 0L)
+        }
+    }
+
+    fun saveNudgeState(context: Context, state: NudgeState) {
+        val json = JSONObject().apply {
+            put("dateKey", state.dateKey)
+            put("sent90", state.sent90)
+            put("sent100", state.sent100)
+        }
+        prefs(context).edit().putString(NUDGE_STATE, json.toString()).apply()
+    }
+
+    fun loadNudgeState(context: Context): NudgeState {
+        val raw = prefs(context).getString(NUDGE_STATE, null)
+        val today = java.time.LocalDate.now().toString()
+        if (raw == null) return NudgeState(today, false, false)
+        return try {
+            val json = JSONObject(raw)
+            val dateKey = json.optString("dateKey", "")
+            if (dateKey != today) {
+                NudgeState(today, false, false)
+            } else {
+                NudgeState(
+                    dateKey = dateKey,
+                    sent90 = json.optBoolean("sent90", false),
+                    sent100 = json.optBoolean("sent100", false)
+                )
+            }
+        } catch (e: Exception) {
+            NudgeState(today, false, false)
+        }
     }
 
     fun enqueueEvent(

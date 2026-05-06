@@ -1,4 +1,4 @@
-# Changelog — Complete Development History
+# ReClaim Changelog — Complete Development History
 
 Every edit made across all development sessions, organized chronologically with rationale.
 

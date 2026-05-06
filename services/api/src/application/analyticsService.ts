@@ -270,4 +270,8 @@ export class AnalyticsService {
       "You are doing great! You have 45 minutes left in your daily limit."
     );
   }
+
+  async sendNudge(userId: string, title: string, body: string): Promise<void> {
+    await this.notificationService.sendNudge(userId, title, body);
+  }
 }

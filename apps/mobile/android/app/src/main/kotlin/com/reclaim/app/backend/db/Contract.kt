@@ -9,6 +9,7 @@ object Contract {
         const val COLUMN_USER_NAME = "user_name"
         const val COLUMN_DAILY_GOAL_SECONDS = "daily_goal_seconds"
         const val COLUMN_THEME = "theme" // 0 for Light, 1 for Dark
+        const val COLUMN_SAFE_CODE = "safe_code"
     }
 
     // App Selection Table (Whitelist/Blacklist)
@@ -18,6 +19,7 @@ object Contract {
         const val COLUMN_IS_WHITELISTED = "is_whitelisted"
         const val COLUMN_IS_BLACKLISTED = "is_blacklisted"
         const val COLUMN_TEMP_UNLOCK_EXPIRY = "temp_unlock_expiry"
+        const val COLUMN_CUSTOM_CATEGORY = "custom_category"
     }
 
     // Usage Logs Table

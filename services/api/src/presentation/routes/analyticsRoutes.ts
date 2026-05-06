@@ -318,18 +318,23 @@ export function buildAnalyticsRoutes(service: AnalyticsService): Router {
    *       200:
    *         description: Nudge sent
    */
-  router.post("/test-nudge", async (request, response, next) => {
+  router.post("/nudge", async (request, response, next) => {
     try {
       if (request.user!.role === "service") {
         response.status(403).json({
           error: "Forbidden",
           code: "FORBIDDEN",
-          message: "Test nudge requires a user JWT.",
+          message: "Nudge requires a user JWT.",
         });
         return;
       }
+      const { title, body } = z.object({
+        title: z.string().min(1),
+        body: z.string().min(1)
+      }).parse(request.body);
+
       const userId = request.user!.userId;
-      await service.sendTestNudge(userId);
+      await service.sendNudge(userId, title, body);
       response.status(200).json({ status: "nudge_sent" });
     } catch (error) {
       next(error);

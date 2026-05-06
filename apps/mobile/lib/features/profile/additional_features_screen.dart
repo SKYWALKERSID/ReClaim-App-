@@ -183,7 +183,7 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: SwitchListTile(
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -208,7 +208,7 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: ListTile(
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -232,7 +232,7 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: ListTile(
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),

@@ -2,6 +2,7 @@ plugins {
     id "com.android.application"
     id "org.jetbrains.kotlin.android"
     id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
 }
 
 android {
@@ -10,7 +11,7 @@ android {
     ndkVersion "30.0.14904198"
 
     defaultConfig {
-        applicationId "com.reclaim.app"
+        applicationId "com.reclaim.app.flutter"
         minSdk 26
         targetSdk 36
         versionCode 1

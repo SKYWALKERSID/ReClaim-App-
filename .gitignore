@@ -32,6 +32,14 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+**/build/
+**/.gradle/
+**/local.properties
+.gradle-home/
+services/api/node_modules/
+services/api/dist/
+services/api/.env
+apps/mobile/analysis_output*.txt
 
 # Symbolication related
 app.*.symbols

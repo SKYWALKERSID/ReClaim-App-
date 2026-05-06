@@ -2,7 +2,7 @@
 
 ## 1) Enforcement Decision (Android native)
 
-Location: `apps/android-native/app/src/main/kotlin/com/minimalism/focus/enforcement/FocusEnforcer.kt`
+Location: `apps/mobile/android/app/src/main/kotlin/com/reclaim/app/flutter/enforcement/EnforcementManager.kt`
 
 Priority order:
 

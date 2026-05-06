@@ -128,13 +128,13 @@ class BackendService {
   Future<Map<String, dynamic>> getUserProfile() async {
     try {
       final dynamic result = await platform.invokeMethod('getUserProfile');
-      if (result == null || result is! Map) return {"name": "[ENTER_NAME]", "goal_seconds": 7200};
+      if (result == null || result is! Map) return {"name": "", "goal_seconds": 7200};
       return {
-        "name": result["name"]?.toString() ?? "[ENTER_NAME]",
+        "name": result["name"]?.toString() ?? "",
         "goal_seconds": (result["goal_seconds"] as num?)?.toInt() ?? 7200
       };
     } catch (e) {
-      return {"name": "[ENTER_NAME]", "goal_seconds": 7200};
+      return {"name": "", "goal_seconds": 7200};
     }
   }
 
@@ -149,6 +149,14 @@ class BackendService {
   Future<bool> updateAppSelection(String pkg, bool isWhite, bool isBlack) async {
     try {
       return await platform.invokeMethod('updateAppSelection', {'package_name': pkg, 'is_whitelisted': isWhite, 'is_blacklisted': isBlack});
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateAppCategory(String pkg, String category) async {
+    try {
+      return await platform.invokeMethod('updateAppCategory', {'package_name': pkg, 'category': category});
     } catch (e) {
       return false;
     }
@@ -197,9 +205,40 @@ class BackendService {
     }
   }
 
-  Future<Map<String, dynamic>> getInsightsData(String period) async {
+  Future<Map<String, int>> getUsageForDateRange(DateTime start, DateTime end) async {
     try {
-      final dynamic result = await platform.invokeMethod('getInsightsData', {'period': period});
+      final dynamic result = await platform.invokeMethod('getUsageForDateRange', {
+        'start': start.millisecondsSinceEpoch,
+        'end': end.millisecondsSinceEpoch,
+      });
+      if (result == null || result is! Map) return {};
+      return Map<String, int>.from(result);
+    } catch (e) {
+      debugPrint("getUsageForDateRange error: $e");
+      return {};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getTopAppsForRange(DateTime start, DateTime end) async {
+    try {
+      final dynamic result = await platform.invokeMethod('getTopAppsForRange', {
+        'start': start.millisecondsSinceEpoch,
+        'end': end.millisecondsSinceEpoch,
+      });
+      if (result == null || result is! List) return [];
+      return List<Map<String, dynamic>>.from(result);
+    } catch (e) {
+      debugPrint("getTopAppsForRange error: $e");
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getInsightsData(String period, {String? category}) async {
+    try {
+      final dynamic result = await platform.invokeMethod('getInsightsData', {
+        'period': period,
+        'category': category,
+      });
       if (result == null || result is! Map) return {};
       return Map<String, dynamic>.from(result);
     } catch (e) {
@@ -238,6 +277,11 @@ class BackendService {
           debugPrint("FCM Token fetch failed: $e");
         }
       }
+
+      await platform.invokeMethod('saveAuth', {
+        'jwt_token': _jwtToken,
+        'user_id': _userId,
+      });
 
       return await platform.invokeMethod('registerDevice', {
         'jwt_token': _jwtToken,
@@ -344,6 +388,20 @@ class BackendService {
       ).timeout(const Duration(seconds: 5));
       return response.statusCode == 200;
     } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> sendNudge(String title, String body) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/analytics/nudge"),
+        headers: _headers,
+        body: jsonEncode({"title": title, "body": body}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint("sendNudge error: $e");
       return false;
     }
   }

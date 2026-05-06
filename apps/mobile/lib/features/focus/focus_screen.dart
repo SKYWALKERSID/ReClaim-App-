@@ -151,7 +151,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
           Positioned(
             top: -100,
             left: -50,
-            child: _GlowOrb(color: AppColors.primary.withOpacity(0.1), size: 300),
+            child: _GlowOrb(color: AppColors.primary.withValues(alpha: 0.1), size: 300),
           ),
           SafeArea(
             child: Padding(
@@ -243,7 +243,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: (isFocusModeOn ? const Color(0xFFFF5E7D) : AppColors.primary).withOpacity(0.3),
+                          color: (isFocusModeOn ? const Color(0xFFFF5E7D) : AppColors.primary).withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
@@ -289,7 +289,7 @@ class _DurationChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.glassBase,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : AppColors.glassBase,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
         ),
@@ -339,7 +339,7 @@ class _GlowOrb extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: size, height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color, color.withOpacity(0)])),
+      decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)])),
     );
   }
 }
