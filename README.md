@@ -1,37 +1,30 @@
-# ReClaim Enforcement Suite
+# ReClaim
+> Reclaim your focus.
 
-**ReClaim** is a focus-enforcement platform built to move beyond passive screen-time tracking into real-time blocking, local analytics, and deliberate habit change.
-
-## Vision
-Break the dopamine loop by combining native Android enforcement with a calm, premium interface.
-
-## Project Architecture
-
-1. **`apps/mobile`**
-   The current ReClaim Flutter app with the native Kotlin enforcement bridge.
-2. **`apps/android-native`**
-   A legacy Kotlin-only prototype kept as a secondary reference path.
-3. **`services/api`**
-   The Node.js and TypeScript backend for auth, analytics, devices, and rewards.
-
-## Key Features
-- **Native enforcement**: Blocks distracting apps through Android accessibility and overlay services.
-- **Usage insights**: Tracks daily and weekly behavior with local-first device data.
-- **Rewards and streaks**: Adds progression and accountability on top of strict limits.
-- **Premium UI**: Keeps the main product surface clean and intentional instead of utilitarian.
+## What It Does
+ReClaim is a next-generation focus and behavioral intelligence platform. It uses native Android accessibility services to provide real-time friction and blocking for distracting apps, while tracking cognitive drift and craving patterns to help users build long-term digital wellness.
 
 ## Tech Stack
-- **Frontend**: Flutter
-- **Native Android**: Kotlin
-- **Backend**: Express.js, TypeScript, PostgreSQL
-- **Infrastructure**: Docker-ready API service
+- **Frontend**: Flutter + Android Native (Kotlin)
+- **Backend**: Node.js + TypeScript + Express
+- **Database**: PostgreSQL + Firebase Auth
+- **Infrastructure**: Docker + Docker Compose
 
-## Documentation
-- [Folder Architecture](docs/FOLDER_GUIDE.md)
-- [API Specification](docs/API_DESIGN.md)
-- [Database Schema](docs/DB_SCHEMA.md)
-- [Core Algorithms](docs/ALGORITHMS.md)
-- [Judges Guide](HACKATHON_STUDY_GUIDE.md)
+## Security Architecture
+- **RS256 Asymmetric JWT Signing**: High-security token management.
+- **Keystore-backed Encrypted Storage**: Secure on-device data persistence.
+- **Refresh Token Rotation**: mitagating session theft risks.
+- **Full Login Audit Trail**: Comprehensive tracking of access events.
+- **FLAG_SECURE**: Protection against screen scraping and screenshots.
 
-## Submission Notes
-This monorepo contains the current ReClaim mobile app, the supporting API, and the Android enforcement layer that powers the live blocking experience.
+## Setup
+1. Clone the repository.
+2. Run `docker-compose up -d` in the root directory.
+3. Configure `.env` in `services/api/` with your credentials.
+4. Open `apps/mobile` in Android Studio/VS Code and run on an Android device.
+
+## Key Features
+- **Cognitive Drift Engine™**: Tracks behavioral fragmentation.
+- **Smart Friction Layer**: Adds intentional delays to distracting apps.
+- **Brain Mirror™ Dashboard**: Real-time visualization of cognitive performance.
+- **Hard Block Mode**: Native-level app blocking that can't be easily bypassed.
