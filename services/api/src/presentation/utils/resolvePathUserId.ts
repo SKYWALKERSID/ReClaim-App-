@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { userIdParamSchema } from "../validation/schemas.js";
+import { userIdParamSchema } from "../schemas/schemas.js";
 
 /** Resolves `:userId` path param: JWT users may only access their own id; API-key clients may access the path id. */
 export function resolvePathUserId(req: Request, res: Response): string | null {

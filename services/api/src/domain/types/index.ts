@@ -1,47 +1,29 @@
-export type FocusWindow = {
-  start: string; // HH:mm
-  end: string; // HH:mm
-  daysOfWeek: number[]; // 1=Mon ... 7=Sun
-};
-
-export type Commitment = {
-  userId?: string;
-  dailyLimitMinutes: number;
-  focusWindows: FocusWindow[];
-  whitelist: string[];
-  blacklist: string[];
-  allowWhatsApp: boolean;
-  maxOverridesPerDay: number;
-  rewardSystemEnabled: boolean;
-};
-
-export type UserPreferences = {
-  preferredFocusStart?: string;
-  preferredFocusEnd?: string;
-  strictModeEnabled?: boolean;
-  notificationsEnabled?: boolean;
-};
-
-export type UsageEvent = {
+export interface UsageEvent {
   userId: string;
   packageName: string;
   startedAt: string;
   endedAt: string;
   durationSeconds: number;
   eventType: "usage" | "blocked_attempt" | "override";
-  metadata?: Record<string, unknown>;
-};
+  metadata?: Record<string, any>;
+}
 
-export type UsageLog = {
+export interface Commitment {
   userId: string;
-  appName: string;
-  category: string;
-  startTime: string;
-  endTime: string;
-  durationSeconds: number;
-};
+  dailyLimitMinutes: number;
+  focusWindows: Array<{
+    start: string;
+    end: string;
+    daysOfWeek: number[];
+  }>;
+  whitelist: string[];
+  blacklist: string[];
+  allowWhatsApp: boolean;
+  maxOverridesPerDay: number;
+  rewardSystemEnabled: boolean;
+}
 
-export type DailyMetrics = {
+export interface DailyMetrics {
   userId: string;
   dateKey: string;
   totalScreenMinutes: number;
@@ -51,63 +33,54 @@ export type DailyMetrics = {
   focusMinutes: number;
   lateNightMinutes: number;
   appSwitches: number;
-};
+}
 
-export type AppBreakdown = {
-  appName: string;
-  category: string;
-  totalMinutes: number;
-};
-
-export type CategoryBreakdown = {
-  category: string;
-  totalMinutes: number;
-};
-
-export type PatternInsights = {
-  distractionRiskScore: number;
-  appSwitchesPerHour: number;
-  lateNightMinutes: number;
-  peakUsageHour: number;
-  longestContinuousSessionMinutes: number;
-  excessiveUsageFlags: string[];
-  recommendations: string[];
-  prediction?: {
-    tomorrowRisk: "low" | "medium" | "high";
-    reason: string;
-  };
-};
-
-export type RewardResult = {
+export interface RewardResult {
   pointsEarned: number;
   streakDays: number;
+  level: string;
   badges: string[];
-  level: "Beginner" | "Disciplined" | "Focus Pro";
-  summary: string;
-};
+  summary?: string;
+}
 
-export type PolicyEvaluation = {
+export interface PolicyEvaluation {
   status: "normal" | "focus_only" | "locked";
   reason: string;
   remainingDailyMinutes: number;
   overridesRemaining: number;
   blockedPackages: string[];
-};
+}
 
-export type WeeklyTrendPoint = {
+export interface AppBreakdown {
+  appName: string;
+  category: string;
+  totalMinutes: number;
+}
+
+export interface CategoryBreakdown {
+  category: string;
+  totalMinutes: number;
+}
+
+export interface WeeklyTrendPoint {
   dateKey: string;
   totalScreenMinutes: number;
   distractionMinutes: number;
   rewardPoints: number;
-};
+}
 
-export type WeeklyReport = {
+export interface WeeklyReport {
   userId: string;
   dateFrom: string;
   dateTo: string;
   trends: WeeklyTrendPoint[];
   appBreakdown: AppBreakdown[];
   categoryBreakdown: CategoryBreakdown[];
-  insights: PatternInsights;
+  insights: any;
   recommendations: string[];
-};
+}
+
+export interface UserPreferences {
+  theme?: string;
+  notificationsEnabled?: boolean;
+}

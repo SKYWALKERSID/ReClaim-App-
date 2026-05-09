@@ -1,14 +1,6 @@
-﻿import { RewardResult } from "../types/index.js";
+import { RewardResult } from "../types/index.js";
 
-type RewardInput = {
-  withinLimit: boolean;
-  completedFocusSessions: number;
-  overridesUsed: number;
-  lateNightMinutes: number;
-  previousStreakDays: number;
-};
-
-function resolveLevel(streakDays: number): RewardResult["level"] {
+function resolveLevel(streakDays: number): string {
   if (streakDays >= 21) {
     return "Focus Pro";
   }
@@ -18,7 +10,13 @@ function resolveLevel(streakDays: number): RewardResult["level"] {
   return "Beginner";
 }
 
-export function computeDailyReward(input: RewardInput): RewardResult {
+export function computeDailyReward(input: {
+  withinLimit: boolean;
+  completedFocusSessions: number;
+  overridesUsed: number;
+  lateNightMinutes: number;
+  previousStreakDays: number;
+}): RewardResult {
   const badges: string[] = [];
   let points = 0;
 
@@ -39,9 +37,7 @@ export function computeDailyReward(input: RewardInput): RewardResult {
     badges.push("Night Guard");
   }
 
-  const streakDays = input.withinLimit
-    ? input.previousStreakDays + 1
-    : 0;
+  const streakDays = input.withinLimit ? input.previousStreakDays + 1 : 0;
 
   if (streakDays >= 3) {
     badges.push(`${streakDays}-Day Discipline Streak`);

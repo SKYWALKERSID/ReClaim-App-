@@ -1,8 +1,8 @@
 import { buildApp } from "./app.js";
 import { env } from "./config/env.js";
 import { pool, gracefulShutdownDB } from "./db/pool.js";
-import { logger } from "./infrastructure/logger.js";
-import { startCravingWorker } from "./application/cravingWorker.js";
+import { logger } from "./utils/logger.js";
+import { startCravingWorker } from "./jobs/craving.job.js";
 
 const app = buildApp();
 

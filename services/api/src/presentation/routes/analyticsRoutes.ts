@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
-import { AnalyticsService } from "../../application/analyticsService.js";
+import { AnalyticsService } from "../../services/analytics.service.js";
 import {
   eventsPayloadSchema,
   dailyQuerySchema,
   weeklyQuerySchema,
   userIdParamSchema,
   deviceRegistrationSchema,
-} from "../validation/schemas.js";
+} from "../schemas/schemas.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
 import { UsageEvent } from "../../domain/types/index.js";
 import { resolvePathUserId } from "../utils/resolvePathUserId.js";
@@ -47,7 +47,7 @@ export function buildAnalyticsRoutes(service: AnalyticsService): Router {
       let toIngest: UsageEvent[];
       if (request.user!.role === "service") {
         const ids = new Set(
-          events.map((e) => e.userId).filter((x): x is string => typeof x === "string" && x.length > 0)
+          events.map((e: any) => e.userId).filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
         );
         if (ids.size !== 1) {
           response.status(400).json({
@@ -61,7 +61,7 @@ export function buildAnalyticsRoutes(service: AnalyticsService): Router {
         toIngest = events.map((e) => ({ ...e, userId: uid })) as UsageEvent[];
       } else {
         const uid = request.user!.userId;
-        toIngest = events.map((e) => ({ ...e, userId: uid })) as UsageEvent[];
+        toIngest = events.map((e: any) => ({ ...e, userId: uid })) as UsageEvent[];
       }
 
       const inserted = await service.ingestEvents(toIngest);

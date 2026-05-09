@@ -1,10 +1,4 @@
-import { PatternInsights, UsageEvent } from "../types/index.js";
-
-type BuildInsightsInput = {
-  events: UsageEvent[];
-  distractionPackages: Set<string>;
-  timeZone: string;
-};
+import { UsageEvent } from "../types/index.js";
 
 function getLocalHour(dateIso: string, timeZone: string): number {
   const date = new Date(dateIso);
@@ -16,7 +10,11 @@ function getLocalHour(dateIso: string, timeZone: string): number {
   return Number(formatted);
 }
 
-export function buildPatternInsights(input: BuildInsightsInput): PatternInsights {
+export function buildPatternInsights(input: {
+  events: UsageEvent[];
+  distractionPackages: Set<string>;
+  timeZone: string;
+}) {
   const usageEvents = input.events
     .filter((event) => {
       if (event.eventType !== "usage") {
@@ -37,7 +35,7 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
   let lateNightMinutes = 0;
   let distractionMinutes = 0;
   let longestContinuousSessionMinutes = 0;
-  const hourlyUsage = new Array<number>(24).fill(0);
+  const hourlyUsage = new Array(24).fill(0);
 
   for (let i = 0; i < usageEvents.length; i += 1) {
     const event = usageEvents[i];
@@ -58,8 +56,7 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
     if (i > 0) {
       const previous = usageEvents[i - 1];
       if (previous.packageName !== event.packageName) {
-        const gapSeconds =
-          (Date.parse(event.startedAt) - Date.parse(previous.endedAt)) / 1000;
+        const gapSeconds = (Date.parse(event.startedAt) - Date.parse(previous.endedAt)) / 1000;
         if (gapSeconds <= 45) {
           appSwitches += 1;
         }
@@ -71,8 +68,8 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
   const peakUsageHour = hourlyUsage.reduce((bestHour, value, index, array) => {
     return value > array[bestHour] ? index : bestHour;
   }, 0);
-  const excessiveUsageFlags: string[] = [];
 
+  const excessiveUsageFlags: string[] = [];
   if (longestContinuousSessionMinutes >= 60) {
     excessiveUsageFlags.push("long_continuous_session");
   } else if (longestContinuousSessionMinutes >= 30) {
@@ -82,7 +79,6 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
   if (appSwitchesPerHour > 18) {
     excessiveUsageFlags.push("frequent_app_switching");
   }
-
   if (lateNightMinutes > 30) {
     excessiveUsageFlags.push("late_night_usage");
   }
@@ -110,6 +106,7 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
   if (distractionMinutes > 60) {
     recommendations.push("Move one high-distraction app into full-day blocked mode.");
   }
+
   if (recommendations.length === 0) {
     recommendations.push("Current pattern is stable. Keep limits unchanged for consistency.");
   }
@@ -123,7 +120,7 @@ export function buildPatternInsights(input: BuildInsightsInput): PatternInsights
     excessiveUsageFlags,
     recommendations,
     prediction: {
-      tomorrowRisk: riskScore > 75 || lateNightMinutes > 45 ? "high" : riskScore > 40 ? "medium" : "low" as const,
+      tomorrowRisk: riskScore > 75 || lateNightMinutes > 45 ? "high" : riskScore > 40 ? "medium" : "low",
       reason:
         riskScore > 75
           ? "High risk due to intensive distraction patterns today. Expect willpower fatigue tomorrow."

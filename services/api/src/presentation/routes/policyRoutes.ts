@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { evaluatePolicy } from "../../application/policyService.js";
-import { AnalyticsRepository } from "../../infrastructure/analyticsRepository.js";
+import { evaluatePolicy } from "../../services/policy.service.js";
+import { AnalyticsRepository } from "../../db/repositories/analytics.repository.js";
 import {
   dailyQuerySchema,
   rewardQuerySchema,
-} from "../validation/schemas.js";
+} from "../schemas/schemas.js";
 import { resolvePathUserId } from "../utils/resolvePathUserId.js";
 
 export function buildPolicyRoutes(repository: AnalyticsRepository): Router {

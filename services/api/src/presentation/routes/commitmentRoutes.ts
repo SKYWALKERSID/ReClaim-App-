@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { AnalyticsService } from "../../application/analyticsService.js";
-import { commitmentSchema, userIdParamSchema } from "../validation/schemas.js";
+import { AnalyticsService } from "../../services/analytics.service.js";
+import { commitmentSchema, userIdParamSchema } from "../schemas/schemas.js";
 
 export function buildCommitmentRoutes(service: AnalyticsService): Router {
   const router = Router();
@@ -43,7 +43,10 @@ export function buildCommitmentRoutes(service: AnalyticsService): Router {
       } else {
         commitment.userId = request.user!.userId;
       }
-      await service.upsertCommitment(commitment);
+      await service.upsertCommitment({
+        ...commitment,
+        userId: commitment.userId!
+      });
       response.status(201).json({ status: "saved" });
     } catch (error) {
       next(error);

@@ -12,7 +12,7 @@ export function signAccessToken(payload: TokenPayload): string {
   
   return jwt.sign(payload, env.jwtPrivateKey, {
     algorithm: 'RS256',
-    expiresIn: env.jwtAccessExpiry,
+    expiresIn: env.jwtAccessExpiry as any,
   });
 }
 
@@ -21,7 +21,7 @@ export function signRefreshToken(payload: TokenPayload): string {
 
   return jwt.sign(payload, env.jwtPrivateKey, {
     algorithm: 'RS256',
-    expiresIn: env.jwtRefreshExpiry,
+    expiresIn: env.jwtRefreshExpiry as any,
   });
 }
 

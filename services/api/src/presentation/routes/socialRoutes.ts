@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { SocialRepository } from "../../infrastructure/socialRepository.js";
+import { SocialRepository } from "../../db/repositories/social.repository.js";
 import { z } from "zod";
 
 export function buildSocialRoutes(repository: SocialRepository) {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { pool } from "../../db/pool.js";
-import { lastPurgeTime } from "../../application/purgingService.js";
+import { lastPurgeTime } from "../../jobs/purging.job.js";
 import crypto from "crypto";
 
 export function buildAdminRoutes() {

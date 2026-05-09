@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'navigation/bottom_nav.dart';
-import 'core/theme/theme.dart';
-import 'core/theme/theme_manager.dart';
+import 'screens/bottom_nav.dart';
+import 'constants/theme.dart';
+import 'constants/theme_manager.dart';
 import 'services/backend_service.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';

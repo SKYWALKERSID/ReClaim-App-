@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { env } from "../../config/env.js";
-import { logger } from "../../infrastructure/logger.js";
+import { logger } from "../../utils/logger.js";
 
 type AppError = Error & {
   statusCode?: number;
