@@ -1,50 +1,51 @@
-# Privacy Policy for ReClaim
+# ReClaim™ Privacy Policy
 
-**Last Updated: May 6, 2026**
+ReClaim is built on the principle of **Informed Autonomy**. We believe that your behavioral data should be used to empower you, not exploit you.
 
-ReClaim ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use the ReClaim mobile application (the "App").
+---
 
-## 1. Information We Collect
+## 1. Data Collection
 
-ReClaim is designed with a **Privacy-First** approach. We aim to process as much data as possible locally on your device.
+### Behavioral Metadata
+We collect anonymized package usage data, including:
+- Package identifiers (e.g., `com.instagram.android`).
+- Start and end times of app sessions.
+- Blocked attempts and intentional overrides.
 
-### 1.1 App Usage Data
-To provide screen time tracking and focus enforcement features, ReClaim accesses your device's **Usage Stats**. This data includes:
-- The names of applications you use.
-- The duration of time spent in each application.
-- How many times an application is opened.
+### Sensitive Input
+**ReClaim DOES NOT collect or transmit:**
+- Text input (keystrokes).
+- Passwords or payment details.
+- Screen content (except for intent detection).
+- Personal identifiers from other apps.
 
-**This data is processed locally on your device** and is used solely to generate your "Insights" reports and enforce your daily limits.
+---
 
-### 1.2 System Permissions
-ReClaim requests the following sensitive permissions to function:
+## 2. Accessibility Service Usage
 
-*   **Accessibility Service**: We use this service to identify the application currently in the foreground. If the application is one you have blocked or if your daily limit has been reached, ReClaim displays a blocking overlay. 
-    *   **WE DO NOT collect, store, or transmit any personal information, keystrokes, or screen content via the Accessibility Service.** 
-    *   This service is used strictly for technical enforcement of your focus goals.
-*   **Overlay Permission (System Alert Window)**: Used to display the blocking screen over distracting apps.
-*   **Package Usage Stats**: Used to calculate your daily screen time.
+ReClaim uses the Android Accessibility Service API to provide its core behavioral enforcement.
+- **Purpose**: To detect when a high-distraction app is launched and to overlay reflection prompts.
+- **Permission**: Users must explicitly grant this permission.
+- **Privacy**: No accessibility events are logged beyond package name transitions.
 
-## 2. How We Use Your Information
-We use the information we collect to:
-- Monitor and analyze your screen time habits.
-- Enforce focus windows and app-blocking policies.
-- Provide you with "Insights" and "Gamification" rewards.
+---
 
-## 3. Data Storage and Security
-- **Local Storage**: Your usage history and focus policies are stored securely on your device using an encrypted local database.
-- **No Third-Party Sharing**: We do not sell, trade, or otherwise transfer your usage data to third parties.
-- **Cloud Sync (Optional)**: If you enable account synchronization, we may transmit your focus policies (not your raw usage logs) to our secure servers using end-to-end encryption.
+## 3. Data Storage & Security
 
-## 4. Google Play Store Compliance
-ReClaim complies with the Google Play Developer Program Policies, specifically regarding the use of sensitive permissions. 
+### On-Device
+Data is stored in an encrypted SQLite database and protected by the Android Keystore.
 
-- **Accessibility Service Disclosure**: The App provides a prominent disclosure within the application before requesting the Accessibility Service. The use of this service is limited to the functionality described in Section 1.2.
-- **No Advertising**: ReClaim does not contain advertisements and does not use your usage data for ad-targeting purposes.
+### Cloud Synchronization
+Metrics are synced to a hardened PostgreSQL database for long-term analytics. All transmission is encrypted via TLS.
 
-## 5. Your Rights
-You can revoke any permissions granted to ReClaim at any time through your device's System Settings. However, doing so will disable the App's ability to track usage and enforce focus policies.
+---
 
-## 6. Contact Us
-If you have any questions about this Privacy Policy, please contact us at:
-[Your Contact Email/Website]
+## 4. Your Rights
+
+- **Data Export**: You can request an export of your behavioral logs at any time.
+- **Deletion**: You can wipe your account and all associated metrics instantly.
+- **Transparency**: Our core enforcement algorithms are documented in `docs/ALGORITHMS.md`.
+
+---
+*Effective Date: May 10, 2026*
+*Version: 1.0.0*

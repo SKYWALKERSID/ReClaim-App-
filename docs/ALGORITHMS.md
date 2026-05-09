@@ -1,73 +1,73 @@
-# Key Algorithms
+# ReClaim™ Behavioral Algorithms
 
-## 1) Enforcement Decision (Android native)
+ReClaim utilizes proprietary algorithms to model attention fragmentation and enforce behavioral discipline.
 
-Location: `apps/mobile/android/app/src/main/kotlin/com/reclaim/app/flutter/enforcement/EnforcementManager.kt`
+---
 
-Priority order:
+## 1. Cognitive Drift Engine™ (CDE)
 
-1. If app is in whitelist -> allow
-2. If temporary emergency grace exists -> allow
-3. If policy status is `locked` -> block
-4. If current time is inside focus window -> block non-whitelist
-5. If today usage >= daily limit -> block
-6. Else allow
+The CDE quantifies the "decay" of human attention during digital interaction.
 
-This order prevents loopholes while keeping emergency flow deterministic.
+### The Fragmentation Index ($\mathcal{F}$)
+The Fragmentation Index measures the volatility of context switching. 
 
-## 2) Pattern Detection
+$$\mathcal{F} = \frac{\sum_{i=1}^{n} \Delta P_i}{T_{total}}$$
 
-Location: `services/api/src/domain/services/patternEngine.ts`
+Where:
+- $n$ is the number of app transitions.
+- $\Delta P_i$ is a weight assigned to the switch (higher for switching to "Red" category apps).
+- $T_{total}$ is the total interaction time.
 
-Computed signals:
+**Thresholds:**
+- **$\mathcal{F} < 0.2$**: Focused State.
+- **$0.2 \le \mathcal{F} < 0.5$**: Mild Drift.
+- **$\mathcal{F} \ge 0.5$**: High Fragmentation (Triggers Hard Friction).
 
-- `appSwitchesPerHour`
-- `lateNightMinutes` (23:00-05:00 local)
-- `distractionMinutes` (blacklist package usage)
-- Ignores synthetic snapshot events (`metadata.snapshotTotalMinutes`)
+---
 
-Risk score:
+## 2. The Friction Layer Algorithm
 
-`risk = min(100, round(distraction*0.8 + lateNight*0.9 + appSwitchesPerHour*10))`
+The Friction Layer breaks the automaticity of app-opening habits.
 
-Recommendations are generated only when signals cross practical thresholds.
+### Variable Latency Response ($L$)
+The delay injected before an app opens is not static; it scales based on the user's current Drift Score ($D$).
 
-## 3) Reward Logic (Minimal, Non-addictive)
+$$L = L_{base} \times (1 + \alpha D)$$
 
-Location: `services/api/src/domain/services/rewardEngine.ts`
+Where:
+- $L_{base}$ is the user's configured minimum friction (e.g., 5s).
+- $\alpha$ is the sensitivity coefficient.
+- $D$ is the current Drift Score (0.0 to 1.0).
 
-Rules:
+**Logic Flow:**
+1. Package transition detected via `AccessibilityService`.
+2. Check if package is in `Blacklist`.
+3. If True, calculate $L$.
+4. Launch `FrictionOverlay` and hold for $L$ seconds.
+5. Surface a **Reflection Prompt** (e.g., "Is this intentional?").
+6. On confirmation, permit intent; otherwise, terminate.
 
-- +50 for staying within daily limit
-- +10 per completed focus session (max 3/day)
-- +20 if no overrides used
-- +15 for low late-night usage
-- Streak increments only if within limit; resets otherwise
-- Level progression:
-  - `Beginner`: 0-6 streak
-  - `Disciplined`: 7-20 streak
-  - `Focus Pro`: 21+ streak
+---
 
-Design goal: reinforce discipline without engagement loops.
+## 3. Craving Window Prediction
 
-## 4) Policy Evaluation (API)
+ReClaim analyzes historical usage clusters to predict future lapses.
 
-Location: `services/api/src/application/policyService.ts`
+**Cluster Analysis:**
+1. Group `UsageEvents` by hour of day over a 7-day rolling window.
+2. Calculate the standard deviation of starting times.
+3. If a cluster has high density ($N > 3$) and high average $D$, mark as a **High-Risk Window**.
+4. Trigger a **Pre-emptive Nudge** 15 minutes before the predicted window start.
 
-Inputs: commitment + daily metrics + local time window.
+---
 
-Outputs:
+## 4. Reward System (Discipline Points)
 
-- `normal`
-- `focus_only`
-- `locked`
+Points are awarded based on adherence to the "Discipline Quotient."
 
-Includes `remainingDailyMinutes`, `overridesRemaining`, and the effective block set used by client-side enforcers.
+**Daily Points ($P$):**
+$$P = 50_{base} + (FocusSessions \times 10) + (StreakDays \times 2.5)$$
+*Deductions apply for late-night usage or excessive overrides.*
 
-## 5) Snapshot Reconciliation
-
-Location: `services/api/src/application/analyticsService.ts`
-
-- Client uploads periodic usage snapshot events with `metadata.snapshotTotalMinutes`.
-- Daily total screen minutes uses the max snapshot value for the day.
-- This avoids double-counting if sync runs multiple times.
+---
+*Technical Specification: ReClaim Intelligence Suite*
