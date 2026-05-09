@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AuthController } from "../controllers/auth.controller.js";
 import { validate } from "../middleware/validate.middleware.js";
 import { loginSchema, refreshSchema, logoutSchema } from "../schemas/auth.schema.js";
-import { authLimiter, refreshLimiter } from "../middleware/rateLimit.middleware.js";
+import { authLimiter, refreshLimiter, logoutLimiter } from "../middleware/rateLimit.middleware.js";
 
 export function buildAuthRoutes(): Router {
   const router = Router();

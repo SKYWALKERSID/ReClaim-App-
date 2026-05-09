@@ -48,11 +48,13 @@ jobs:
           java-version: '17'
           cache: 'gradle'
           
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-        
+      - name: Fix line endings and permissions
+        run: |
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --no-daemon
 
   flutter-app:
     name: Build Flutter App
@@ -78,5 +80,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
         
+      - name: Fix line endings for Android wrapper
+        run: |
+          cd android
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          
       - name: Build Debug APK
         run: flutter build apk --debug
+
