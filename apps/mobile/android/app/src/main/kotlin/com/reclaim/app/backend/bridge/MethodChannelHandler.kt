@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.PowerManager
 import android.net.Uri
@@ -12,6 +13,7 @@ import android.provider.Settings
 import com.reclaim.app.backend.db.DatabaseHelper
 import com.reclaim.app.backend.engine.FocusSessionManager
 import com.reclaim.app.backend.engine.TrackingEngine
+import com.reclaim.app.backend.engine.ReflectionEngine
 import com.reclaim.app.backend.engine.GamificationEngine
 import com.reclaim.app.flutter.enforcement.AppAccessibilityService
 import com.reclaim.app.flutter.enforcement.EnforcementManager
@@ -25,11 +27,13 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.Log
+import kotlinx.coroutines.*
 
 class MethodChannelHandler(private val context: Context) : MethodChannel.MethodCallHandler {
 
     private val dbHelper = DatabaseHelper.getInstance(context)
     private val apiClient = com.reclaim.app.data.ApiClient()
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
@@ -56,6 +60,17 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         }
                     }.start()
                 }
+                "getHourlyDistractionTrend" -> {
+                    Thread {
+                        try {
+                            handleGetHourlyDistractionTrend(result)
+                        } catch (e: Exception) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                result.error("TREND_ERROR", e.message, null)
+                            }
+                        }
+                    }.start()
+                }
                 "getAppUsage" -> {
                     Thread {
                         try {
@@ -63,6 +78,17 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         } catch (e: Exception) {
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 result.error("USAGE_ERROR", e.message, null)
+                            }
+                        }
+                    }.start()
+                }
+                "getInstalledApps" -> {
+                    Thread {
+                        try {
+                            handleGetInstalledApps(result)
+                        } catch (e: Exception) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                result.error("APPS_ERROR", e.message, null)
                             }
                         }
                     }.start()
@@ -76,10 +102,174 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 }
                 "startFocusMode" -> {
                     val duration = call.argument<Int>("duration_minutes") ?: 25
+                    val category = call.argument<String>("category") ?: "Deep Focus"
                     val validatedDuration = duration.coerceIn(1, 1440)
+                    
+                    // Save focus session with category to DB
+                    dbHelper.saveFocusSession(System.currentTimeMillis(), validatedDuration * 60, category)
+                    
                     result.success(FocusSessionManager.startFocusSession(context, validatedDuration, emptyList()))
                 }
                 "stopFocusMode" -> result.success(FocusSessionManager.stopFocusSession(context))
+                "getFocusHistory" -> {
+                    Thread {
+                        val history = dbHelper.getFocusHistory()
+                        android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(history) }
+                    }.start()
+                }
+                "getBehavioralMetrics" -> {
+                    result.success(mapOf(
+                        "drift_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getCurrentDriftScore(),
+                        "fragmentation_index" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFragmentationIndex(),
+                        "reopen_count" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getReopenCount(),
+                        "failed_exits" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFailedExits(),
+                        "feed_exposure_seconds" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFeedExposureSeconds(),
+                        "addiction_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getAddictionScore()
+                    ))
+                }
+                "getPendingReflection" -> result.success(ReflectionEngine.getPendingReflection())
+                "submitReflection" -> {
+                    val sessionId = call.argument<String>("sessionId") ?: ""
+                    val promptType = call.argument<String>("promptType") ?: ""
+                    val response = call.argument<String>("response") ?: ""
+                    val driftScore = call.argument<Int>("driftScore") ?: 0
+                    ReflectionEngine.submitReflection(context, sessionId, promptType, response, driftScore)
+                    result.success(true)
+                }
+                "getReflectionHistory" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val reflections = db.reflectionDao().getAll()
+                            val list = reflections.map { mapOf(
+                                "id" to it.id,
+                                "promptType" to it.promptType,
+                                "response" to it.response,
+                                "driftScore" to it.driftScore,
+                                "timestamp" to it.timestamp
+                            )}
+                            withContext(Dispatchers.Main) {
+                                result.success(list)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                result.error("DB_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "checkNightTimeOveruse" -> result.success(TrackingEngine.checkNightTimeOveruse(context))
+                "getFrictionInterventions" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val interventions = db.frictionDao().getAll()
+                            val list = interventions.map { mapOf(
+                                "id" to it.id,
+                                "packageName" to it.appPackage,
+                                "frictionType" to it.frictionType,
+                                "driftScore" to it.driftScore,
+                                "isOverridden" to it.isOverridden,
+                                "timestamp" to it.timestamp
+                            )}
+                            withContext(Dispatchers.Main) {
+                                result.success(list)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                result.error("DB_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "getIntentHistory" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val intents = db.intentDao().getAll()
+                            val list = intents.map { mapOf(
+                                "id" to it.id,
+                                "packageName" to it.packageName,
+                                "intentChoice" to it.intentChoice,
+                                "triggerReason" to it.triggerReason,
+                                "timestamp" to it.timestamp
+                            )}
+                            withContext(Dispatchers.Main) {
+                                result.success(list)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                result.error("DB_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "getDriftHistory" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val sessions = db.driftDao().getAll()
+                            val list = sessions.map { mapOf(
+                                "sessionId" to it.sessionId,
+                                "appPackage" to it.appPackage,
+                                "startTime" to it.startTime,
+                                "endTime" to it.endTime,
+                                "peakDriftScore" to it.peakDriftScore,
+                                "avgDriftScore" to it.avgDriftScore,
+                                "fragmentationIndex" to it.fragmentationIndex,
+                                "reopenCount" to it.reopenCount,
+                                "failedExits" to it.failedExits,
+                                "feedExposureSeconds" to it.feedExposureSeconds
+                            )}
+                            withContext(Dispatchers.Main) {
+                                result.success(list)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                result.error("DB_ERROR", e.message, null)
+                            }
+                        }
+                    }
+                }
+                "getRecommendations" -> {
+                    Thread {
+                        val usage = TrackingEngine.getAllTodayUsage(context)
+                        val recommendations = com.reclaim.app.backend.engine.RecommendationEngine.generateDailyRecommendations(usage)
+                        val list = recommendations.map { mapOf(
+                            "packageName" to it.packageName,
+                            "suggestedLimitMs" to it.suggestedLimitMs,
+                            "reason" to it.reason
+                        )}
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            result.success(list)
+                        }
+                    }.start()
+                }
+                "getCravingStatus" -> {
+                    result.success(com.reclaim.app.backend.engine.CravingPredictor.getCravingStatus(context))
+                }
+                "getLifetimeDriftCount" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val count = db.driftDao().getSessionCount()
+                            withContext(Dispatchers.Main) { result.success(count) }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) { result.success(0) }
+                        }
+                    }
+                }
+                "getUnsyncedCount" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val db = com.reclaim.app.backend.db.room.LocalDatabase.getDatabase(context)
+                            val count = db.driftDao().getUnsyncedCount()
+                            withContext(Dispatchers.Main) { result.success(count) }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) { result.success(0) }
+                        }
+                    }
+                }
                 "getUserProfile" -> {
                     Thread {
                         val profile = dbHelper.getUserSettings()
@@ -90,7 +280,9 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     dbHelper.saveUserSettings(
                         call.argument<String>("name") ?: "",
                         call.argument<Int>("goal_seconds") ?: 7200,
-                        call.argument<String>("safe_code")
+                        call.argument<String>("safe_code"),
+                        call.argument<Int>("age"),
+                        call.argument<String>("gender")
                     )
                     syncEnforcementPolicy()
                     result.success(true)
@@ -109,7 +301,11 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 "getAppSelections" -> {
                     Thread {
                         val selections = mapOf("whitelist" to dbHelper.getWhitelistedApps(), "blacklist" to dbHelper.getBlacklistedApps())
-                        android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(selections) }
+                        // Ensure native engine is synced with these selections (especially defaults)
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            syncEnforcementPolicy()
+                            result.success(selections)
+                        }
                     }.start()
                 }
 
@@ -129,6 +325,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             // Persist points using the clean helper method
                             dbHelper.updatePoints(points)
                             GamificationEngine.checkAndAwardBadges(dbHelper, focusSeconds)
+                            GamificationEngine.updateStreak(dbHelper, focusSeconds, goalSeconds)
 
                             val updatedStats = dbHelper.getDailyAnalytics(date)
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -187,6 +384,93 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     result.success(true)
                 }
                 "getDeviceInfo" -> handleGetDeviceInfo(result)
+                "getDriftStats" -> {
+                    result.success(mapOf(
+                        "drift_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getCurrentDriftScore(),
+                        "fragmentation_index" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFragmentationIndex()
+                    ))
+                }
+                "getPendingReflection" -> {
+                    result.success(com.reclaim.app.backend.engine.ReflectionEngine.getPendingReflection())
+                }
+                "submitReflection" -> {
+                    val sessionId = call.argument<String>("session_id")
+                    val promptType = call.argument<String>("prompt_type")
+                    val response = call.argument<String>("response")
+                    val driftScore = call.argument<Int>("drift_score")
+                    if (sessionId != null && promptType != null && response != null && driftScore != null) {
+                        com.reclaim.app.backend.engine.ReflectionEngine.submitReflection(context, sessionId, promptType, response, driftScore)
+                        result.success(true)
+                    } else {
+                        result.error("INVALID_ARGS", "Missing arguments for submitReflection", null)
+                    }
+                }
+                "fetchActiveCravingWindow" -> {
+                    // In a production app, we'd cache this locally.
+                    // For now, we'll return null or implement a quick check if we had a local store for it.
+                    // Let's assume we store the latest window in a shared pref or singleton.
+                    result.success(com.reclaim.app.backend.engine.FrictionOrchestrator.getActiveWindow())
+                }
+                "syncAllData" -> {
+                    Thread {
+                        try {
+                            // 1. Sync Tracking Engine - just pull usage to force update
+                            TrackingEngine.getAllTodayUsage(context)
+                            
+                            // 2. Refresh local DB from remote if needed
+                            val auth = FocusPolicyStore.loadAuth(context)
+                            val userId = auth.first
+                            if (userId != null) {
+                                try {
+                                    apiClient.fetchPolicy(userId)
+                                } catch (e: Exception) {
+                                    Log.w("Sync", "Policy sync failed during hard refresh", e)
+                                }
+                            }
+                            
+                            // 3. Recalculate daily stats
+                            val date = DatabaseHelper.getCurrentDateString()
+                            dbHelper.getDailyAnalytics(date)
+                            
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                result.success(true)
+                            }
+                        } catch (e: Exception) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                result.success(false) 
+                            }
+                        }
+                    }.start()
+                }
+                "toggleNotifications" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    if (enabled) {
+                        // Trigger a test notification immediately to confirm
+                        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+                        val channelId = "reminders_channel"
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            val channel = android.app.NotificationChannel(channelId, "Focus Reminders", android.app.NotificationManager.IMPORTANCE_HIGH)
+                            notificationManager.createNotificationChannel(channel)
+                        }
+                        val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+                            .setContentTitle("ReClaim™ Activated")
+                            .setContentText("Focus reminders and daily summaries are now enabled.")
+                            .setSmallIcon(android.R.drawable.ic_dialog_info)
+                            .setAutoCancel(true)
+                            .build()
+                        notificationManager.notify(1, notification)
+                    }
+                    result.success(true)
+                }
+                "toggleScheduledReports" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    if (enabled) {
+                        com.reclaim.app.backend.sync.ReportWorker.schedule(context)
+                    } else {
+                        com.reclaim.app.backend.sync.ReportWorker.cancel(context)
+                    }
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -299,17 +583,22 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
 
     private fun handleGetDashboardStats(result: MethodChannel.Result) {
         val usageMap = TrackingEngine.getAllTodayUsage(context)
-        val totalMs = usageMap.values.sum()
+        val userSettings = dbHelper.getUserSettings()
+        val goalSeconds = (userSettings["goal_seconds"] as? Int) ?: 7200
+
+        // Filter out whitelisted and internal apps from total usage for goal tracking
+        val filteredUsageMap = usageMap.filter { (pkg, _) -> 
+            !EnforcementManager.isInternalPackage(pkg) && !EnforcementManager.isWhitelisted(pkg)
+        }
+        val totalMs = filteredUsageMap.values.sum()
         val totalSeconds = (totalMs / 1000).toInt()
         val delta = TrackingEngine.getUsageDelta(context, totalMs)
         val dailyDbStats = dbHelper.getDailyAnalytics(DatabaseHelper.getCurrentDateString())
         
-        val userSettings = dbHelper.getUserSettings()
-        val goalSeconds = (userSettings["goal_seconds"] as? Int) ?: 7200
-        
         // Calculate dynamic distraction score
-        val sessionCount = (dailyDbStats["unlock_count"] as? Int ?: 0) + (dailyDbStats["pickup_count"] as? Int ?: 0)
         val distractionScore = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionScore(context, usageMap, totalMs, goalSeconds)
+        val distractionPercentage = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionPercentage(usageMap, totalMs, context)
+        val usageLimitPercentage = (totalSeconds.toFloat() / goalSeconds.toFloat()) * 100f
 
         val statsMap = mapOf(
             "total_usage_seconds" to totalSeconds,
@@ -317,13 +606,30 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             "unlock_count" to (dailyDbStats["unlock_count"] ?: 0),
             "pickup_count" to (dailyDbStats["pickup_count"] ?: 0),
             "focus_time_seconds" to (dailyDbStats["focus_time_seconds"] ?: 0),
+            "addiction_score" to com.reclaim.app.backend.engine.AnalyticsEngine.calculateAddictionScore(totalMs).toDouble(),
             "remaining_focus_seconds" to FocusSessionManager.getRemainingSeconds(context),
             "emergency_unlocks_left" to com.reclaim.app.flutter.enforcement.EnforcementManager.overridesRemaining,
             "distraction_score" to distractionScore.toDouble(),
+            "distraction_percentage" to distractionPercentage.toDouble(),
+            "usage_limit_percentage" to usageLimitPercentage.toDouble(),
             "weekly_trend" to TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() }
         )
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             result.success(statsMap)
+        }
+    }
+
+    private fun handleGetHourlyDistractionTrend(result: MethodChannel.Result) {
+        val cal = java.util.Calendar.getInstance()
+        val socialTrend = TrackingEngine.getHourlyUsageForDay(context, cal, "Social")
+        val entertainmentTrend = TrackingEngine.getHourlyUsageForDay(context, cal, "Entertainment")
+        
+        val distractionTrend = IntArray(24) { i ->
+            ((socialTrend[i] + entertainmentTrend[i]) / 1000).toInt()
+        }
+        
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            result.success(distractionTrend.toList())
         }
     }
 
@@ -340,10 +646,15 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                     val appInfo = pm.getApplicationInfo(pkg, 0)
                     val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
+                    
+                    // Get session count from UsageLogs if available, else fallback to 0
+                    val sessionCount = dbHelper.getSessionCount(pkg, DatabaseHelper.getCurrentDateString())
+
                     appsList.add(mapOf(
                         "app_id" to pkg, 
                         "display_name" to pm.getApplicationLabel(appInfo).toString(), 
                         "usage_seconds" to (timeMs / 1000).toInt(), 
+                        "session_count" to sessionCount,
                         "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo)),
                         "category" to category
                     ))
@@ -358,6 +669,53 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         )
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             result.success(resultMap)
+        }
+    }
+
+    private fun handleGetInstalledApps(result: MethodChannel.Result) {
+        val pm = context.packageManager
+        val appsList = mutableListOf<Map<String, Any>>()
+        val usageMap = TrackingEngine.getAllTodayUsage(context)
+
+        val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+
+        for (appInfo in installedApps) {
+            val pkg = appInfo.packageName
+            if (pkg == context.packageName) continue
+
+            // Filter out apps that are not likely user-facing
+            // We want to exclude hidden system services but include things like "Settings"
+            val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+            val hasLauncher = pm.getLaunchIntentForPackage(pkg) != null
+
+            // If it's a system app without a launcher, skip it (likely a service/provider)
+            if (isSystemApp && !isUpdatedSystemApp && !hasLauncher) continue
+
+            try {
+                val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
+                val timeMs = usageMap[pkg] ?: 0L
+                val sessionCount = dbHelper.getSessionCount(pkg, DatabaseHelper.getCurrentDateString())
+
+                appsList.add(mapOf(
+                    "app_id" to pkg,
+                    "display_name" to pm.getApplicationLabel(appInfo).toString(),
+                    "usage_seconds" to (timeMs / 1000).toInt(),
+                    "session_count" to sessionCount,
+                    "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo)),
+                    "category" to category
+                ))
+            } catch (e: Exception) {
+                Log.w("MethodChannelHandler", "Failed to load info for $pkg", e)
+            }
+        }
+
+        // Sort by usage (desc) then by name
+        val sortedList = appsList.sortedWith(compareByDescending<Map<String, Any>> { (it["usage_seconds"] as? Int) ?: 0 }
+            .thenBy { (it["display_name"] as? String)?.lowercase() ?: "" })
+
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            result.success(mapOf("apps" to sortedList))
         }
     }
 
@@ -431,10 +789,19 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
 
         val topApps = TrackingEngine.getTopAppsWithMetadata(context, startTime, endTime, category)
         
+        // Calculate category breakdown
+        val categoryBreakdown = mutableMapOf<String, Int>()
+        topApps.forEach { app ->
+            val cat = app["category"] as? String ?: "Other"
+            val usage = app["usage_seconds"] as? Int ?: 0
+            categoryBreakdown[cat] = (categoryBreakdown[cat] ?: 0) + usage
+        }
+        
         val resultMap = mapOf(
             "trend" to trend,
             "top_apps" to topApps,
-            "total_usage_seconds" to trend.sum()
+            "total_usage_seconds" to trend.sum(),
+            "category_breakdown" to categoryBreakdown
         )
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             result.success(resultMap)

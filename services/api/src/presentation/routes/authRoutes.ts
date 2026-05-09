@@ -1,56 +1,53 @@
 import { Router } from "express";
-import jwt from "jsonwebtoken";
-import { randomUUID } from "crypto";
-import { env } from "../../config/env.js";
-import { pool } from "../../db/pool.js";
+import { AuthController } from "../controllers/auth.controller.js";
+import { validate } from "../middleware/validate.middleware.js";
+import { loginSchema, refreshSchema, logoutSchema } from "../schemas/auth.schema.js";
+import { authLimiter, refreshLimiter } from "../middleware/rateLimit.middleware.js";
 
 export function buildAuthRoutes(): Router {
   const router = Router();
+  const controller = new AuthController();
 
   /**
    * @openapi
-   * /auth/anonymous:
+   * /auth/login:
    *   post:
-   *     summary: Anonymous Authentication
-   *     description: Generates a new userId and returns a long-lived JWT. Use this token in the Authorization header for future requests.
+   *     summary: Production Login
+   *     description: Verifies Firebase ID Token, upserts user, and returns RS256 JWT pair.
+   *     tags: [Auth]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LoginRequest'
    *     responses:
-   *       201:
-   *         description: Successfully created anonymous user and generated token
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 token: { type: string }
-   *                 userId: { type: string, format: uuid }
+   *       200:
+   *         description: Success
+   *       401:
+   *         description: Invalid credentials
    */
-  router.post("/auth/anonymous", async (req, res, next) => {
-    try {
-      // 1. Generate a new UUID
-      const userId = randomUUID();
+  router.post("/auth/login", authLimiter, validate(loginSchema), (req, res, next) => controller.login(req, res, next));
 
-      // 2. Insert into users table
-      const query = `
-        INSERT INTO users (id, preferences, created_at)
-        VALUES ($1, '{}'::jsonb, NOW())
-        RETURNING id
-      `;
-      await pool.query(query, [userId]);
+  /**
+   * @openapi
+   * /auth/refresh:
+   *   post:
+   *     summary: Refresh Access Token
+   *     description: Rotates refresh token and issues new access token.
+   *     tags: [Auth]
+   */
+  router.post("/auth/refresh", refreshLimiter, validate(refreshSchema), (req, res, next) => controller.refresh(req, res, next));
 
-      const token = jwt.sign(
-        { userId, role: "user" },
-        env.jwtSecret,
-        { expiresIn: "1h" }
-      );
-
-      res.status(201).json({
-        token,
-        userId
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
+  /**
+   * @openapi
+   * /auth/logout:
+   *   post:
+   *     summary: Revoke Session
+   *     description: Deletes the refresh token from the database.
+   *     tags: [Auth]
+   */
+  router.post("/auth/logout", logoutLimiter, validate(logoutSchema), (req, res, next) => controller.logout(req, res, next));
 
   return router;
 }

@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { env } from "./config/env.js";
 import { pool, gracefulShutdownDB } from "./db/pool.js";
 import { logger } from "./infrastructure/logger.js";
+import { startCravingWorker } from "./application/cravingWorker.js";
 
 const app = buildApp();
 
@@ -13,6 +14,7 @@ try {
   
   const server = app.listen(env.port, () => {
     logger.info(`reclaim-api listening on port ${env.port}`);
+    startCravingWorker();
   });
 
   function gracefulShutdown(signal: string) {

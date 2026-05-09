@@ -16,9 +16,10 @@ class FocusScreen extends StatefulWidget {
 class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStateMixin {
   final BackendService _backendService = BackendService();
   bool isFocusModeOn = false;
-  String selectedDuration = "25min";
   bool _isLoading = false;
+  String selectedDuration = "25min";
   List<Map<String, dynamic>> _whitelistApps = [];
+  String _selectedCategory = "Deep Focus";
   
   Timer? _uiTimer;
   int _secondsRemaining = 0;
@@ -120,7 +121,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
         });
       }
     } else {
-      final success = await _backendService.startFocusMode(_durationMinutes);
+      final success = await _backendService.startFocusMode(_durationMinutes, category: _selectedCategory);
       if (success) {
         HapticFeedback.heavyImpact();
         final endTime = DateTime.now().millisecondsSinceEpoch + (_durationMinutes * 60 * 1000);
@@ -198,6 +199,22 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                       isSelected: selectedDuration == d,
                       onTap: isFocusModeOn ? () {} : () => setState(() => selectedDuration = d),
                     )).toList(),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text("Focus Type", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: ["Deep Focus", "Study", "Work", "Meditation"].map((c) => Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _DurationChip(
+                          label: c,
+                          isSelected: _selectedCategory == c,
+                          onTap: isFocusModeOn ? () {} : () => setState(() => _selectedCategory = c),
+                        ),
+                      )).toList(),
+                    ),
                   ),
                   const SizedBox(height: 40),
                   const Text("Active Whitelist", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),

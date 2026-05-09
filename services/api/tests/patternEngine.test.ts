@@ -8,16 +8,16 @@ test("pattern engine calculates risk score correctly", () => {
       userId: "u1",
       packageName: "com.instagram.android",
       startedAt: "2026-05-03T23:30:00Z",
-      endedAt: "2026-05-03T23:45:00Z",
-      durationSeconds: 900,
+      endedAt: "2026-05-03T23:55:00Z",
+      durationSeconds: 1500,
       eventType: "usage" as const
     },
     {
       userId: "u1",
       packageName: "com.whatsapp",
       startedAt: "2026-05-04T00:10:00Z",
-      endedAt: "2026-05-04T00:20:00Z",
-      durationSeconds: 600,
+      endedAt: "2026-05-04T00:25:00Z",
+      durationSeconds: 900,
       eventType: "usage" as const
     }
   ];

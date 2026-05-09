@@ -65,12 +65,18 @@ class BlockingOverlayService : Service() {
                 stopSelf()
             }
             ACTION_SHOW -> {
+                currentPackageName = intent.getStringExtra(EXTRA_PACKAGE_NAME).orEmpty()
+                if (EnforcementManager.isInternalPackage(currentPackageName)) {
+                    Log.d("BlockingOverlay", "Ignoring show request for internal package: $currentPackageName")
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForeground(NOTIFICATION_ID, buildNotification())
                 }
-                currentPackageName = intent.getStringExtra(EXTRA_PACKAGE_NAME).orEmpty()
                 currentReason = intent.getStringExtra(EXTRA_REASON) ?: DEFAULT_REASON
                 currentMode = intent.getStringExtra(EXTRA_MODE) ?: "hard"
                 showOverlay()
@@ -89,6 +95,12 @@ class BlockingOverlayService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun showOverlay() {
+        if (EnforcementManager.isInternalPackage(currentPackageName)) {
+            Log.d("BlockingOverlay", "Aborting showOverlay for internal package: $currentPackageName")
+            stopSelf()
+            return
+        }
+        
         if (!Settings.canDrawOverlays(this)) {
             Log.e("BlockingOverlay", "Missing overlay permission, stopping service.")
             stopSelf()
@@ -442,6 +454,8 @@ class BlockingOverlayService : Service() {
         private const val DEFAULT_REASON = "You've reached your limit. Try again tomorrow."
 
         fun show(context: Context, packageName: String, reason: String, mode: String = "hard") {
+            if (EnforcementManager.isInternalPackage(packageName)) return
+            
             val intent = Intent(context, BlockingOverlayService::class.java).apply {
                 action = ACTION_SHOW
                 putExtra(EXTRA_PACKAGE_NAME, packageName)

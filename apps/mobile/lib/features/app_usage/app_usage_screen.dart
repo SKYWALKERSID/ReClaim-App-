@@ -29,9 +29,14 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (mounted) {
-        _loadData(isSilent: true);
+        // If everything is already granted, we can slow down polling
+        if (_hasRequiredPermissions) {
+           if (timer.tick % 4 == 0) _loadData(isSilent: true); // Every 20s
+        } else {
+           _loadData(isSilent: true); // Every 5s
+        }
       }
     });
   }
@@ -46,7 +51,14 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadData(isSilent: true);
+      // Small delay to allow OS to update permission flags
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _loadData(isSilent: true);
+      });
+      // Second check after 2 seconds just in case
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _loadData(isSilent: true);
+      });
     }
   }
 
@@ -56,7 +68,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
     }
 
     try {
-      final usageData = await _backendService.fetchAppUsage();
+      final appsData = await _backendService.getInstalledApps();
       final selections = await _backendService.getAppSelections();
       final permissionStatus = await _backendService.getPermissionStatus();
 
@@ -66,16 +78,26 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
 
       debugPrint("Loaded permission status: $permissionStatus");
       setState(() {
-        _apps = List<Map<String, dynamic>>.from(usageData['apps'] ?? []);
+        _apps = List<Map<String, dynamic>>.from(appsData['apps'] ?? []);
         _blacklist = Set<String>.from(selections['blacklist'] ?? []);
         _permissionStatus = Map<String, dynamic>.from(permissionStatus);
-        _totalDailySeconds = usageData['total_daily_seconds'] as int? ?? 0;
+        // We still fetch usage for the header total, but the list shows all apps
+        _loadUsageTotal(); 
         _isLoading = false;
       });
     } catch (_) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadUsageTotal() async {
+    final usageData = await _backendService.fetchAppUsage();
+    if (mounted) {
+      setState(() {
+        _totalDailySeconds = usageData['total_daily_seconds'] as int? ?? 0;
+      });
     }
   }
 
@@ -131,6 +153,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
   }
 
   bool get _hasRequiredPermissions {
+    if (_permissionStatus.isEmpty) return true; // Avoid flicker before data loads
     return (_permissionStatus['usage_access'] as bool? ?? false) &&
         (_permissionStatus['accessibility_access'] as bool? ?? false) &&
         (_permissionStatus['overlay_access'] as bool? ?? false);

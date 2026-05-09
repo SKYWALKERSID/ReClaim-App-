@@ -4,7 +4,7 @@ import { env } from "../../config/env.js";
 import { API_KEY_SERVICE_USER } from "../../config/authConstants.js";
 
 /** Paths under `app.use("/v1", authMiddleware)` use `req.path` without the `/v1` prefix. */
-const publicPaths = new Set(["/health", "/auth/anonymous"]);
+const publicPaths = new Set(["/health", "/auth/anonymous", "/auth/login", "/auth/refresh", "/auth/logout"]);
 
 // Extend Express Request type to include user
 declare global {
@@ -13,6 +13,7 @@ declare global {
       user?: {
         userId: string;
         role: string;
+        deviceId?: string;
       };
     }
   }
@@ -44,7 +45,10 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, env.jwtSecret) as { userId: string; role: string };
+    if (!env.jwtPublicKey) {
+      throw new Error("JWT_PUBLIC_KEY is not configured on the server.");
+    }
+    const decoded = jwt.verify(token, env.jwtPublicKey, { algorithms: ["RS256"] }) as any;
     req.user = decoded;
     next();
   } catch (error) {

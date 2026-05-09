@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.*
 import java.util.concurrent.atomic.AtomicLong
+import com.reclaim.app.backend.engine.FocusSessionManager
 
 object EnforcementManager {
     data class BlockDecision(
@@ -135,18 +136,33 @@ object EnforcementManager {
         if (pkg == launcherPackage) return BlockDecision(false, "Launcher allowed for viewing")
         
         // Essential checks use current in-memory state (fast)
-        if (isInternalPackage(pkg) || isWhitelisted(pkg) || isEssentialPackage(pkg)) return BlockDecision(false, "Whitelisted or Essential")
-        if (isTemporarilyUnlocked(pkg)) return BlockDecision(false, "Temporarily unlocked")
+        if (isInternalPackage(pkg) || isWhitelisted(pkg) || isEssentialPackage(pkg)) {
+            Log.d("EnforcementManager", "ALLOW: $pkg (Internal/Whitelisted/Essential)")
+            return BlockDecision(false, "Whitelisted or Essential")
+        }
+        
+        if (isTemporarilyUnlocked(pkg)) {
+            Log.d("EnforcementManager", "ALLOW: $pkg (Temporarily Unlocked)")
+            return BlockDecision(false, "Temporarily unlocked")
+        }
 
         if (isSensitiveBypassTarget(pkg, className)) {
+            Log.d("EnforcementManager", "BLOCK: $pkg (Sensitive Bypass Target)")
             return BlockDecision(true, "Enforcement settings are protected right now.", "hard")
         }
 
         if (policy.policyStatus.equals("LOCKED", ignoreCase = true)) {
+            Log.d("EnforcementManager", "BLOCK: $pkg (Policy LOCKED)")
             return BlockDecision(true, "System is locked by your commitment.", "hard")
         }
 
         if (isFocusModeActive) {
+            Log.d("EnforcementManager", "BLOCK: $pkg (Focus Mode Active)")
+            return BlockDecision(true, "Focus Mode is active.", "hard")
+        }
+
+        if (isFocusWindowActive(LocalDateTime.now())) {
+            Log.d("EnforcementManager", "BLOCK: $pkg (Focus Window Active)")
             return BlockDecision(true, "Focus window active. Essential apps only.", "hard")
         }
 
@@ -240,10 +256,10 @@ object EnforcementManager {
     suspend fun refreshStateSuspended(context: Context, forceUsageSync: Boolean = false, allowAlarm: Boolean = true) {
         val now = System.currentTimeMillis()
         val last = lastRefreshTime.get()
-        if (now - last < 5000) return
+        if (!forceUsageSync && (now - last < 5000)) return
         
         mutex.withLock {
-            if (System.currentTimeMillis() - lastRefreshTime.get() < 5000) return@withLock
+            if (!forceUsageSync && (System.currentTimeMillis() - lastRefreshTime.get() < 5000)) return@withLock
             lastRefreshTime.set(System.currentTimeMillis())
             
             refreshStateInternal(context, forceUsageSync, allowAlarm)
@@ -270,8 +286,9 @@ object EnforcementManager {
             }
             
             val limitReached = cachedUsageMinutes >= policy.dailyLimitMinutes
-            val newFocusActive = isFocusActive
-            val newLocked = isFocusActive || limitReached
+            val isManualFocus = FocusSessionManager.isFocusActive(context)
+            val newFocusActive = isFocusActive || isManualFocus
+            val newLocked = newFocusActive || limitReached
             
             // Usage Milestones (Nudges)
             checkAndSendUsageNudges(context, cachedUsageMinutes, policy.dailyLimitMinutes)
@@ -548,11 +565,51 @@ object EnforcementManager {
         return packageName in essentials
     }
 
-    private fun isInternalPackage(packageName: String): Boolean {
-        val context = appContext ?: return false
-        return packageName == context.packageName ||
-                packageName == "android" ||
-                packageName == "com.android.systemui"
+    fun isInternalPackage(packageName: String?): Boolean {
+        if (packageName == null || packageName.isEmpty()) return true
+        val pkg = packageName.lowercase()
+        
+        // 1. Hardcoded known internal strings (Infallible)
+        if (pkg.contains("com.reclaim.app") || 
+            pkg.contains("reclaim") ||
+            pkg.contains("minimalism") ||
+            pkg.contains("focus") ||
+            pkg.contains("flutter") ||
+            pkg == "android" || 
+            pkg == "com.android.systemui" ||
+            pkg.contains("com.android.vending") || // Play Store
+            pkg.contains("com.google.android.gms") || // Play Services
+            pkg.contains("com.google.android.inputmethod") || // Keyboard
+            pkg.contains("com.android.inputmethod")) return true
+            
+        // 2. Dynamic context check
+        val contextPkg = appContext?.packageName?.lowercase()
+        if (contextPkg != null && pkg == contextPkg) return true
+        
+        // 3. Launcher check
+        return isLauncherPackage(pkg) || isEssentialPackage(pkg)
+    }
+
+    fun isLauncherPackage(packageName: String): Boolean {
+        val pkg = packageName.lowercase()
+        if (pkg == launcherPackage) return true
+        
+        // Common fallbacks if dynamic detection fails or changes
+        val commonLaunchers = setOf(
+            "com.google.android.apps.nexuslauncher",
+            "com.android.launcher3",
+            "com.sec.android.app.launcher",
+            "com.huawei.android.launcher",
+            "com.miui.home",
+            "com.oppo.launcher",
+            "com.vivo.launcher",
+            "com.android.launcher",
+            "com.android.home"
+        )
+        if (pkg in commonLaunchers) return true
+        if (pkg.contains("launcher") && !pkg.contains("reclaim")) return true
+        
+        return false
     }
 
     private fun detectLauncherPackage(context: Context) {

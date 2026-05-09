@@ -1,57 +1,28 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
 
 class BackendService {
   static const platform = MethodChannel('reclaim/enforcement');
-  
-  static String? _jwtToken;
-  static String? _userId;
+  static final _api = ApiService();
 
-  static String get baseUrl {
-    return const String.fromEnvironment('FOCUS_API_URL', defaultValue: 'http://10.0.2.2:4000/v1');
-  }
+  static String get baseUrl => _api.dio.options.baseUrl;
 
   static Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _jwtToken = prefs.getString('jwt_token');
-    _userId = prefs.getString('user_id');
-    
-    if (_jwtToken == null) {
-      await _authenticateAnonymous();
-    }
+    // No-op for now, ApiService handles tokens internally
   }
-
-  static Future<void> _authenticateAnonymous() async {
-    try {
-      final response = await http.post(
-        Uri.parse('${BackendService.baseUrl}/auth/anonymous'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
-      
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        _jwtToken = data['token'];
-        _userId = data['userId'];
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', _jwtToken!);
-        await prefs.setString('user_id', _userId!);
-      }
-    } catch (e) {
-      debugPrint('Auth error: $e');
-    }
-  }
-
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    if (_jwtToken != null) 'Authorization': 'Bearer $_jwtToken',
-  };
 
   // ─── Native Platform Methods (MethodChannel) ───
+
+  Future<dynamic> invokeMethod(String method, [dynamic arguments]) async {
+    try {
+      return await platform.invokeMethod(method, arguments);
+    } catch (e) {
+      debugPrint("MethodChannel Error ($method)"); // Minimal logging for security
+      return null;
+    }
+  }
 
   Future<bool> checkPermissions() async {
     try {
@@ -65,7 +36,7 @@ class BackendService {
     try {
       await platform.invokeMethod('openSettings');
     } catch (e) {
-      debugPrint("openSettings error: $e");
+      // debugPrint("openSettings error: $e"); // Removed for security
     }
   }
 
@@ -75,7 +46,6 @@ class BackendService {
       if (result == null || result is! Map) return {};
       return Map<String, dynamic>.from(result);
     } catch (e) {
-      debugPrint("getPermissionStatus error: $e");
       return {};
     }
   }
@@ -84,7 +54,7 @@ class BackendService {
     try {
       await platform.invokeMethod('openPermissionSettings', {'permission': permission});
     } catch (e) {
-      debugPrint("openPermissionSettings($permission) error: $e");
+      // debugPrint("openPermissionSettings($permission) error: $e");
     }
   }
 
@@ -98,16 +68,42 @@ class BackendService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchBehavioralMetrics() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getBehavioralMetrics');
+      if (result == null || result is! Map) return {"feed_exposure_seconds": 0, "failed_exits": 0, "reopen_count": 0};
+      return Map<String, dynamic>.from(result);
+    } catch (e) {
+      return {"feed_exposure_seconds": 0, "failed_exits": 0, "reopen_count": 0};
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchDriftStats() async {
+    return fetchBehavioralMetrics();
+  }
+
   Future<Map<String, dynamic>> fetchAppUsage() async {
     try {
       final dynamic result = await platform.invokeMethod('getAppUsage');
       if (result == null || result is! Map) return {"total_daily_seconds": 0, "apps": []};
       return {
         "total_daily_seconds": (result["total_daily_seconds"] as num?)?.toInt() ?? 0,
-        "apps": List<Map<dynamic, dynamic>>.from(result["apps"] ?? []),
+        "apps": List<dynamic>.from(result["apps"] ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
       };
     } catch (e) {
       return {"total_daily_seconds": 0, "apps": []};
+    }
+  }
+
+  Future<Map<String, dynamic>> getInstalledApps() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getInstalledApps');
+      if (result == null || result is! Map) return {"apps": []};
+      return {
+        "apps": List<dynamic>.from(result["apps"] ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+      };
+    } catch (e) {
+      return {"apps": []};
     }
   }
 
@@ -128,19 +124,28 @@ class BackendService {
   Future<Map<String, dynamic>> getUserProfile() async {
     try {
       final dynamic result = await platform.invokeMethod('getUserProfile');
-      if (result == null || result is! Map) return {"name": "", "goal_seconds": 7200};
+      if (result == null || result is! Map) return {"name": "", "goal_seconds": 7200, "age": 0, "gender": ""};
       return {
         "name": result["name"]?.toString() ?? "",
-        "goal_seconds": (result["goal_seconds"] as num?)?.toInt() ?? 7200
+        "goal_seconds": (result["goal_seconds"] as num?)?.toInt() ?? 7200,
+        "safe_code": result["safe_code"]?.toString() ?? "",
+        "age": (result["age"] as num?)?.toInt() ?? 0,
+        "gender": result["gender"]?.toString() ?? ""
       };
     } catch (e) {
-      return {"name": "", "goal_seconds": 7200};
+      return {"name": "", "goal_seconds": 7200, "safe_code": "", "age": 0, "gender": ""};
     }
   }
 
-  Future<bool> saveUserSettings(String name, int goalSeconds) async {
+  Future<bool> saveUserSettings(String name, int goalSeconds, {String? safeCode, int? age, String? gender}) async {
     try {
-      return await platform.invokeMethod('saveUserSettings', {'name': name, 'goal_seconds': goalSeconds});
+      return await platform.invokeMethod('saveUserSettings', {
+        'name': name, 
+        'goal_seconds': goalSeconds,
+        if (safeCode != null) 'safe_code': safeCode,
+        if (age != null) 'age': age,
+        if (gender != null) 'gender': gender,
+      });
     } catch (e) {
       return false;
     }
@@ -175,9 +180,12 @@ class BackendService {
     }
   }
 
-  Future<bool> startFocusMode(int durationMinutes) async {
+  Future<bool> startFocusMode(int durationMinutes, {String category = "Deep Focus"}) async {
     try {
-      return await platform.invokeMethod('startFocusMode', {'duration_minutes': durationMinutes});
+      return await platform.invokeMethod('startFocusMode', {
+        'duration_minutes': durationMinutes,
+        'category': category,
+      });
     } catch (e) {
       return false;
     }
@@ -214,7 +222,6 @@ class BackendService {
       if (result == null || result is! Map) return {};
       return Map<String, int>.from(result);
     } catch (e) {
-      debugPrint("getUsageForDateRange error: $e");
       return {};
     }
   }
@@ -226,9 +233,8 @@ class BackendService {
         'end': end.millisecondsSinceEpoch,
       });
       if (result == null || result is! List) return [];
-      return List<Map<String, dynamic>>.from(result);
+      return result.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     } catch (e) {
-      debugPrint("getTopAppsForRange error: $e");
       return [];
     }
   }
@@ -242,7 +248,6 @@ class BackendService {
       if (result == null || result is! Map) return {};
       return Map<String, dynamic>.from(result);
     } catch (e) {
-      debugPrint("getInsightsData error: $e");
       return {};
     }
   }
@@ -255,6 +260,7 @@ class BackendService {
     }
   }
 
+
   Future<List<String>> fetchInsights() async {
     try {
       final data = await getInsightsData("Day");
@@ -262,7 +268,7 @@ class BackendService {
         return (data["recommendations"] as List).map((e) => e.toString()).toList();
       }
     } catch (e) {
-      debugPrint("fetchInsights error: $e");
+      // debugPrint("fetchInsights error: $e");
     }
     return ["Your usage looks healthy today. Keep it up!"];
   }
@@ -272,19 +278,23 @@ class BackendService {
       String? token = fcmToken;
       if (token == null) {
         try {
+          await Future.delayed(const Duration(seconds: 1));
           token = await FirebaseMessaging.instance.getToken();
         } catch (e) {
-          debugPrint("FCM Token fetch failed: $e");
+          // debugPrint("FCM Token fetch failed: $e");
         }
       }
 
+      final jwt = await _api.getAccessToken();
+      final uid = userId ?? "anonymous";
+
       await platform.invokeMethod('saveAuth', {
-        'jwt_token': _jwtToken,
-        'user_id': _userId,
+        'jwt_token': jwt,
+        'user_id': uid,
       });
 
       return await platform.invokeMethod('registerDevice', {
-        'jwt_token': _jwtToken,
+        'jwt_token': jwt,
         'base_url': baseUrl,
         'fcm_token': token,
       });
@@ -307,14 +317,8 @@ class BackendService {
 
   Future<List<dynamic>> getBuddies() async {
     try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/social/buddies"),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return [];
+      final response = await _api.dio.get("/social/buddies");
+      return response.data;
     } catch (e) {
       return [];
     }
@@ -322,14 +326,8 @@ class BackendService {
 
   Future<List<dynamic>> getChallenges() async {
     try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/social/challenges"),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return [];
+      final response = await _api.dio.get("/social/challenges");
+      return response.data;
     } catch (e) {
       return [];
     }
@@ -337,13 +335,9 @@ class BackendService {
 
   Future<bool> joinChallenge(String challengeId) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/social/challenges/join"),
-        headers: _headers,
-        body: json.encode({
-          "challengeId": challengeId
-        }),
-      ).timeout(const Duration(seconds: 5));
+      final response = await _api.dio.post("/social/challenges/join", data: {
+        "challengeId": challengeId
+      });
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -352,14 +346,8 @@ class BackendService {
 
   Future<Map<String, dynamic>> getAdminStats() async {
     try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/admin/stats"),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return {};
+      final response = await _api.dio.get("/admin/stats");
+      return response.data;
     } catch (e) {
       return {};
     }
@@ -367,14 +355,8 @@ class BackendService {
 
   Future<List<dynamic>> getDevices() async {
     try {
-      final response = await http.get(
-        Uri.parse("$baseUrl/devices"),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-      return [];
+      final response = await _api.dio.get("/devices");
+      return response.data;
     } catch (e) {
       return [];
     }
@@ -382,10 +364,7 @@ class BackendService {
 
   Future<bool> unregisterDevice(String deviceId) async {
     try {
-      final response = await http.delete(
-        Uri.parse("$baseUrl/devices/$deviceId"),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 5));
+      final response = await _api.dio.delete("/devices/$deviceId");
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -394,14 +373,153 @@ class BackendService {
 
   Future<bool> sendNudge(String title, String body) async {
     try {
-      final response = await http.post(
-        Uri.parse("$baseUrl/analytics/nudge"),
-        headers: _headers,
-        body: jsonEncode({"title": title, "body": body}),
-      );
+      final response = await _api.dio.post("/analytics/nudge", data: {"title": title, "body": body});
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint("sendNudge error: $e");
+      return false;
+    }
+  }
+
+  // --- Brain & Memory Features ---
+
+  Future<Map<String, dynamic>?> getPendingReflection() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getPendingReflection');
+      if (result == null || result is! Map) return null;
+      return Map<String, dynamic>.from(result);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> submitReflection(int sessionId, String promptType, String response, double driftScore) async {
+    try {
+      return await platform.invokeMethod('submitReflection', {
+        'sessionId': sessionId,
+        'promptType': promptType,
+        'response': response,
+        'driftScore': driftScore,
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getReflectionHistory() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getReflectionHistory');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getFrictionInterventions() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getFrictionInterventions');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getIntentHistory() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getIntentHistory');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDriftHistory() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getDriftHistory');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getRecommendations() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getRecommendations');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getCravingStatus() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getCravingStatus');
+      return (result as Map).cast<String, dynamic>();
+    } catch (e) {
+      return {'isActive': false, 'windowName': 'None'};
+    }
+  }
+
+  Future<int> getLifetimeDriftCount() async {
+    try {
+      final int result = await platform.invokeMethod('getLifetimeDriftCount');
+      return result;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getFocusHistory() async {
+    try {
+      final dynamic result = await platform.invokeMethod('getFocusHistory');
+      if (result == null || result is! List) return [];
+      return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<int> getUnsyncedCount() async {
+    try {
+      final int result = await platform.invokeMethod('getUnsyncedCount');
+      return result;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  Future<bool> syncAllData() async {
+    try {
+      return await platform.invokeMethod('syncAllData');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> toggleNotifications(bool enabled) async {
+    try {
+      return await platform.invokeMethod('toggleNotifications', {'enabled': enabled});
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> toggleScheduledReports(bool enabled) async {
+    try {
+      return await platform.invokeMethod('toggleScheduledReports', {'enabled': enabled});
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> checkNightTimeOveruse() async {
+    try {
+      return await platform.invokeMethod('checkNightTimeOveruse');
+    } catch (e) {
       return false;
     }
   }

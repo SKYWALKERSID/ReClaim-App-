@@ -41,7 +41,9 @@ data class NudgeState(
 )
 
 object FocusPolicyStore {
-    private const val PREFS = "focus_policy_store"
+    private const val PREFS = "focus_policy_store_v2"
+    private const val OLD_PREFS = "focus_policy_store"
+    private const val MIGRATION_DONE = "migration_v1_to_v2_done"
     private const val POLICY_JSON = "policy_json"
     private const val OVERRIDE_DATE = "override_date"
     private const val OVERRIDE_COUNT = "override_count"
@@ -51,6 +53,48 @@ object FocusPolicyStore {
     private const val AUTH_USER_ID = "auth_user_id"
     private const val AUTH_JWT = "auth_jwt"
     private const val NUDGE_STATE = "nudge_state_json"
+
+    private fun getEncryptedPrefs(context: Context): SharedPreferences {
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        return EncryptedSharedPreferences.create(
+            PREFS,
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    private fun migrateIfNeeded(context: Context) {
+        val newPrefs = getEncryptedPrefs(context)
+        if (newPrefs.getBoolean(MIGRATION_DONE, false)) return
+
+        val oldPrefs = context.getSharedPreferences(OLD_PREFS, Context.MODE_PRIVATE)
+        val allEntries = oldPrefs.all
+        if (allEntries.isNotEmpty()) {
+            val editor = newPrefs.edit()
+            for ((key, value) in allEntries) {
+                when (value) {
+                    is String -> editor.putString(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Long -> editor.putLong(key, value)
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Float -> editor.putFloat(key, value)
+                }
+            }
+            editor.putBoolean(MIGRATION_DONE, true)
+            editor.apply()
+            
+            oldPrefs.edit().clear().apply()
+        } else {
+            newPrefs.edit().putBoolean(MIGRATION_DONE, true).apply()
+        }
+    }
+
+    private fun prefs(context: Context): SharedPreferences {
+        migrateIfNeeded(context)
+        return getEncryptedPrefs(context)
+    }
 
     fun saveAuth(context: Context, userId: String, jwt: String) {
         prefs(context).edit()

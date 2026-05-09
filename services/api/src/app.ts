@@ -22,6 +22,11 @@ import { authMiddleware } from "./presentation/middleware/auth.js";
 import { rateLimiter } from "./presentation/middleware/rateLimiter.js";
 import { requestIdMiddleware } from "./presentation/middleware/requestId.js";
 import { logger } from "./infrastructure/logger.js";
+import intentRoutes from "./presentation/routes/intent.routes.js";
+import driftRoutes from "./presentation/routes/drift.routes.js";
+import frictionRoutes from "./presentation/routes/friction.routes.js";
+import reflectionRoutes from "./presentation/routes/reflection.routes.js";
+import cravingRoutes from "./presentation/routes/craving.routes.js";
 
 export function buildApp() {
   const repository = new AnalyticsRepository();
@@ -108,6 +113,11 @@ export function buildApp() {
   app.use("/v1", buildPolicyRoutes(repository));
   app.use("/v1/social", buildSocialRoutes(socialRepository));
   app.use("/v1/admin", buildAdminRoutes());
+  app.use("/v1/intents", intentRoutes);
+  app.use("/v1/analytics/drift", driftRoutes);
+  app.use("/v1/analytics/friction", frictionRoutes);
+  app.use("/v1/analytics/reflection", reflectionRoutes);
+  app.use("/v1/analytics/craving", cravingRoutes);
 
   // Global error handler (must be last)
   app.use(errorHandler);

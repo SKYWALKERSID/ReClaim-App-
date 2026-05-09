@@ -40,9 +40,12 @@ class FocusService : Service() {
                 return START_NOT_STICKY
             }
         } else {
-            val durationMins = intent.getIntExtra("duration_minutes", 25)
-            remainingSeconds = durationMins * 60
-            persistSession(System.currentTimeMillis() + (remainingSeconds * 1000L))
+            // First try to recover existing session if we were just restarted or pinged
+            if (!recoverSession()) {
+                val durationMins = intent.getIntExtra("duration_minutes", 25)
+                remainingSeconds = durationMins * 60
+                persistSession(System.currentTimeMillis() + (remainingSeconds * 1000L))
+            }
         }
         
         

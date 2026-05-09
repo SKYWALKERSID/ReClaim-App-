@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ReClaim</string>
     <string name="accessibility_service_description">ReClaim uses this service to detect the current application and display blocking overlays to help you stay focused. This service does not collect or store any of your personal information.</string>

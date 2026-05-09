@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.reclaim.app.backend.db.DatabaseHelper
 import com.reclaim.app.backend.services.FocusService
+import com.reclaim.app.flutter.enforcement.EnforcementManager
 
 object FocusSessionManager {
     
@@ -30,6 +31,7 @@ object FocusSessionManager {
             context.startService(intent)
         }
         
+        EnforcementManager.refreshState(context, forceSync = true)
         return true
     }
     
@@ -52,6 +54,7 @@ object FocusSessionManager {
         // Stop Foreground Service
         context.stopService(Intent(context, FocusService::class.java))
         
+        EnforcementManager.refreshState(context, forceSync = true)
         return true
     }
     
@@ -76,6 +79,7 @@ object FocusSessionManager {
         
         // Auto-expire if time is up
         if (isActive && System.currentTimeMillis() > endTimeMs) {
+            persistSession(context, false, 0, 0)
             return false
         }
         return isActive
@@ -87,6 +91,6 @@ object FocusSessionManager {
             .putBoolean(KEY_IS_ACTIVE, active)
             .putLong(KEY_START_TIME, start)
             .putLong(KEY_END_TIME, end)
-            .apply()
+            .commit()
     }
 }

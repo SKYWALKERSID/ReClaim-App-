@@ -42,7 +42,13 @@ class _RewardsScreenState extends State<RewardsScreen> {
         setState(() {
           _points = data['points'] ?? 0;
           _streak = data['streak'] ?? 0;
-          _badges = (data['badges'] as List?)?.cast<Map<String, dynamic>>().map((e) => Map<String, String>.from(e)).toList() ?? [];
+          _badges = (data['badges'] as List?)?.map((e) {
+            final map = Map<String, dynamic>.from(e as Map);
+            return {
+              'id': map['id']?.toString() ?? '',
+              'date': map['date']?.toString() ?? '',
+            };
+          }).toList() ?? [];
           _isLoading = false;
         });
       }
@@ -103,6 +109,13 @@ class _RewardsScreenState extends State<RewardsScreen> {
                   ),
                   const SizedBox(height: 24),
                   _buildBadgeGrid(),
+                  const SizedBox(height: 40),
+                  const Text(
+                    "Unlockable Rewards", 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+                  ),
+                  const SizedBox(height: 24),
+                  _buildRewardsList(),
                 ],
               ),
             ),
@@ -187,6 +200,9 @@ class _RewardsScreenState extends State<RewardsScreen> {
       ),
       itemCount: _badges.length,
       itemBuilder: (context, index) {
+        final badgeId = _badges[index]['id'] ?? "";
+        final badgeInfo = _getBadgeInfo(badgeId);
+        
         return Column(
           children: [
             Container(
@@ -194,16 +210,16 @@ class _RewardsScreenState extends State<RewardsScreen> {
               decoration: BoxDecoration(
                 color: AppColors.glassBase,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+                border: Border.all(color: badgeInfo.color.withOpacity(0.2)),
                 boxShadow: [
-                  BoxShadow(color: Colors.amber.withValues(alpha: 0.05), blurRadius: 10)
+                  BoxShadow(color: badgeInfo.color.withOpacity(0.05), blurRadius: 10)
                 ],
               ),
-              child: const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 32),
+              child: Icon(badgeInfo.icon, color: badgeInfo.color, size: 32),
             ),
             const SizedBox(height: 8),
             Text(
-              _badges[index]['name'] ?? "Badge", 
+              badgeInfo.name, 
               style: const TextStyle(color: Colors.white70, fontSize: 10), 
               textAlign: TextAlign.center
             ),
@@ -212,6 +228,76 @@ class _RewardsScreenState extends State<RewardsScreen> {
       },
     );
   }
+
+  Widget _buildRewardsList() {
+    final availableRewards = [
+      {"name": "Midnight Theme", "cost": 1000, "icon": Icons.palette_outlined, "unlocked": false},
+      {"name": "Focus Shield", "cost": 2500, "icon": Icons.shield_outlined, "unlocked": false},
+      {"name": "Golden Icon", "cost": 5000, "icon": Icons.stars_rounded, "unlocked": false},
+    ];
+
+    return Column(
+      children: availableRewards.map((reward) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.darkSurface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(reward['icon'] as IconData, color: AppColors.primary),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(reward['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text("${reward['cost']} points", style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _points >= (reward['cost'] as int) ? () {} : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                disabledBackgroundColor: Colors.white10,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              child: const Text("Unlock", style: TextStyle(color: Colors.white, fontSize: 12)),
+            ),
+          ],
+        ),
+      )).toList(),
+    );
+  }
+
+  _BadgeMetadata _getBadgeInfo(String id) {
+    switch (id) {
+      case 'FocusRookie': return _BadgeMetadata("Focus Rookie", Icons.auto_awesome_rounded, Colors.blueAccent);
+      case 'Focused': return _BadgeMetadata("The Focused", Icons.center_focus_strong_rounded, Colors.greenAccent);
+      case 'DeepWorker': return _BadgeMetadata("Deep Worker", Icons.work_history_rounded, Colors.orangeAccent);
+      case 'FlowState': return _BadgeMetadata("Flow State", Icons.waves_rounded, Colors.purpleAccent);
+      case 'Marathoner': return _BadgeMetadata("Marathoner", Icons.directions_run_rounded, Colors.redAccent);
+      default: return _BadgeMetadata("Pioneer", Icons.emoji_events_rounded, Colors.amber);
+    }
+  }
+}
+
+class _BadgeMetadata {
+  final String name;
+  final IconData icon;
+  final Color color;
+  _BadgeMetadata(this.name, this.icon, this.color);
 }
 
 class _GlassMetricTile extends StatelessWidget {

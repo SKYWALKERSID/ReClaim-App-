@@ -35,6 +35,67 @@ class EnforcementWorker(appContext: Context, workerParams: WorkerParameters) :
                 ExistingPeriodicWorkPolicy.KEEP,
                 periodicWork
             )
+
+            // Intent Sync
+            val syncRequest = PeriodicWorkRequestBuilder<com.reclaim.app.backend.sync.IntentSyncWorker>(1, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "intent_sync_work",
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+
+            // Drift Sync
+            val driftSyncRequest = PeriodicWorkRequestBuilder<com.reclaim.app.backend.sync.DriftSyncWorker>(4, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresCharging(true)
+                    .build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "drift_sync_work",
+                ExistingPeriodicWorkPolicy.KEEP,
+                driftSyncRequest
+            )
+
+            // Friction Sync
+            val frictionSyncRequest = PeriodicWorkRequestBuilder<com.reclaim.app.backend.sync.FrictionSyncWorker>(4, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresCharging(true)
+                    .build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "friction_sync_work",
+                ExistingPeriodicWorkPolicy.KEEP,
+                frictionSyncRequest
+            )
+
+            // Reflection Sync
+            val reflectionSyncRequest = PeriodicWorkRequestBuilder<com.reclaim.app.backend.sync.ReflectionSyncWorker>(4, TimeUnit.HOURS)
+                .setConstraints(Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresCharging(true)
+                    .build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "reflection_sync_work",
+                ExistingPeriodicWorkPolicy.KEEP,
+                reflectionSyncRequest
+            )
+
+            // Craving Fetch (every 30 mins)
+            val cravingFetchRequest = PeriodicWorkRequestBuilder<com.reclaim.app.backend.sync.CravingFetchWorker>(30, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                "craving_fetch_work",
+                ExistingPeriodicWorkPolicy.KEEP,
+                cravingFetchRequest
+            )
             
             scheduleNext(context, 0)
         }

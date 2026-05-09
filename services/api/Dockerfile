@@ -14,10 +14,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+ENV NODE_ENV=production
+
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
+
+# Change ownership to non-root user
+RUN chown -R node:node /app
+
+USER node
 
 # Expose port
 EXPOSE 4000

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'dart:ui';
 import '../../core/theme/colors.dart';
 import '../../services/backend_service.dart';
@@ -25,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   double _dailyLimit = 2.0; 
   int _emergencyUnlocksLeft = 5;
+  String _safeCode = "";
 
   @override
   void initState() {
@@ -44,12 +46,164 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _rewards = rewards;
           _dailyLimit = (profile['goal_seconds'] ?? 7200) / 3600.0;
           _emergencyUnlocksLeft = stats['emergency_unlocks_left'] ?? 5;
+          _safeCode = profile['safe_code'] ?? "";
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showTimePicker() {
+    int initialHours = _dailyLimit.floor();
+    int initialMinutes = ((_dailyLimit - initialHours) * 60).round();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161620),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        height: 350,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Text(
+              "Set Daily Goal",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: CupertinoTheme(
+                data: const CupertinoThemeData(
+                  brightness: Brightness.dark,
+                  textTheme: CupertinoTextThemeData(
+                    pickerTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+                  ),
+                ),
+                child: CupertinoTimerPicker(
+                  mode: CupertinoTimerPickerMode.hm,
+                  initialTimerDuration: Duration(hours: initialHours, minutes: initialMinutes),
+                  onTimerDurationChanged: (duration) {
+                    setState(() {
+                      _dailyLimit = duration.inMinutes / 60.0;
+                    });
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final seconds = (_dailyLimit * 3600).toInt();
+                await _backend.saveUserSettings((_profile['name'] ?? '').toString(), seconds);
+                if (mounted) Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Save Limit"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSafeCodeDialog() {
+    final TextEditingController controller = TextEditingController(text: _safeCode);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF161620),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Emergency SafeCode",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Set a 4-digit code to bypass blocks in case of critical emergencies.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.white54),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white, fontSize: 32, letterSpacing: 20),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                counterText: "",
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                hintText: "••••",
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () async {
+                final newCode = controller.text;
+                if (newCode.length < 4) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Passcode must be 4 digits")),
+                  );
+                  return;
+                }
+                
+                final seconds = (_dailyLimit * 3600).toInt();
+                final success = await _backend.saveUserSettings(
+                  (_profile['name'] ?? '').toString(), 
+                  seconds,
+                  safeCode: newCode,
+                );
+                
+                if (success) {
+                  setState(() => _safeCode = newCode);
+                  if (mounted) Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("SafeCode updated successfully")),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("SAVE PASSCODE"),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Show the permissions bottom sheet with toggle switches
@@ -80,13 +234,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   _buildEmergencyUnlockSection(),
                   const SizedBox(height: 20),
+                  _buildSafeCodeTile(),
+                  const SizedBox(height: 20),
                   _buildManageDevicesTile(),
                   const SizedBox(height: 20),
                   _buildAdditionalFeaturesTile(),
                   const SizedBox(height: 20),
                   _buildStreakCard(),
-                  const SizedBox(height: 20),
-                  _buildProgressionSection(),
+                  const SizedBox(height: 24),
+                  _buildBadgeRow(),
                   const SizedBox(height: 24),
                   _buildRewardsCompact(),
                   const SizedBox(height: 24),
@@ -99,16 +255,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
+    final name = (_profile['name'] ?? 'User').toString();
+    final age = _profile['age'] ?? 0;
+    final gender = _profile['gender'] ?? '';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          "Profile",
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Profile",
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            if (name.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                "$name${age > 0 ? ', $age' : ''}${gender.isNotEmpty ? ' • $gender' : ''}",
+                style: const TextStyle(color: Colors.white54, fontSize: 14),
+              ),
+            ],
+          ],
         ),
         _AnimatedSettingsButton(onTap: _showPermissionsSheet),
       ],
@@ -119,38 +291,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Daily Screen Limit",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white70),
-            ),
-            Text(
-              "${_dailyLimit.toStringAsFixed(1)}h",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
-            ),
-          ],
+        const Text(
+          "Daily Screen Limit",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white70),
         ),
         const SizedBox(height: 16),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppColors.primary,
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.05),
-            thumbColor: Colors.white,
-            overlayColor: AppColors.primary.withValues(alpha: 0.2),
-            trackHeight: 4,
+        GestureDetector(
+          onTap: _showTimePicker,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.timer_outlined, color: AppColors.primary),
+                    SizedBox(width: 12),
+                    Text(
+                      "Set Goal",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ],
+                ),
+                Text(
+                  "${_dailyLimit.floor()}h ${((_dailyLimit - _dailyLimit.floor()) * 60).round()}m",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ],
+            ),
           ),
-          child: Slider(
-            value: _dailyLimit,
-            min: 1,
-            max: 8,
-             divisions: 14,
-             onChanged: (value) async {
-                setState(() => _dailyLimit = value);
-               await _backend.saveUserSettings((_profile['name'] ?? '').toString(), (value * 3600).toInt());
-             },
-           ),
         ),
       ],
     );
@@ -199,6 +373,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSafeCodeTile() {
+    final bool isSet = _safeCode.isNotEmpty;
+    return GestureDetector(
+      onTap: _showSafeCodeDialog,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSet ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: (isSet ? AppColors.primary : Colors.white38).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isSet ? Icons.lock_reset_rounded : Icons.lock_outline_rounded, 
+                color: isSet ? AppColors.primary : Colors.white38, 
+                size: 20
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Emergency SafeCode",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                  Text(
+                    isSet ? "Passcode is active" : "Set emergency bypass code",
+                    style: TextStyle(fontSize: 12, color: isSet ? AppColors.primary.withOpacity(0.7) : Colors.white38),
+                  ),
+                ],
+              ),
+            ),
+            if (!isSet)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  "SET",
+                  style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              )
+            else
+              const Icon(Icons.check_circle_outline_rounded, color: AppColors.primary, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -425,25 +662,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProgressionSection() {
+  Widget _buildBadgeRow() {
     final badges = _rewards['badges'] as List? ?? [];
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Badges",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+          "Unlocked Badges",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _BadgeItem(icon: Icons.auto_awesome_rounded, label: "Monk", color: const Color(0xFF8B5CF6), isUnlocked: badges.any((b) => b['id'] == 'monk_mode')),
-            _BadgeItem(icon: Icons.timer_rounded, label: "Time Lord", color: const Color(0xFF3B82F6), isUnlocked: badges.any((b) => b['id'] == 'time_lord')),
-            const _BadgeItem(icon: Icons.shield_rounded, label: "Defender", color: Color(0xFFEC4899), isUnlocked: false),
-            const _BadgeItem(icon: Icons.bolt_rounded, label: "Focus God", color: Color(0xFFF59E0B), isUnlocked: false),
-          ],
+        const SizedBox(height: 16),
+        if (badges.isEmpty)
+          const Text("No badges earned yet", style: TextStyle(color: Colors.white38)),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: badges.map((badge) => _BadgeItem(name: badge.toString())).toList(),
         ),
       ],
     );
@@ -451,21 +686,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   /// Compact rewards row that fits on screen without scrolling
   Widget _buildRewardsCompact() {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           "Unlocked Rewards",
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
         ),
-        SizedBox(height: 12),
-        Row(
+        const SizedBox(height: 12),
+        const Row(
           children: [
             Expanded(
               child: _CompactRewardTile(
                 title: "Focus Sounds",
                 icon: Icons.library_music_rounded,
-                progress: 0.8,
+                isUnlocked: false,
                 color: Color(0xFF8B5CF6),
               ),
             ),
@@ -474,7 +709,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: _CompactRewardTile(
                 title: "App Themes",
                 icon: Icons.palette_rounded,
-                progress: 0.3,
+                isUnlocked: false,
                 color: Color(0xFFEC4899),
               ),
             ),
@@ -824,110 +1059,95 @@ class _PermissionRow extends StatelessWidget {
 }
 
 
-// ── Badge Item ────────────────────────────────────────────────────────────────
-
-class _BadgeItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool isUnlocked;
-
-  const _BadgeItem({required this.icon, required this.label, required this.color, required this.isUnlocked});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: isUnlocked ? color.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.03),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isUnlocked ? color.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.05),
-              width: 1.5,
-            ),
-          ),
-          child: Icon(
-            icon,
-            color: isUnlocked ? color : Colors.white24,
-            size: 24,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: isUnlocked ? Colors.white70 : Colors.white24,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-
 // ── Compact Reward Tile ───────────────────────────────────────────────────────
 
 class _CompactRewardTile extends StatelessWidget {
   final String title;
   final IconData icon;
-  final double progress;
+  final bool isUnlocked;
   final Color color;
 
   const _CompactRewardTile({
     required this.title,
     required this.icon,
-    required this.progress,
+    required this.isUnlocked,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.12)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isUnlocked ? color.withValues(alpha: 0.3) : color.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
+              color: isUnlocked ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color.withValues(alpha: 0.7), size: 22),
+            child: Icon(
+              isUnlocked ? Icons.check_circle_rounded : icon,
+              color: isUnlocked ? color : Colors.white30,
+              size: 20,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            style: TextStyle(
+              color: isUnlocked ? Colors.white : Colors.white60,
+              fontSize: 12,
+              fontWeight: isUnlocked ? FontWeight.bold : FontWeight.w600,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 4,
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              valueColor: AlwaysStoppedAnimation<Color>(color.withValues(alpha: 0.6)),
-            ),
-          ),
           const SizedBox(height: 4),
           Text(
-            "${(progress * 100).toInt()}%",
-            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.7), fontWeight: FontWeight.w600),
+            isUnlocked ? "UNLOCKED" : "LOCKED",
+            style: TextStyle(
+              fontSize: 9,
+              letterSpacing: 0.5,
+              color: isUnlocked ? color : Colors.white24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BadgeItem extends StatelessWidget {
+  final String name;
+
+  const _BadgeItem({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.stars_rounded, color: AppColors.primary, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            name,
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),

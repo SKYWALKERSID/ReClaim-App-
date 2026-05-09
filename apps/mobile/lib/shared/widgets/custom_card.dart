@@ -11,6 +11,7 @@ class CustomCard extends StatelessWidget {
   final double? borderRadius;
   final VoidCallback? onTap;
   final bool useGlass;
+  final Color? borderColor;
 
   const CustomCard({
     super.key,
@@ -20,6 +21,7 @@ class CustomCard extends StatelessWidget {
     this.borderRadius,
     this.onTap,
     this.useGlass = false,
+    this.borderColor,
   });
 
   @override
@@ -30,7 +32,7 @@ class CustomCard extends StatelessWidget {
         color: color ?? (useGlass ? AppColors.glassBase : AppColors.surface),
         borderRadius: BorderRadius.circular(borderRadius ?? 24),
         border: Border.all(
-          color: useGlass ? AppColors.glassBorder : Colors.white.withValues(alpha: 0.05),
+          color: borderColor ?? (useGlass ? AppColors.glassBorder : Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       child: child,

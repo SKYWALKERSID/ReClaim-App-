@@ -10,6 +10,8 @@ object Contract {
         const val COLUMN_DAILY_GOAL_SECONDS = "daily_goal_seconds"
         const val COLUMN_THEME = "theme" // 0 for Light, 1 for Dark
         const val COLUMN_SAFE_CODE = "safe_code"
+        const val COLUMN_AGE = "user_age"
+        const val COLUMN_GENDER = "user_gender"
     }
 
     // App Selection Table (Whitelist/Blacklist)

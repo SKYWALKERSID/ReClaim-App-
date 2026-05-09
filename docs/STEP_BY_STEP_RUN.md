@@ -1,6 +1,6 @@
 # Step-by-Step Run Guide (Windows)
 
-Last verified: **May 3, 2026** — all commands tested and confirmed working.
+Last verified: **May 9, 2026** — all commands tested and confirmed working with the new Brain Mirror™ intelligence stack.
 
 ## Quick Start
 
@@ -106,6 +106,8 @@ EVENT_RETENTION_DAYS=90
 MAX_EVENTS_PER_BATCH=500
 CORS_ORIGINS=*
 X_API_KEY=your_secure_api_key_here
+JWT_SECRET=your_jwt_secret_here
+FIREBASE_SERVICE_ACCOUNT='{"type": "service_account", ...}'
 ```
 
 ### 3.4 Fix PowerShell npm policy (if needed)
@@ -132,22 +134,27 @@ Expected output:
 Starting database migration...
   ✅ 001_init.sql applied successfully
   ✅ 002_analytics_upgrade.sql applied successfully
-  ✅ 003_production_hardening.sql applied successfully
   ✅ 003_device_registry.sql applied successfully
-  ✅ 004_social_accountability.sql applied successfully
+  ✅ 004_production_hardening.sql applied successfully
+  ✅ 005_social_accountability.sql applied successfully
+  ✅ 006_performance_dedup_fix.sql applied successfully
+  ✅ 007_intent_recognition.sql applied successfully
+  ✅ 008_drift_engine.sql applied successfully
+  ✅ 009_friction_layer.sql applied successfully
+  ✅ 010_reflection_layer.sql applied successfully
+  ✅ 011_craving_windows.sql applied successfully
 
-Migration complete: 5 applied, 0 skipped.
+Migration complete: 11 applied, 0 skipped.
 ```
 
 On subsequent runs, it will skip already-applied migrations:
 
 ```
   ⏭  001_init.sql (already applied)
-  ⏭  002_analytics_upgrade.sql (already applied)
-  ⏭  003_production_hardening.sql (already applied)
-  ⏭  004_social_accountability.sql (already applied)
+  ...
+  ⏭  011_craving_windows.sql (already applied)
 
-Migration complete: 0 applied, 4 skipped.
+Migration complete: 0 applied, 11 skipped.
 ```
 
 ### 3.7 Start the API server
@@ -205,7 +212,13 @@ To enable real push notifications:
 1. **Backend:**
    - Go to Firebase Console → Project Settings → Service Accounts
    - Generate a new private key JSON
-   - Minify the JSON and add it to your `.env` as `FIREBASE_SERVICE_ACCOUNT='{"type": "service_account", ...}'`
+   - Minify the JSON using this PowerShell command:
+     ```powershell
+     (Get-Content -Raw "C:\path\to\your-key.json") | ConvertFrom-Json | ConvertTo-Json -Compress | clip
+     ```
+   - Paste it into your `.env` wrapped in **single quotes**:
+     `FIREBASE_SERVICE_ACCOUNT='{"type":"service_account",...}'`
+   - **Warning:** Ensure the string starts with `{` and not `[{`. If it starts with `[` remove the outer brackets.
 2. **Mobile:**
    - Download `google-services.json` from Firebase Console
    - Place it in `apps/mobile/android/app/`
@@ -283,6 +296,7 @@ After the app launches, you need to grant permissions:
 3. **Grant Accessibility Service** — Settings → Accessibility → Focus Enforcement
 4. **Grant Display Over Other Apps** — for the blocking overlay
 5. **Ignore Battery Optimization** — for reliable background enforcement
+6. **Set Emergency SafeCode** — Profile Tab → Emergency SafeCode (4-digit bypass)
 
 ---
 
@@ -292,17 +306,19 @@ Use this sequence for the hackathon demo:
 
 | Step | What to show | Where |
 |---|---|---|
-| 1 | Onboarding flow — set a low daily limit (e.g., 30 min) | Flutter UI |
-| 2 | Dashboard — live screen time, goal progress, streak | Flutter UI |
-| 3 | Social Tab — view buddies and active group challenges | Flutter UI |
-| 4 | Open Instagram/YouTube — show the glassmorphic block overlay | Native overlay |
-| 5 | Override friction — dynamic timer (20min if over limit) | Native overlay |
-| 6 | Home Screen Widget — real-time focus stats at a glance | Android Home |
-| 7 | Analytics — daily/weekly charts, app breakdown | Flutter UI |
-| 8 | Rewards — points, badges, streak counter | Flutter UI |
-| 9 | API health & Admin Stats — `GET /v1/admin/stats` | Terminal |
-| 10 | Data Export — `GET /v1/export/:userId?format=csv` | Browser/Curl |
-| 11 | Offline-first — enforcement works without internet | Verbal |
+| 1 | **Brain Mirror™ Dashboard** — fragmentation index, drift score, and focus quality | Flutter (Brain Tab) |
+| 2 | **Cognitive Drift Engine™** — real-time behavioral telemetry and "intent recognition" | Flutter (Insights) |
+| 3 | **Predictive Craving Windows** — forecasting high-risk times before they happen | Flutter (Brain Tab) |
+| 4 | **Smart Friction Layer** — dynamic intervention (timer/questions) based on app intent | Native Overlay |
+| 5 | Onboarding flow — permission gatekeeper and mandatory setup | Flutter UI |
+| 6 | Dashboard — live screen time, goal progress, streak | Flutter UI |
+| 7 | Social Tab — view buddies and active group challenges | Flutter UI |
+| 8 | Open Instagram/YouTube — show the glassmorphic block overlay | Native overlay |
+| 9 | **Emergency SafeCode** — bypass a block using your 4-digit PIN | Native overlay |
+| 10 | Home Screen Widget — real-time focus stats at a glance | Android Home |
+| 11 | Analytics — daily/weekly charts, app breakdown | Flutter UI |
+| 12 | API health & Admin Stats — `GET /v1/admin/stats` | Terminal |
+| 13 | Data Export — `GET /v1/export/:userId?format=csv` | Browser/Curl |
 
 ---
 

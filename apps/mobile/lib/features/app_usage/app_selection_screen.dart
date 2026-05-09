@@ -42,15 +42,15 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
   }
 
   Future<void> _loadData() async {
-    final usageData = await _backend.fetchAppUsage();
+    final appsData = await _backend.getInstalledApps();
     final selections = await _backend.getAppSelections();
     final accessibilityEnabled = await _permission.isAccessibilityEnabled();
     
     setState(() {
-      _apps = List<Map<String, dynamic>>.from(usageData['apps'] ?? []);
+      _apps = List<Map<String, dynamic>>.from(appsData['apps'] ?? []);
+      _isAccessibilityEnabled = accessibilityEnabled;
       _whitelist = Set<String>.from(selections['whitelist'] ?? []);
       _blacklist = Set<String>.from(selections['blacklist'] ?? []);
-      _isAccessibilityEnabled = accessibilityEnabled;
       _isLoading = false;
     });
   }
@@ -80,8 +80,14 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
     );
   }
 
+  String _searchQuery = "";
+
   @override
   Widget build(BuildContext context) {
+    final filteredApps = _apps.where((app) => 
+      (app['display_name'] ?? "").toString().toLowerCase().contains(_searchQuery.toLowerCase())
+    ).toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -93,105 +99,197 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       body: Column(
         children: [
           _buildPermissionWarning(),
+          _buildSearchBar(),
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-              : _apps.isEmpty
-                ? const Center(child: Text("No apps found. Grant Usage Access.", style: TextStyle(color: Colors.white38)))
-                : ListView.builder(
+              : filteredApps.isEmpty
+                ? const Center(child: Text("No matching apps found.", style: TextStyle(color: Colors.white38)))
+                : ListView(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _apps.length,
-                    itemBuilder: (context, index) {
-                      final app = _apps[index];
-                      final pkg = app['app_id'];
-                      final isWhite = _whitelist.contains(pkg);
-                      final isBlack = _blacklist.contains(pkg);
+                    children: [
+                      // 1. Frequently Used Section (only when not searching)
+                      if (_searchQuery.isEmpty && filteredApps.any((a) => (a['session_count'] ?? 0) > 0)) ...[
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8, bottom: 16, top: 8),
+                          child: Text(
+                            "Frequently Used",
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        ...(() {
+                          final list = filteredApps
+                            .where((a) => (a['session_count'] ?? 0) > 0)
+                            .toList();
+                          list.sort((a, b) => (b['session_count'] ?? 0).compareTo(a['session_count'] ?? 0));
+                          return list.take(5).map((app) => _buildAppTile(app)).toList();
+                        })(),
+                        const SizedBox(height: 24),
+                      ],
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
+                      // 2. Categorized Sections
+                      ...(() {
+                        final Map<String, List<Map<String, dynamic>>> grouped = {};
+                        for (var app in filteredApps) {
+                          final cat = app['category']?.toString() ?? "Utility";
+                          grouped.putIfAbsent(cat, () => []).add(app);
+                        }
+
+                        final sortedCats = grouped.keys.toList()..sort();
+                        
+                        return sortedCats.map((cat) {
+                          final appsInCat = grouped[cat]!;
+                          appsInCat.sort((a, b) => (a['display_name'] ?? "").toString().toLowerCase()
+                              .compareTo((b['display_name'] ?? "").toString().toLowerCase()));
+                          
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8, bottom: 12, top: 8),
+                                child: Text(
+                                  cat.toUpperCase(),
+                                  style: TextStyle(
+                                    color: _getCategoryColor(cat),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ),
+                              ...appsInCat.map((app) => _buildAppTile(app)),
+                              const SizedBox(height: 20),
+                            ],
+                          );
+                        }).toList();
+                      })(),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: TextField(
+        onChanged: (val) => setState(() => _searchQuery = val),
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: "Search apps...",
+          hintStyle: const TextStyle(color: Colors.white24),
+          prefixIcon: const Icon(Icons.search, color: Colors.white24),
+          filled: true,
+          fillColor: AppColors.darkSurface,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppTile(Map<String, dynamic> app) {
+    final pkg = app['app_id'];
+    final isWhite = _whitelist.contains(pkg);
+    final isBlack = _blacklist.contains(pkg);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.darkSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.black26,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: app['icon_bytes'] != null 
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.memory(Uint8List.fromList(app['icon_bytes'].cast<int>()), fit: BoxFit.cover),
+                )
+              : const Icon(Icons.android, color: Colors.white24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  app['display_name'] ?? "Unknown",
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _showCategoryPicker(pkg, app['display_name'], app['category']),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.darkSurface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: Colors.black26,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: app['icon_bytes'] != null 
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.memory(Uint8List.fromList(app['icon_bytes'].cast<int>()), fit: BoxFit.cover),
-                                  )
-                                : const Icon(Icons.android, color: Colors.white24),
+                            Text(
+                              app['category']?.toString() ?? "Utility",
+                              style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    app['display_name'] ?? "Unknown",
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  GestureDetector(
-                                    onTap: () => _showCategoryPicker(pkg, app['display_name'], app['category']),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            app['category']?.toString() ?? "Utility",
-                                            style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(Icons.edit_outlined, size: 10, color: AppColors.primary),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Semantics(
-                              label: "Allow ${app['display_name']}",
-                              button: true,
-                              child: _ActionButton(
-                                icon: Icons.check_circle_rounded,
-                                color: isWhite ? AppColors.accent : Colors.white10,
-                                onTap: () => _toggle(pkg, !isWhite, false, app['display_name']),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Semantics(
-                              label: "Block ${app['display_name']}",
-                              button: true,
-                              child: _ActionButton(
-                                icon: Icons.block_rounded,
-                                color: isBlack ? AppColors.warning : Colors.white10,
-                                onTap: () => _toggle(pkg, false, !isBlack, app['display_name']),
-                              ),
-                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.edit_outlined, size: 10, color: AppColors.primary),
                           ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Opened ${app['session_count'] ?? 0}x",
+                      style: const TextStyle(color: Colors.white38, fontSize: 10),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            label: "Allow ${app['display_name']}",
+            button: true,
+            child: _ActionButton(
+              icon: Icons.check_circle_rounded,
+              color: isWhite ? AppColors.accent : Colors.white10,
+              onTap: () => _toggle(pkg, !isWhite, false, app['display_name']),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Semantics(
+            label: "Block ${app['display_name']}",
+            button: true,
+            child: _ActionButton(
+              icon: Icons.block_rounded,
+              color: isBlack ? AppColors.warning : Colors.white10,
+              onTap: () => _toggle(pkg, false, !isBlack, app['display_name']),
+            ),
           ),
         ],
       ),
@@ -331,7 +429,18 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       ),
     );
   }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'social': return const Color(0xFF8B5CF6);
+      case 'entertainment': return const Color(0xFFEC4899);
+      case 'productivity': return const Color(0xFF10B981);
+      case 'utility': return const Color(0xFF3B82F6);
+      default: return Colors.white38;
+    }
+  }
 }
+
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;

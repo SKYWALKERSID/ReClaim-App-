@@ -19,6 +19,10 @@ import android.view.accessibility.AccessibilityEvent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
 import com.reclaim.app.flutter.MainActivity
+import com.reclaim.app.backend.engine.IntentEngine
+import com.reclaim.app.backend.engine.CognitiveDriftEngine
+import com.reclaim.app.backend.engine.FrictionOrchestrator
+import com.reclaim.app.flutter.enforcement.FrictionOverlayService
 import kotlinx.coroutines.*
 
 class AppAccessibilityService : AccessibilityService() {
@@ -89,15 +93,36 @@ class AppAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        val packageName = event.packageName?.toString() ?: return
+        val pkg = packageName.lowercase()
+        if (EnforcementManager.isInternalPackage(packageName)) return
+        
+        // Feed events to CognitiveDriftEngine
+        CognitiveDriftEngine.onAccessibilityEvent(this, packageName, event.eventType)
+
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         
-        val packageName = event.packageName?.toString() ?: return
         if (packageName == lastPackageName && SystemClock.elapsedRealtime() - lastEventAtElapsedMs < 200) return
         
         lastPackageName = packageName
         lastEventAtElapsedMs = SystemClock.elapsedRealtime()
 
         serviceScope.launch {
+            IntentEngine.onAppSwitch(this@AppAccessibilityService, packageName)
+            
+            val frictionType = FrictionOrchestrator.getFrictionType(this@AppAccessibilityService, packageName)
+            FrictionOrchestrator.logFriction(this@AppAccessibilityService, packageName, frictionType, false)
+
+            if (frictionType == FrictionOrchestrator.FrictionType.HARD_BLOCK) {
+                BlockingOverlayService.show(this@AppAccessibilityService, packageName, "Passive hard-block due to high cognitive drift.", "hard")
+                return@launch
+            }
+
+            if (frictionType != FrictionOrchestrator.FrictionType.NONE) {
+                FrictionOverlayService.start(this@AppAccessibilityService, packageName, frictionType)
+                return@launch
+            }
+
             val decision = EnforcementManager.blockDecision(packageName)
             if (decision.shouldBlock) {
                 BlockingOverlayService.show(this@AppAccessibilityService, packageName, decision.reason, decision.mode)

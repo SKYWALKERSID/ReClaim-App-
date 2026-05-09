@@ -232,7 +232,7 @@ object TrackingEngine {
             val start = cal.timeInMillis
             val end = start + 86400000L
             val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH) + 1}-${cal.get(Calendar.DAY_OF_MONTH)}"
-            resultMap[dateKey] = getPreciseUsageForRange(context, start, end).values.sum()
+            resultMap[dateKey] = getPreciseUsageForRange(context, start, end).values.sum() / 1000
             cal.add(Calendar.DAY_OF_YEAR, 1)
         }
         return resultMap
@@ -281,13 +281,49 @@ object TrackingEngine {
         val custom = dbHelper.getAppCategory(packageName)
         if (custom != null) return custom
 
-        val social = setOf("com.instagram.android", "com.facebook.katana", "com.twitter.android", "com.tiktok.android", "com.whatsapp")
-        val entertainment = setOf("com.google.android.youtube", "com.netflix.mediaclient")
-        val productivity = setOf("com.google.android.apps.docs", "com.notion.id")
+        val pm = context.packageManager
+        return try {
+            val appInfo = pm.getApplicationInfo(packageName, 0)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                when (appInfo.category) {
+                    android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "Social"
+                    android.content.pm.ApplicationInfo.CATEGORY_VIDEO, 
+                    android.content.pm.ApplicationInfo.CATEGORY_GAME,
+                    android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "Entertainment"
+                    android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Productivity"
+                    else -> getCategoryFallback(packageName)
+                }
+            } else {
+                getCategoryFallback(packageName)
+            }
+        } catch (e: Exception) {
+            getCategoryFallback(packageName)
+        }
+    }
+
+    private fun getCategoryFallback(packageName: String): String {
+        val social = setOf(
+            "com.instagram.android", "com.facebook.katana", "com.twitter.android", 
+            "com.tiktok.android", "com.whatsapp", "com.snapchat.android",
+            "com.reddit.frontpage", "com.linkedin.android", "com.pinterest",
+            "com.discord", "com.zhiliaoapp.musically", "com.badoo.mobile",
+            "org.telegram.messenger", "com.viber.voip"
+        )
+        val entertainment = setOf(
+            "com.google.android.youtube", "com.netflix.mediaclient", "com.disney.disneyplus", 
+            "com.hulu", "com.amazon.avod.thirdpartyclient", "com.hbo.hbonow",
+            "com.spotify.music", "com.apple.android.music", "com.soundcloud.android",
+            "tv.twitch.android", "com.quibi.app", "com.paramountplus"
+        )
+        val productivity = setOf(
+            "com.google.android.apps.docs", "com.notion.id", "com.microsoft.office.word",
+            "com.slack", "com.microsoft.teams", "com.google.android.gm",
+            "com.evernote", "com.todoist"
+        )
         return when {
-            social.contains(packageName) -> "Social"
-            entertainment.contains(packageName) -> "Entertainment"
-            productivity.contains(packageName) -> "Productivity"
+            social.any { packageName.contains(it) } -> "Social"
+            entertainment.any { packageName.contains(it) } -> "Entertainment"
+            productivity.any { packageName.contains(it) } -> "Productivity"
             else -> "Utility"
         }
     }

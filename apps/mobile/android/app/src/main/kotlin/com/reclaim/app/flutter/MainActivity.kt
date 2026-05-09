@@ -34,6 +34,21 @@ open class MainActivity : FlutterActivity() {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler(MethodChannelHandler(this))
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.reclaim/security")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "enableSecureWindow" -> {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        result.success(null)
+                    }
+                    "disableSecureWindow" -> {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 }
 

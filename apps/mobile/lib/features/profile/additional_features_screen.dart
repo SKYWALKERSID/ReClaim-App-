@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/colors.dart';
 import '../../screens/devices_screen.dart';
+import '../insights/insights_screen.dart';
+import '../insights/brain_mirror_dashboard.dart';
+
+import '../../services/backend_service.dart';
+import 'feature_showcase_screen.dart';
 
 class AdditionalFeaturesScreen extends StatefulWidget {
   const AdditionalFeaturesScreen({super.key});
@@ -11,6 +16,7 @@ class AdditionalFeaturesScreen extends StatefulWidget {
 }
 
 class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
+  final BackendService _backend = BackendService();
   bool _pushNotifications = false;
   bool _scheduledReports = false;
 
@@ -29,24 +35,30 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
   }
 
   Future<void> _togglePushNotifications(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('push_notifications', value);
-    setState(() => _pushNotifications = value);
-    if (value && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Firebase Cloud Messaging enabled for daily summaries.')),
-      );
+    final success = await _backend.toggleNotifications(value);
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('push_notifications', value);
+      setState(() => _pushNotifications = value);
+      if (value && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Focus reminders and daily summaries enabled.')),
+        );
+      }
     }
   }
 
   Future<void> _toggleScheduledReports(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('scheduled_reports', value);
-    setState(() => _scheduledReports = value);
-    if (value && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scheduled cron reports will be emailed weekly.')),
-      );
+    final success = await _backend.toggleScheduledReports(value);
+    if (success) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('scheduled_reports', value);
+      setState(() => _scheduledReports = value);
+      if (value && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Performance reports scheduled for 24h cycles.')),
+        );
+      }
     }
   }
 
@@ -112,14 +124,38 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
 
           const SizedBox(height: 24),
           _buildSectionTitle('Smart Features'),
+          _buildNavigationTile(
+            title: 'Brain Mirror™',
+            subtitle: 'Reflections, Interventions & Intents',
+            icon: Icons.psychology_rounded,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const BrainMirrorDashboard()),
+              );
+            },
+          ),
+          _buildNavigationTile(
+            title: 'Usage Insights',
+            subtitle: 'Deep dive into your screen time',
+            icon: Icons.bar_chart_rounded,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const InsightsScreen()),
+              );
+            },
+          ),
           _buildInfoTile(
-            title: 'AI-powered insights',
-            subtitle: 'Personalized recommendations & habit prediction',
-            icon: Icons.auto_awesome_rounded,
-            onTap: () => _showInfoPopup(
-              'AI-powered insights',
-              'Our ML model analyzes your usage patterns to provide personalized focus recommendations and predict willpower fatigue. This feature runs automatically in the background.',
-            ),
+            title: 'App feature info',
+            subtitle: 'Detailed guide to ReClaim™ capabilities',
+            icon: Icons.lightbulb_outline_rounded,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FeatureShowcaseScreen()),
+              );
+            },
           ),
           _buildInfoTile(
             title: 'Home screen widget / glance',

@@ -30,6 +30,21 @@ object AnalyticsEngine {
         return totalDistraction.coerceIn(0f, 100f)
     }
 
+    fun calculateDistractionPercentage(allAppUsage: Map<String, Long>, totalUsageMs: Long, context: android.content.Context): Float {
+        if (totalUsageMs == 0L) return 0f
+        
+        val dbHelper = com.reclaim.app.backend.db.DatabaseHelper.getInstance(context)
+        var distractingTimeMs = 0L
+        allAppUsage.forEach { (pkg, time) ->
+            val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
+            if (category == "Social" || category == "Entertainment") {
+                distractingTimeMs += time
+            }
+        }
+        
+        return (distractingTimeMs.toFloat() / totalUsageMs) * 100f
+    }
+
     // Calculates an addiction score (0 to 100) based on total daily usage
     fun calculateAddictionScore(totalScreenTimeMs: Long): Float {
         val totalHours = totalScreenTimeMs.toFloat() / (1000 * 60 * 60)

@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.reclaim.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
@@ -18,9 +19,12 @@
 
     <application
         android:allowBackup="false"
-        android:label="ReClaim"
+        android:debuggable="false"
+        android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="false"
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <!-- Flutter activity — this MUST be the launcher for debug/run to work -->
         <activity
@@ -88,6 +92,11 @@
                       android:value="Displays blocking overlay to enforce focus policies and reduce screen time." />
         </service>
 
+        <!-- Intent Prompt Overlay service -->
+        <service
+            android:name="com.reclaim.app.flutter.enforcement.IntentPromptOverlay"
+            android:enabled="true"
+            android:exported="false" />
 
 
         <!-- Boot receiver for enforcement restart -->
@@ -100,6 +109,7 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
     </application>
 </manifest>
 

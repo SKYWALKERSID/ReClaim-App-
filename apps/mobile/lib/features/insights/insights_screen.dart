@@ -4,6 +4,8 @@ import '../../core/theme/colors.dart';
 import '../../services/backend_service.dart';
 import 'widgets/usage_calendar.dart';
 import 'services/goal_recommendation_service.dart';
+import 'brain_mirror_dashboard.dart';
+import '../../shared/widgets/usage_bar.dart';
 
 class InsightsScreen extends StatefulWidget {
   const InsightsScreen({super.key});
@@ -12,29 +14,41 @@ class InsightsScreen extends StatefulWidget {
   State<InsightsScreen> createState() => _InsightsScreenState();
 }
 
-class _InsightsScreenState extends State<InsightsScreen> {
+class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObserver {
   final BackendService _backend = BackendService();
   final GoalRecommendationService _recommendationsService = GoalRecommendationService();
   String _activeTab = "Day";
   String? _selectedCategory;
   Map<String, dynamic>? _insightsData;
   Map<String, dynamic> _stats = {};
-  List<String> _recommendations = [];
+  Map<String, dynamic>? _driftStats;
   bool _isLoading = true;
+  bool _isScreenTimeExpanded = false;
+  List<String> _recommendations = [];
   Timer? _refreshTimer;
+  List<int> _distractionTrend = List.filled(24, 0);
   final Map<String, ImageProvider> _iconCache = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (mounted) _loadData(isSilent: true);
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData(isSilent: true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     super.dispose();
   }
@@ -63,7 +77,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
     try {
       final insights = await _backend.getInsightsData(_activeTab, category: _selectedCategory);
       final stats = await _backend.fetchDashboardStats();
+      final behavioral = await _backend.fetchBehavioralMetrics();
       final recs = await _recommendationsService.getPersonalizedRecommendations();
+      final distractionTrend = await _backend.invokeMethod('getHourlyDistractionTrend');
       
       // Prefetch icons
       if (insights['top_apps'] != null) {
@@ -82,7 +98,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
         setState(() {
           _insightsData = insights;
           _stats = stats;
+          _driftStats = behavioral;
           _recommendations = recs;
+          _distractionTrend = (distractionTrend as List?)?.cast<int>() ?? List.filled(24, 0);
           _isLoading = false;
         });
       }
@@ -91,11 +109,251 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
   }
 
+  Future<void> _hardRefresh() async {
+    setState(() => _isLoading = true);
+    _iconCache.clear();
+    await _backend.invokeMethod('syncAllData'); 
+    await _loadData(isSilent: false);
+  }
+
   String _formatUsage(int seconds) {
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
     if (h > 0) return "${h}h ${m}m";
     return "${m}m";
+  }
+
+  Widget _buildExpandableScreenTimeCard() {
+    final totalUsage = _insightsData?['total_usage_seconds'] as int? ?? 0;
+    final breakdown = _insightsData?['category_breakdown'] as Map? ?? {};
+    final topApps = _insightsData?['top_apps'] as List? ?? [];
+    
+    return GestureDetector(
+      onTap: () => setState(() => _isScreenTimeExpanded = !_isScreenTimeExpanded),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: _isScreenTimeExpanded ? AppColors.primary.withOpacity(0.3) : Colors.white.withValues(alpha: 0.05),
+            width: _isScreenTimeExpanded ? 2 : 1,
+          ),
+          boxShadow: _isScreenTimeExpanded ? [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.1),
+              blurRadius: 20,
+              spreadRadius: 5,
+            )
+          ] : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _selectedCategory == null ? "Total Screen Time" : "$_selectedCategory Time",
+                  style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)
+                ),
+                AnimatedRotation(
+                  turns: _isScreenTimeExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white38),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _formatUsage(totalUsage),
+                        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            (_stats['percentage_change_vs_yesterday'] as int? ?? 0) <= 0 
+                              ? Icons.arrow_downward : Icons.arrow_upward,
+                            size: 14,
+                            color: (_stats['percentage_change_vs_yesterday'] as int? ?? 0) <= 0 
+                              ? Colors.greenAccent : const Color(0xFFFCA5A5),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "${(_stats['percentage_change_vs_yesterday'] as int? ?? 0).abs()}% from yesterday",
+                            style: TextStyle(
+                              color: (_stats['percentage_change_vs_yesterday'] as int? ?? 0) <= 0 
+                                ? Colors.greenAccent : const Color(0xFFFCA5A5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: 120,
+                  height: 50,
+                  child: CustomPaint(
+                    painter: _GlowingDataPainter(data: (_insightsData?['trend'] as List?)?.cast<num>() ?? []),
+                  ),
+                ),
+              ],
+            ),
+            
+            ClipRect(
+              child: AnimatedAlign(
+                alignment: Alignment.topCenter,
+                duration: const Duration(milliseconds: 300),
+                heightFactor: _isScreenTimeExpanded ? 1.0 : 0.0,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(color: Colors.white10, height: 1),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "CATEGORICAL BREAKDOWN",
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...breakdown.entries.map((e) {
+                        final usage = e.value as int;
+                        final percentage = totalUsage == 0 ? 0.0 : (usage / totalUsage);
+                        return _buildBreakdownRow(
+                          label: e.key.toString(),
+                          usage: _formatUsage(usage),
+                          progress: percentage,
+                          color: _getCategoryColor(e.key.toString()),
+                        );
+                      }),
+                      const SizedBox(height: 24),
+                      const Text(
+                        "APP BREAKDOWN",
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ...topApps.take(8).map((app) {
+                        final usage = app['usage_seconds'] as int;
+                        final pkg = app['package_name'] as String;
+                        final cat = app['category'] as String? ?? 'Other';
+                        return _buildBreakdownRow(
+                          label: app['label'] as String,
+                          usage: _formatUsage(usage),
+                          progress: totalUsage == 0 ? 0.0 : (usage / totalUsage),
+                          category: cat,
+                          icon: _iconCache[pkg] != null 
+                            ? Image(image: _iconCache[pkg]!, width: 16, height: 16)
+                            : const Icon(Icons.android, size: 16, color: Colors.white38),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakdownRow({
+    required String label,
+    required String usage,
+    required double progress,
+    Color color = AppColors.primary,
+    String? category,
+    Widget? icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                icon,
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (category != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getCategoryColor(category).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: _getCategoryColor(category).withOpacity(0.2)),
+                        ),
+                        child: Text(
+                          category.toUpperCase(),
+                          style: TextStyle(color: _getCategoryColor(category), fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Text(
+                usage,
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'social': return const Color(0xFFD946EF);
+      case 'entertainment': return const Color(0xFFF59E0B);
+      case 'productivity': return const Color(0xFF10B981);
+      case 'utility': return const Color(0xFF3B82F6);
+      default: return AppColors.primary;
+    }
   }
 
   @override
@@ -109,53 +367,66 @@ class _InsightsScreenState extends State<InsightsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Insights", 
-                        style: TextStyle(
-                          fontSize: 32, 
-                          fontWeight: FontWeight.w600, 
-                          color: Colors.white, 
-                        )
-                      ),
-                      IconButton(
-                        onPressed: _showCalendar,
-                        icon: const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Insights", 
+                            style: TextStyle(
+                              fontSize: 32, 
+                              fontWeight: FontWeight.w600, 
+                              color: Colors.white, 
+                            )
+                          ),
+                          Row(
+                        children: [
+                          IconButton(
+                            onPressed: _hardRefresh,
+                            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 24),
+                          ),
+                          IconButton(
+                            onPressed: _showCalendar,
+                            icon: const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 24),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 32),
-                  _buildTabSelector(),
-                  const SizedBox(height: 24),
-                  _buildCategoryFilter(),
-                  const SizedBox(height: 32),
-                  _buildInsightsCard(
-                    title: _selectedCategory == null ? "Total Screen Time" : "$_selectedCategory Time",
-                    value: _formatUsage(_insightsData?['total_usage_seconds'] as int? ?? 0),
-                    trend: "${_stats['percentage_change_vs_yesterday']}% from yesterday",
-                    isPositiveTrend: (_stats['percentage_change_vs_yesterday'] as int? ?? 0) <= 0,
-                    periodLabel: _activeTab,
-                    dataPoints: (_insightsData?['trend'] as List?)?.cast<num>() ?? [],
+                      _buildTabSelector(),
+                      const SizedBox(height: 24),
+                      _buildCategoryFilter(),
+                      const SizedBox(height: 32),
+                      _buildExpandableScreenTimeCard(),
+                      const SizedBox(height: 32),
+                      _buildInsightsCard(
+                        title: "Distraction Score",
+                        value: (_stats['distraction_score'] as num? ?? 0.0).toInt().toString(),
+                        subValue: "/100",
+                        trend: (_stats['distraction_score'] as num? ?? 0.0) < 40 ? "Healthy State" : "High Drift",
+                        isPositiveTrend: (_stats['distraction_score'] as num? ?? 0.0) < 50,
+                        periodLabel: _activeTab,
+                        dataPoints: _distractionTrend, 
+                      ),
+                      const SizedBox(height: 32),
+                      _buildTopAppsCard(),
+                      const SizedBox(height: 32),
+                      _buildInsightsCard(
+                        title: "Usage Limit",
+                        value: "${(_stats['usage_limit_percentage'] as double? ?? 0.0).toInt()}%",
+                        subValue: " of goal",
+                        trend: (_stats['usage_limit_percentage'] as double? ?? 0.0) > 100 ? "Goal Exceeded" : "On Track",
+                        isPositiveTrend: (_stats['usage_limit_percentage'] as double? ?? 0.0) <= 100,
+                        periodLabel: "Daily Goal",
+                        dataPoints: (_stats['weekly_trend'] as List?)?.cast<num>() ?? [], 
+                      ),
+                      const SizedBox(height: 32),
+                      _buildBehavioralHealthGrid(),
+                      const SizedBox(height: 32),
+                      _buildRecommendationsSection(),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildTopAppsCard(),
-                  const SizedBox(height: 24),
-                  _buildRecommendationsSection(),
-                  const SizedBox(height: 24),
-                  _buildInsightsCard(
-                    title: "Distraction Score",
-                    value: (_stats['distraction_score'] as double? ?? 0.0).toInt().toString(),
-                    subValue: "/100",
-                    trend: "Healthy Today", // Placeholder for behavioral insight
-                    isPositiveTrend: true,
-                    periodLabel: _activeTab,
-                    dataPoints: [20, 35, 25, 45, 30, 20], // Mock for now
-                  ),
-                ],
-              ),
             ),
       ),
     );
@@ -342,7 +613,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       children: [
                         Icon(trendIcon, size: 14, color: trendColor),
                         const SizedBox(width: 4),
-                        Text("↓ $trend", style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                        Text(trend, style: TextStyle(color: trendColor, fontSize: 12)),
                       ],
                     ),
                   ],
@@ -379,7 +650,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
           const Text("Top Distracting Apps", style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(_activeTab == "Day" ? "Today" : "Last $_activeTab", style: const TextStyle(color: Colors.white38, fontSize: 12)),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           if (topApps.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
@@ -387,16 +658,109 @@ class _InsightsScreenState extends State<InsightsScreen> {
             ),
           ...topApps.map((app) {
             final pkg = app['package_name'] as String;
-            return _TopAppRow(
-              name: app['label'] as String,
-              time: _formatUsage(app['usage_seconds'] as int),
+            return UsageBar(
+              icon: _iconCache[pkg] != null 
+                ? Image(image: _iconCache[pkg]!, width: 22, height: 22)
+                : const Icon(Icons.android, size: 22, color: Colors.white54),
+              title: app['label'] as String,
+              duration: _formatUsage(app['usage_seconds'] as int),
               progress: (app['usage_seconds'] as int) / maxUsage,
-              icon: _iconCache[pkg],
             );
           }),
         ],
       ),
     );
+  }
+
+  Widget _buildBehavioralHealthGrid() {
+    final feedSecs = _driftStats?['feed_exposure_seconds'] as int? ?? 0;
+    final failedExits = _driftStats?['failed_exits'] as int? ?? 0;
+    final reopens = _driftStats?['reopen_count'] as int? ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Behavioral Health", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildHealthTile(
+                title: "Doom-Scroll Meter",
+                value: "${(feedSecs / 60).toStringAsFixed(1)}m",
+                description: "Passive feed exposure",
+                icon: Icons.unfold_more_double,
+                color: Colors.orangeAccent,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildHealthTile(
+                title: "Impulse Control",
+                value: "$failedExits",
+                description: "Failed exit attempts",
+                icon: Icons.bolt_rounded,
+                color: Colors.redAccent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildHealthTile(
+          title: "Re-entry Patterns",
+          value: "$reopens",
+          description: "Times you immediately reopened a distracting app",
+          icon: Icons.replay_rounded,
+          color: Colors.blueAccent,
+          isWide: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHealthTile({
+    required String title,
+    required String value,
+    required String description,
+    required IconData icon,
+    required Color color,
+    bool isWide = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: color, size: 24),
+              if (!isWide) Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                child: const Text("BRAIN", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(description, style: const TextStyle(color: Colors.white24, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntelligenceCard() {
+    // We don't have direct drift score in the aggregate, but we can show fragmentation index or something similar if available
+    return Container(); 
   }
 }
 
@@ -522,7 +886,5 @@ class _GlowingDataPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
-
-

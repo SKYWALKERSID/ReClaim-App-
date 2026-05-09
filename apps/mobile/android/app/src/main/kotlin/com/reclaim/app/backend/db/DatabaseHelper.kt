@@ -17,7 +17,7 @@ import java.util.Locale
 class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
-        const val DATABASE_VERSION = 8
+        const val DATABASE_VERSION = 10
         const val DATABASE_NAME = "ReClaim.db"
         
         @Volatile
@@ -41,9 +41,11 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
                 ${UserSettings.COLUMN_USER_NAME} TEXT,
                 ${UserSettings.COLUMN_DAILY_GOAL_SECONDS} INTEGER DEFAULT 7200,
                 ${UserSettings.COLUMN_THEME} INTEGER DEFAULT 1,
-                ${UserSettings.COLUMN_SAFE_CODE} TEXT
+                ${UserSettings.COLUMN_SAFE_CODE} TEXT,
+                ${UserSettings.COLUMN_AGE} INTEGER DEFAULT 0,
+                ${UserSettings.COLUMN_GENDER} TEXT
             )
-        """)
+        """ )
 
         db.execSQL("""
             CREATE TABLE ${AppSelection.TABLE_NAME} (
@@ -54,6 +56,44 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
                 ${AppSelection.COLUMN_CUSTOM_CATEGORY} TEXT
             )
         """)
+
+        // Default Whitelisted Apps
+        val essentialApps = listOf(
+            "com.android.settings",
+            "com.google.android.settings",
+            "com.android.dialer",
+            "com.google.android.dialer",
+            "com.android.mms",
+            "com.google.android.apps.messaging",
+            "com.android.contacts",
+            "com.google.android.contacts",
+            "com.android.deskclock",
+            "com.google.android.deskclock",
+            "com.android.calculator2",
+            "com.google.android.calculator",
+            "com.android.calendar",
+            "com.google.android.calendar",
+            "com.android.camera",
+            "com.google.android.GoogleCamera",
+            "com.android.gallery3d",
+            "com.google.android.apps.photos",
+            "com.whatsapp",
+            "org.telegram.messenger",
+            "com.viber.voip",
+            "com.google.android.apps.maps",
+            "com.google.android.apps.nbu.paisa.user", // GPay India
+            "com.google.android.apps.walletnfcrel", // Google Wallet
+            "com.google.android.apps.photos",
+            "com.google.android.apps.docs",
+            "com.google.android.apps.tachyon" // Google Meet
+        )
+
+        essentialApps.forEach { pkg ->
+            db.execSQL(
+                "INSERT OR IGNORE INTO ${AppSelection.TABLE_NAME} (${AppSelection.COLUMN_PACKAGE_NAME}, ${AppSelection.COLUMN_IS_WHITELISTED}, ${AppSelection.COLUMN_CUSTOM_CATEGORY}) VALUES (?, 1, 'Utility')",
+                arrayOf(pkg)
+            )
+        }
 
         db.execSQL("""
             CREATE TABLE ${UsageLogs.TABLE_NAME} (
@@ -115,6 +155,36 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
         } else if (oldVersion == 7) {
             db.execSQL("ALTER TABLE ${AppSelection.TABLE_NAME} ADD COLUMN ${AppSelection.COLUMN_CUSTOM_CATEGORY} TEXT")
         }
+        
+        if (oldVersion < 9) {
+            try {
+                db.execSQL("ALTER TABLE ${UserSettings.TABLE_NAME} ADD COLUMN ${UserSettings.COLUMN_AGE} INTEGER DEFAULT 0")
+                db.execSQL("ALTER TABLE ${UserSettings.TABLE_NAME} ADD COLUMN ${UserSettings.COLUMN_GENDER} TEXT")
+            } catch (e: Exception) {}
+        }
+        
+        if (oldVersion < 10) {
+            val essentialApps = listOf(
+                "com.android.settings", "com.google.android.settings",
+                "com.android.dialer", "com.google.android.dialer",
+                "com.android.mms", "com.google.android.apps.messaging",
+                "com.android.contacts", "com.google.android.contacts",
+                "com.android.deskclock", "com.google.android.deskclock",
+                "com.android.calculator2", "com.google.android.calculator",
+                "com.android.calendar", "com.google.android.calendar",
+                "com.android.camera", "com.google.android.GoogleCamera",
+                "com.android.gallery3d", "com.google.android.apps.photos",
+                "com.whatsapp", "org.telegram.messenger", "com.viber.voip",
+                "com.google.android.apps.maps", "com.google.android.apps.nbu.paisa.user",
+                "com.google.android.apps.walletnfcrel", "com.google.android.apps.tachyon"
+            )
+            essentialApps.forEach { pkg ->
+                db.execSQL(
+                    "INSERT OR IGNORE INTO ${AppSelection.TABLE_NAME} (${AppSelection.COLUMN_PACKAGE_NAME}, ${AppSelection.COLUMN_IS_WHITELISTED}, ${AppSelection.COLUMN_CUSTOM_CATEGORY}) VALUES (?, 1, 'Utility')",
+                    arrayOf(pkg)
+                )
+            }
+        }
     }
 
     fun saveFocusSession(startTime: Long, durationSeconds: Int, category: String) {
@@ -127,6 +197,21 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
         db.insert(Contract.FocusSessions.TABLE_NAME, null, values)
     }
 
+    fun getFocusHistory(): List<Map<String, Any>> {
+        val db = this.readableDatabase
+        val cursor = db.query(Contract.FocusSessions.TABLE_NAME, null, null, null, null, null, "${Contract.FocusSessions.COLUMN_START_TIME} DESC")
+        val list = mutableListOf<Map<String, Any>>()
+        while (cursor.moveToNext()) {
+            list.add(mapOf(
+                "startTime" to cursor.getLong(cursor.getColumnIndexOrThrow(Contract.FocusSessions.COLUMN_START_TIME)),
+                "durationSeconds" to cursor.getInt(cursor.getColumnIndexOrThrow(Contract.FocusSessions.COLUMN_DURATION_SECONDS)),
+                "category" to (cursor.getString(cursor.getColumnIndexOrThrow(Contract.FocusSessions.COLUMN_CATEGORY)) ?: "Deep Focus")
+            ))
+        }
+        cursor.close()
+        return list
+    }
+
     // --- User Settings ---
     fun getUserSettings(): Map<String, Any> {
         val db = this.readableDatabase
@@ -136,18 +221,26 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
             result["name"] = cursor.getString(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_USER_NAME))
             result["goal_seconds"] = cursor.getInt(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_DAILY_GOAL_SECONDS))
             result["safe_code"] = cursor.getString(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_SAFE_CODE)) ?: ""
+            result["age"] = cursor.getInt(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_AGE))
+            result["gender"] = cursor.getString(cursor.getColumnIndexOrThrow(UserSettings.COLUMN_GENDER)) ?: ""
         }
         cursor.close()
         return result
     }
 
-    fun saveUserSettings(name: String, goalSeconds: Int, safeCode: String? = null) {
+    fun saveUserSettings(name: String, goalSeconds: Int, safeCode: String? = null, age: Int? = null, gender: String? = null) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
             put(UserSettings.COLUMN_USER_NAME, name)
             put(UserSettings.COLUMN_DAILY_GOAL_SECONDS, goalSeconds)
             if (safeCode != null) {
                 put(UserSettings.COLUMN_SAFE_CODE, safeCode)
+            }
+            if (age != null) {
+                put(UserSettings.COLUMN_AGE, age)
+            }
+            if (gender != null) {
+                put(UserSettings.COLUMN_GENDER, gender)
             }
         }
         db.update(UserSettings.TABLE_NAME, values, null, null)
@@ -308,6 +401,7 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
         }
     }
 
+
     fun updatePoints(points: Int) {
         val date = getCurrentDateString()
         val db = this.writableDatabase
@@ -341,5 +435,18 @@ class DatabaseHelper private constructor(context: Context) : SQLiteOpenHelper(co
         }
         cursor.close()
         return result
+    }
+
+    fun getSessionCount(packageName: String, date: String): Int {
+        val db = this.readableDatabase
+        val cursor = db.query(UsageLogs.TABLE_NAME, arrayOf(UsageLogs.COLUMN_SESSION_COUNT), 
+            "${UsageLogs.COLUMN_DATE} = ? AND ${UsageLogs.COLUMN_PACKAGE_NAME} = ?", 
+            arrayOf(date, packageName), null, null, null)
+        var count = 0
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0)
+        }
+        cursor.close()
+        return count
     }
 }
