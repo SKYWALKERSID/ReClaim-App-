@@ -25,6 +25,8 @@ sensitive/
 private.pem
 public.pem
 *.pem
+google-services.json
+GoogleService-Info.plist
 *.json
 !package.json
 !composer.json

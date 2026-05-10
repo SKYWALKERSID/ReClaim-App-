@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "27732871870",
-    "project_id": "flutter-a5d95dff",
-    "storage_bucket": "flutter-a5d95dff.firebasestorage.app"
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_STORAGE_BUCKET"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:27732871870:android:4e8002a91b04081e246cef",
+        "mobilesdk_app_id": "YOUR_MOBILE_SDK_APP_ID",
         "android_client_info": {
           "package_name": "com.reclaim.app.flutter"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA-e2YtO4yEtbgVz8o38qTo8yOl1AenvqU"
+          "current_key": "YOUR_API_KEY_HERE"
         }
       ],
       "services": {
