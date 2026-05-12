@@ -79,7 +79,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: mode,
-              home: _auth.currentUser == null 
+              home: (_auth.currentUser == null && !_auth.isGuest) 
                 ? const LoginScreen() 
                 : const BottomNav(),
             );

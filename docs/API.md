@@ -1,101 +1,128 @@
 # ReClaim™ API Reference
 
-The ReClaim API is a RESTful service protected by RS256 JWT authentication.
+The ReClaim API is a high-performance RESTful service built with Node.js and TypeScript. It utilizes **RS256 JWT** asymmetric authentication and strict **Zod** schema validation for all inputs.
 
 ---
 
 ## 🔐 Authentication
 
-### Header
-All requests except `/auth` must include the Authorization header.
+### Header-Based
+All requests (except public auth routes) must include the Authorization header:
 ```http
 Authorization: Bearer <JWT_TOKEN>
 ```
 
-### API Keys (Service-to-Service)
-Internal services can authenticate using a static API key.
+### Service-to-Service (x-api-key)
+Internal services can authenticate using a static API key. Note that when using this method, a `userId` must typically be provided in the request body to identify the target user.
 ```http
 x-api-key: <YOUR_API_KEY>
 ```
 
 ---
 
-## 📊 Analytics Endpoints
+## 📊 Analytics & Ingestion
 
-### 1. Ingest Events
+### Ingest Batch Events
 `POST /analytics/events`
 Uploads a batch of usage events, blocked attempts, or overrides.
+- **Rate Limit**: 20 requests per minute.
+- **Payload**: `events: UsageEvent[]`
 
-**Request Body:**
-```json
-{
-  "events": [
-    {
-      "packageName": "com.instagram.android",
-      "startedAt": "2026-05-09T20:00:00Z",
-      "endedAt": "2026-05-09T20:15:00Z",
-      "durationSeconds": 900,
-      "eventType": "usage"
-    }
-  ]
-}
-```
+### Get Daily Summary
+`GET /analytics/daily/:userId`
+Returns metrics (total screen time, app switches), insights, and reward data for a specific day.
+- **Params**: `date` (YYYY-MM-DD), `timeZone`
 
-### 2. Get Daily Summary
-`GET /analytics/daily/:userId?date=YYYY-MM-DD&timeZone=UTC`
-Returns metrics, insights, and reward data for a specific day.
+### Get Weekly Report
+`GET /analytics/weekly/:userId`
+Returns a 7-day trend analysis including behavioral recommendations.
+
+### Data Export
+`GET /export/:userId`
+Streamed download of usage history.
+- **Formats**: `json`, `csv`
 
 ---
 
-## 📋 Commitment Endpoints
+## 📋 Commitment & Policy
 
-### 1. Save Commitment
+### Update Commitment
 `POST /commitments`
-Saves or updates the user's screen-time limits and focus windows.
+Configures user limits, focus windows, and package lists (blacklist/whitelist).
 
-**Request Body:**
-```json
-{
-  "dailyLimitMinutes": 120,
-  "focusWindows": [
-    { "start": "09:00", "end": "17:00", "daysOfWeek": [1,2,3,4,5] }
-  ],
-  "blacklist": ["com.tiktok.android", "com.reddit.frontpage"]
-}
-```
+### Evaluate Policy
+`GET /policy/:userId`
+The core enforcement endpoint. Returns the current state: `normal`, `focus_only`, or `locked` based on usage vs. commitment.
+
+### Rewards Summary
+`GET /rewards/:userId`
+Returns current points, streaks, and earned badges.
 
 ---
 
-## 🧠 Intelligence Endpoints
+## 🧠 Intelligence & Drift
 
-### 1. Get Drift Score
-`GET /intelligence/drift/:userId`
-Returns the real-time attention drift score and fragmentation index.
+### Drift Session Sync
+`POST /drift/sync`
+Synchronizes high-fidelity session data from the **Cognitive Drift Engine™**.
+- **Fields**: `peak_drift_score`, `fragmentation_index`, `feed_exposure_seconds`, `intent_confidence`.
 
-### 2. Get Craving Windows
-`GET /intelligence/cravings/:userId`
-Returns predicted high-risk windows for behavioral lapses.
-
----
-
-## 📱 Device Endpoints
-
-### 1. Register Device
-`POST /devices`
-Registers a device for FCM push notifications.
+### Craving Prediction
+`GET /cravings/active`
+Returns the currently predicted high-risk window for behavioral lapses.
 
 ---
 
-## 🛡️ Response Codes
+## 📱 Device & Notifications
+
+### Device Registry
+`GET /devices` | `POST /devices` | `DELETE /devices/:deviceId`
+Manages FCM tokens and device metadata for synchronization and nudges.
+
+### Test Nudge
+`POST /nudge`
+Triggers an immediate push notification to all registered devices.
+
+---
+
+## 🤝 Social Accountability
+
+### Buddy Management
+`GET /social/buddies` | `POST /social/buddies`
+Manages the accountability network. Users can see their buddies' discipline status.
+
+### Challenges
+`GET /social/challenges` | `POST /social/challenges/join`
+Browse and participate in community focus challenges.
+
+---
+
+## 🛡️ Admin & Health
+
+### System Stats
+`GET /admin/stats`
+Returns system-wide totals (users, events, devices) and health status.
+- **Header**: `x-admin-key` (Timing-safe comparison)
+
+### Health Check
+`GET /health`
+Verifies database connectivity and service readiness.
+
+---
+
+## 🔢 Response Codes
 
 | Code | Description |
 | --- | --- |
 | `200 OK` | Request successful. |
 | `201 Created` | Resource created (e.g., event ingested). |
-| `400 Bad Request` | Validation failed (Zod error). |
+| `202 Accepted` | Processing batch data asynchronously. |
+| `400 Bad Request` | Zod validation failed. |
 | `401 Unauthorized` | Invalid or expired token. |
-| `429 Too Many Requests` | Rate limit exceeded. |
-| `500 Server Error` | Unexpected backend failure. |
+| `403 Forbidden` | Scope mismatch or invalid admin key. |
+| `429 Too Many Requests` | Rate limit hit. |
+| `500 Server Error` | Backend failure. |
 
 ---
-*ReClaim API Spec v1.0.0*
+*ReClaim API Spec v2.0.0*
+*Last Verified: May 11, 2026*

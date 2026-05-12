@@ -67,7 +67,7 @@ class FocusEnforcer(private val context: Context) {
         }
 
         val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val now = System.currentTimeMillis()
+        // Reuse `now` from above — previously this had a duplicate `val now` declaration here
         val start = ZonedDateTime.now()
             .toLocalDate()
             .atStartOfDay(ZoneId.systemDefault())

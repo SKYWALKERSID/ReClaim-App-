@@ -1,3 +1,4 @@
+import { MailService } from '../../infrastructure/services/mailService.js';
 import { Request, Response, NextFunction } from 'express';
 import admin from 'firebase-admin';
 import { pool } from '../../db/pool.js';
@@ -47,13 +48,14 @@ export class AuthController {
       );
 
       res.status(200).json({ accessToken, refreshToken });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("[AuthController] Login error:", error.message);
       // Audit failure
       await pool.query(
         'INSERT INTO login_audit (ip_address, device_id, success, failure_reason) VALUES ($1, $2, $3, $4)',
-        [ip, deviceId, false, 'Invalid credentials']
+        [ip, deviceId, false, error.message || 'Invalid credentials']
       );
-      res.status(401).json({ error: 'Invalid email or password' });
+      res.status(401).json({ error: error.message || 'Invalid email or password' });
     }
   }
 
@@ -135,6 +137,85 @@ export class AuthController {
     } catch (error) {
       // Still return 200 to not leak information
       res.status(200).json({ message: 'Logged out successfully' });
+    }
+  }
+  async sendOTP(req: Request, res: Response) {
+    const userId = req.user?.userId;
+    const { email: bodyEmail } = req.body;
+
+    try {
+      let email = bodyEmail;
+      let finalUserId = userId;
+
+      if (!email && userId) {
+        const userResult = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
+        if (userResult.rows.length > 0) {
+          email = userResult.rows[0].email;
+        }
+      }
+
+      if (!email) return res.status(400).json({ error: 'Email is required for OTP' });
+
+      // If no userId (not logged in), try to find user by email
+      if (!finalUserId) {
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (userResult.rows.length > 0) {
+          finalUserId = userResult.rows[0].id;
+        }
+      }
+
+      if (!finalUserId) return res.status(404).json({ error: 'No account associated with this email' });
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+      // 2. Clear existing OTPs for this user
+      await pool.query('DELETE FROM otp_verifications WHERE user_id = $1', [finalUserId]);
+      
+      // 3. Save new OTP
+      await pool.query(
+        'INSERT INTO otp_verifications (user_id, otp_code, expires_at) VALUES ($1, $2, $3)',
+        [finalUserId, otp, expiresAt]
+      );
+
+      // 3. Send OTP
+      await MailService.sendOTP(email, otp);
+      
+      res.status(200).json({ message: 'OTP sent to your registered Gmail' });
+    } catch (error) {
+      console.error('[AuthController] OTP send error:', error);
+      res.status(500).json({ error: 'Failed to send OTP' });
+    }
+  }
+
+  async verifyOTP(req: Request, res: Response) {
+    const userId = req.user?.userId;
+    const { otp, email } = req.body;
+
+    try {
+      let finalUserId = userId;
+      if (!finalUserId && email) {
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (userResult.rows.length > 0) finalUserId = userResult.rows[0].id;
+      }
+
+      if (!finalUserId) return res.status(400).json({ error: 'User context missing' });
+
+      const result = await pool.query(
+        'SELECT * FROM otp_verifications WHERE user_id = $1 AND otp_code = $2 AND expires_at > NOW()',
+        [finalUserId, otp]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({ error: 'Invalid or expired OTP' });
+      }
+
+      // Cleanup
+      await pool.query('DELETE FROM otp_verifications WHERE user_id = $1', [finalUserId]);
+
+      res.status(200).json({ message: 'OTP verified successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Verification failed' });
     }
   }
 }

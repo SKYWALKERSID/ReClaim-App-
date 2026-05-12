@@ -50,48 +50,48 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     result.success(null)
                 }
                 "getDashboardStats" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             handleGetDashboardStats(result)
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.error("STATS_ERROR", e.message, null)
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getHourlyDistractionTrend" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             handleGetHourlyDistractionTrend(result)
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.error("TREND_ERROR", e.message, null)
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getAppUsage" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             handleGetAppUsage(result)
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.error("USAGE_ERROR", e.message, null)
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getInstalledApps" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             handleGetInstalledApps(result)
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.error("APPS_ERROR", e.message, null)
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getInsightsTrends" -> {
                     result.success(mapOf(
@@ -112,10 +112,10 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 }
                 "stopFocusMode" -> result.success(FocusSessionManager.stopFocusSession(context))
                 "getFocusHistory" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         val history = dbHelper.getFocusHistory()
-                        android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(history) }
-                    }.start()
+                        withContext(Dispatchers.Main) { result.success(history) }
+                    }
                 }
                 "getBehavioralMetrics" -> {
                     result.success(mapOf(
@@ -127,14 +127,18 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         "addiction_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getAddictionScore()
                     ))
                 }
-                "getPendingReflection" -> result.success(ReflectionEngine.getPendingReflection())
+                "getPendingReflection" -> result.success(com.reclaim.app.backend.engine.ReflectionEngine.getPendingReflection())
                 "submitReflection" -> {
-                    val sessionId = call.argument<String>("sessionId") ?: ""
-                    val promptType = call.argument<String>("promptType") ?: ""
-                    val response = call.argument<String>("response") ?: ""
-                    val driftScore = call.argument<Int>("driftScore") ?: 0
-                    ReflectionEngine.submitReflection(context, sessionId, promptType, response, driftScore)
-                    result.success(true)
+                    val sessionId = call.argument<String>("sessionId")
+                    val promptType = call.argument<String>("promptType")
+                    val response = call.argument<String>("response")
+                    val driftScore = call.argument<Int>("driftScore")
+                    if (sessionId != null && promptType != null && response != null && driftScore != null) {
+                        com.reclaim.app.backend.engine.ReflectionEngine.submitReflection(context, sessionId, promptType, response, driftScore)
+                        result.success(true)
+                    } else {
+                        result.error("INVALID_ARGS", "Missing arguments for submitReflection (expected sessionId, promptType, response, driftScore)", null)
+                    }
                 }
                 "getReflectionHistory" -> {
                     scope.launch(Dispatchers.IO) {
@@ -232,7 +236,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                 }
                 "getRecommendations" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         val usage = TrackingEngine.getAllTodayUsage(context)
                         val recommendations = com.reclaim.app.backend.engine.RecommendationEngine.generateDailyRecommendations(usage)
                         val list = recommendations.map { mapOf(
@@ -240,10 +244,10 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             "suggestedLimitMs" to it.suggestedLimitMs,
                             "reason" to it.reason
                         )}
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        withContext(Dispatchers.Main) {
                             result.success(list)
                         }
-                    }.start()
+                    }
                 }
                 "getCravingStatus" -> {
                     result.success(com.reclaim.app.backend.engine.CravingPredictor.getCravingStatus(context))
@@ -271,10 +275,10 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                 }
                 "getUserProfile" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         val profile = dbHelper.getUserSettings()
-                        android.os.Handler(android.os.Looper.getMainLooper()).post { result.success(profile) }
-                    }.start()
+                        withContext(Dispatchers.Main) { result.success(profile) }
+                    }
                 }
                 "saveUserSettings" -> {
                     dbHelper.saveUserSettings(
@@ -299,18 +303,18 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     result.success(true)
                 }
                 "getAppSelections" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         val selections = mapOf("whitelist" to dbHelper.getWhitelistedApps(), "blacklist" to dbHelper.getBlacklistedApps())
                         // Ensure native engine is synced with these selections (especially defaults)
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        withContext(Dispatchers.Main) {
                             syncEnforcementPolicy()
                             result.success(selections)
                         }
-                    }.start()
+                    }
                 }
 
                 "getRewardsData" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             val date = DatabaseHelper.getCurrentDateString()
                             val stats = dbHelper.getDailyAnalytics(date)
@@ -328,7 +332,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             GamificationEngine.updateStreak(dbHelper, focusSeconds, goalSeconds)
 
                             val updatedStats = dbHelper.getDailyAnalytics(date)
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 try {
                                     result.success(mapOf(
                                         "points" to (updatedStats["points"] ?: points),
@@ -341,32 +345,32 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             }
                         } catch (e: Exception) {
                             Log.e("MethodChannel", "Error in rewards background thread", e)
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 try { result.error("REWARDS_ERROR", e.message, null) } catch (inner: Exception) {}
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getInsightsData" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             handleGetInsightsData(call, result)
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.error("INSIGHTS_ERROR", e.message, null)
                             }
                         }
-                    }.start()
+                    }
                 }
                 "getTopAppsForRange" -> {
                     val start = call.argument<Long>("start") ?: 0L
                     val end = call.argument<Long>("end") ?: System.currentTimeMillis()
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         val topApps = TrackingEngine.getTopAppsWithMetadata(context, start, end)
-                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        withContext(Dispatchers.Main) {
                             result.success(topApps)
                         }
-                    }.start()
+                    }
                 }
                 "getUsageForDateRange" -> {
                     val start = call.argument<Long>("start") ?: 0L
@@ -384,27 +388,6 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     result.success(true)
                 }
                 "getDeviceInfo" -> handleGetDeviceInfo(result)
-                "getDriftStats" -> {
-                    result.success(mapOf(
-                        "drift_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getCurrentDriftScore(),
-                        "fragmentation_index" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFragmentationIndex()
-                    ))
-                }
-                "getPendingReflection" -> {
-                    result.success(com.reclaim.app.backend.engine.ReflectionEngine.getPendingReflection())
-                }
-                "submitReflection" -> {
-                    val sessionId = call.argument<String>("session_id")
-                    val promptType = call.argument<String>("prompt_type")
-                    val response = call.argument<String>("response")
-                    val driftScore = call.argument<Int>("drift_score")
-                    if (sessionId != null && promptType != null && response != null && driftScore != null) {
-                        com.reclaim.app.backend.engine.ReflectionEngine.submitReflection(context, sessionId, promptType, response, driftScore)
-                        result.success(true)
-                    } else {
-                        result.error("INVALID_ARGS", "Missing arguments for submitReflection", null)
-                    }
-                }
                 "fetchActiveCravingWindow" -> {
                     // In a production app, we'd cache this locally.
                     // For now, we'll return null or implement a quick check if we had a local store for it.
@@ -412,7 +395,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     result.success(com.reclaim.app.backend.engine.FrictionOrchestrator.getActiveWindow())
                 }
                 "syncAllData" -> {
-                    Thread {
+                    scope.launch(Dispatchers.IO) {
                         try {
                             // 1. Sync Tracking Engine - just pull usage to force update
                             TrackingEngine.getAllTodayUsage(context)
@@ -432,15 +415,15 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             val date = DatabaseHelper.getCurrentDateString()
                             dbHelper.getDailyAnalytics(date)
                             
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.success(true)
                             }
                         } catch (e: Exception) {
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            withContext(Dispatchers.Main) {
                                 result.success(false) 
                             }
                         }
-                    }.start()
+                    }
                 }
                 "toggleNotifications" -> {
                     val enabled = call.argument<Boolean>("enabled") ?: false
@@ -550,7 +533,9 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
     }
 
     private fun syncEnforcementPolicy() {
-        EnforcementManager.initialize(context)
+        if (!EnforcementManager.isInitialized()) {
+            EnforcementManager.initialize(context)
+        }
 
         val goalSeconds = (dbHelper.getUserSettings()["goal_seconds"] as? Int) ?: 7200
         val whitelist = dbHelper.getWhitelistedApps().distinct()
@@ -608,7 +593,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             "focus_time_seconds" to (dailyDbStats["focus_time_seconds"] ?: 0),
             "addiction_score" to com.reclaim.app.backend.engine.AnalyticsEngine.calculateAddictionScore(totalMs).toDouble(),
             "remaining_focus_seconds" to FocusSessionManager.getRemainingSeconds(context),
-            "emergency_unlocks_left" to com.reclaim.app.flutter.enforcement.EnforcementManager.overridesRemaining,
+            "emergency_unlocks_left" to com.reclaim.app.flutter.enforcement.EnforcementManager.remainingOverrides,
             "distraction_score" to distractionScore.toDouble(),
             "distraction_percentage" to distractionPercentage.toDouble(),
             "usage_limit_percentage" to usageLimitPercentage.toDouble(),

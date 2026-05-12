@@ -1,68 +1,63 @@
 # ReClaim™ System Architecture
 
-ReClaim is a high-performance behavioral autonomy platform utilizing a tiered architecture that spans from low-level Android system hooks to a hardened TypeScript backend.
+ReClaim is a high-performance behavioral autonomy platform. Its architecture is designed for **Real-Time Enforcement**, **Cognitive Awareness**, and **Social Accountability**.
 
 ---
 
-## 🏗️ High-Level Overview
+## 🏗️ The Four Planes
 
-ReClaim is divided into three primary planes: the **Execution Plane** (Mobile Native), the **Presentation Plane** (Flutter), and the **Intelligence Plane** (Backend Services).
+The system is organized into four distinct planes of operation:
 
-```mermaid
-graph TD
-    subgraph "Execution Plane (Android Kotlin)"
-        A[Accessibility Service] --> B[Cognitive Drift Engine™]
-        B --> C[Intent Interception]
-        C --> D[Overlay Rendering]
-    end
-    
-    subgraph "Presentation Plane (Flutter)"
-        E[Brain Mirror™ Dashboard] --> F[MethodChannels]
-        F <--> A
-        G[Policy Configuration] --> F
-    end
-    
-    subgraph "Intelligence Plane (Node.js + TS)"
-        H[Analytics Service] --> I[PostgreSQL]
-        J[Worker Jobs] --> H
-        K[Notification Engine] --> H
-    end
-    
-    F <--> H
-```
+### 1. Execution Plane (Mobile Native - Kotlin)
+The "Heart" of the system.
+- **Accessibility Service**: Intercepts `TYPE_WINDOW_STATE_CHANGED` events to detect app transitions.
+- **Cognitive Drift Engine™**: Processes high-frequency interaction data (scrolling velocity, session fragmenting) locally on the device.
+- **SafeCode™ Vault**: Manages emergency overrides using the Android Keystore (TEE).
 
----
+### 2. Presentation Plane (Mobile UI - Flutter)
+The "Mirror" of the system.
+- **Brain Mirror™ Dashboard**: Renders real-time drift metrics and fragmentation charts.
+- **Reactive State**: Uses **Riverpod** to synchronize backend data with local enforcement states.
+- **MethodChannel Bridge**: Secure serial bridge between the Flutter event loop and the Native Core.
 
-## 📱 Mobile Architecture
+### 3. Intelligence Plane (Backend - Node.js/TS)
+The "Brain" of the system.
+- **PatternEngine**: Analyzes time-series data to identify "Craving Windows" and behavioral lapses.
+- **RewardEngine**: Calculates the Discipline Quotient and manages the points/badges economy.
+- **Clean Service Layers**: Separates Domain logic from Persistence (PostgreSQL) and Presentation (Express).
 
-### 1. The Native Core (Kotlin)
-- **Accessibility Enforcement**: Monitors package transitions and UI interactions. Unlike standard apps, ReClaim operates as a system-level listener.
-- **Friction Layer**: Implements intentional latency and asynchronous reflection prompts before high-distraction apps are permitted to load.
-- **Cognitive Drift Engine™**: Performs real-time processing of interaction velocity and fragmentation indices.
-
-### 2. The Flutter Shell
-- **Reactive UI**: Provides high-fidelity data visualizations of drift metrics.
-- **MethodChannel Bridge**: Orchestrates communication between the Dart event loop and the native Android enforcement services.
+### 4. Social Plane (Accountability Network)
+The "Shield" of the system.
+- **Buddy Network**: Facilitates peer-to-peer accountability without compromising privacy.
+- **Challenge Engine**: Orchestrates community-wide focus events and streak competitions.
 
 ---
 
-## 💻 Backend Architecture
+## 🛡️ Security & Privacy Architecture
 
-The backend follows a **Clean Layered Service** pattern:
+### Identity (RS256)
+Authentication is strictly managed via asymmetric signatures.
+- **Private Key**: Resides in a hardened backend environment.
+- **Public Key**: Bundled with the mobile client to verify JWT integrity.
+- **Token Rotation**: Short-lived access tokens (15m) with hardware-bound refresh tokens.
 
-1.  **Presentation Layer**: Express.js routes protected by RS256 JWT and Zod schema validation.
-2.  **Service Layer**: Orchestrates business logic, including reward calculations and weekly report generation.
-3.  **Domain Layer**: Contains pure business logic engines (PatternEngine, RewardEngine) and shared types.
-4.  **Persistence Layer**: PostgreSQL 14 utilizing `pg-query-stream` for efficient data export and analysis.
-
----
-
-## 🛡️ Security Model
-
-- **Asymmetric Authentication**: Identity is managed via RS256 JWTs. The backend holds the private key; the mobile client validates sessions using a hardware-backed public key reference.
-- **Hardware-Backed Privacy**: All local encryption keys are generated and stored in the Android Trusted Execution Environment (TEE).
-- **Communication**: TLS-encrypted traffic with strict header enforcement (HSTS, CSP).
+### Data Sovereignty
+- **Privacy First**: Accessibility services are configured with `canRetrieveWindowContent = false`. We monitor *when* you use apps, not *what* you do inside them.
+- **Encryption**: AES-256-GCM for all at-rest data. TLS 1.3 for all transit.
 
 ---
-*Document Version: 1.1.0*
-*Last Updated: May 2026*
+
+## ⚙️ Tech Stack Summary
+
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | Flutter 3.x, Riverpod, GoRouter |
+| **Native** | Kotlin, Android Accessibility API, TEE |
+| **Backend** | Node.js 20, TypeScript, Express |
+| **Database** | PostgreSQL 14 (Partitioned) |
+| **Auth** | Firebase Auth (Identity) + Custom RS256 JWT (Session) |
+| **DevOps** | GitHub Actions, Docker, Node-Cron |
+
+---
+*Document Version: 2.0.0*
+*Last Verified: May 11, 2026*

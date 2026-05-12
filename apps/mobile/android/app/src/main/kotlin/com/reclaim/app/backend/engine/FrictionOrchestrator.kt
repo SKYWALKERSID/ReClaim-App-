@@ -25,7 +25,12 @@ object FrictionOrchestrator {
     private var activeWindow: Map<String, Any>? = null
 
     fun getFrictionType(context: Context, packageName: String): FrictionType {
+        if (!EnforcementManager.isInitialized()) return FrictionType.NONE
+        
         val pkg = packageName.lowercase()
+        // CRITICAL: Never block Settings, Launcher, or System UI even if scores are high
+        if (pkg.contains("settings") || pkg.contains("launcher") || pkg.contains("systemui") || pkg.contains("accessibility")) return FrictionType.NONE
+        
         if (EnforcementManager.isInternalPackage(pkg) || EnforcementManager.isWhitelisted(pkg)) return FrictionType.NONE
         
         if (EnforcementManager.isFocusModeActive || EnforcementManager.isLocked) return FrictionType.HARD_BLOCK

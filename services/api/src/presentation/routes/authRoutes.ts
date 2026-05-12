@@ -48,6 +48,9 @@ export function buildAuthRoutes(): Router {
    *     tags: [Auth]
    */
   router.post("/auth/logout", logoutLimiter, validate(logoutSchema), (req, res, next) => controller.logout(req, res, next));
+  
+  router.post("/auth/otp/send", (req, res) => controller.sendOTP(req, res));
+  router.post("/auth/otp/verify", (req, res) => controller.verifyOTP(req, res));
 
   return router;
 }

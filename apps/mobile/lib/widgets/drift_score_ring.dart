@@ -5,6 +5,7 @@ import 'dart:math' as math;
 class DriftScoreRing extends StatefulWidget {
   final double score;
   final double fragmentation;
+  final bool showLabel;
   final String label;
 
   const DriftScoreRing({
@@ -12,6 +13,7 @@ class DriftScoreRing extends StatefulWidget {
     required this.score,
     required this.fragmentation,
     this.label = "DRIFT SCORE",
+    this.showLabel = true,
   });
 
   @override
@@ -54,31 +56,33 @@ class _DriftScoreRingState extends State<DriftScoreRing> with SingleTickerProvid
       animation: _animation,
       builder: (context, child) {
         return CustomPaint(
-          size: const Size(200, 200),
+          size: const Size(140, 140),
           painter: _DriftRingPainter(
             score: widget.score * _animation.value,
             fragmentation: widget.fragmentation * _animation.value,
           ),
           child: SizedBox(
-            width: 200,
-            height: 200,
+            width: 140,
+            height: 140,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.5),
-                    letterSpacing: 1.5,
+                if (widget.showLabel) ...[
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      letterSpacing: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
+                  const SizedBox(height: 4),
+                ],
                 Text(
                   (widget.score * _animation.value).toInt().toString(),
                   style: const TextStyle(
-                    fontSize: 48,
+                    fontSize: 40,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                     letterSpacing: -1,
@@ -87,7 +91,7 @@ class _DriftScoreRingState extends State<DriftScoreRing> with SingleTickerProvid
                 Text(
                   "INDEX: ${widget.fragmentation.toInt()}",
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                     color: _getFragmentationColor(widget.fragmentation),
                     letterSpacing: 1,

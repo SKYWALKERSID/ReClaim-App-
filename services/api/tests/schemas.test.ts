@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { commitmentSchema, eventsPayloadSchema } from "../src/presentation/validation/schemas.js";
+import { commitmentSchema, eventsPayloadSchema } from "../src/presentation/schemas/schemas.js";
 
 test("validation schemas catch invalid UUIDs", () => {
   const invalid = {
     userId: "not-a-uuid",
     dailyLimitMinutes: 60,
     focusWindows: [],
-    whitelistPackages: [],
-    blacklistPackages: [],
+    whitelist: [],
+    blacklist: [],
     allowWhatsApp: true,
     maxOverridesPerDay: 2,
     rewardSystemEnabled: true
@@ -23,8 +23,8 @@ test("validation schemas allow valid commitment", () => {
     userId: "550e8400-e29b-41d4-a716-446655440000",
     dailyLimitMinutes: 60,
     focusWindows: [{ start: "10:00", end: "12:00", daysOfWeek: [1] }],
-    whitelistPackages: ["com.app"],
-    blacklistPackages: [],
+    whitelist: ["com.app"],
+    blacklist: [],
     allowWhatsApp: true,
     maxOverridesPerDay: 2,
     rewardSystemEnabled: true

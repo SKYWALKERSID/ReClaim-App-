@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../../../services/backend_service.dart';
+import 'backend_service.dart';
 
 class GoalRecommendationService {
   final BackendService _backend = BackendService();

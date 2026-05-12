@@ -76,7 +76,8 @@ export interface WeeklyReport {
   trends: WeeklyTrendPoint[];
   appBreakdown: AppBreakdown[];
   categoryBreakdown: CategoryBreakdown[];
-  insights: any;
+  /** Computed by buildPatternInsights() in patternEngine.ts */
+  insights: Record<string, unknown>;
   recommendations: string[];
 }
 

@@ -10,6 +10,7 @@ import 'profile_screen.dart';
 import '../services/backend_service.dart';
 import 'brain_mirror_dashboard.dart';
 import 'permission_onboarding_screen.dart';
+import 'safecode_setup_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class BottomNav extends StatefulWidget {
@@ -32,6 +33,7 @@ class BottomNavState extends State<BottomNav> {
 
   Future<void> _initSequence() async {
     await _checkPermissions();
+    
     if (!_needsPermissionSetup) {
       // Hard sync on launch to ensure native engine matches DB (especially for defaults)
       await BackendService().getAppSelections();
@@ -341,6 +343,7 @@ class BottomNavState extends State<BottomNav> {
         },
       );
     }
+
 
     final screens = [
       const DashboardScreen(),

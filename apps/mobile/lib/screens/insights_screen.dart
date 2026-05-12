@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../constants/colors.dart';
 import '../services/backend_service.dart';
-import 'widgets/usage_calendar.dart';
-import 'services/goal_recommendation_service.dart';
+import '../widgets/usage_calendar.dart';
+import '../services/goal_recommendation_service.dart';
 import 'brain_mirror_dashboard.dart';
 import '../widgets/usage_bar.dart';
 
@@ -368,26 +368,38 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Insights", 
-                            style: TextStyle(
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               fontSize: 32, 
-                              fontWeight: FontWeight.w600, 
-                              color: Colors.white, 
+                              fontWeight: FontWeight.w700, 
+                              color: Colors.white,
+                              letterSpacing: -0.5,
                             )
                           ),
-                          Row(
-                        children: [
-                          IconButton(
-                            onPressed: _hardRefresh,
-                            icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 24),
+                          const Text(
+                            "Your cognitive performance",
+                            style: TextStyle(color: Colors.white38, fontSize: 13),
                           ),
-                          IconButton(
-                            onPressed: _showCalendar,
-                            icon: const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 24),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          _buildHeaderIcon(
+                            icon: Icons.refresh_rounded,
+                            onTap: _hardRefresh,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildHeaderIcon(
+                            icon: Icons.calendar_today_outlined,
+                            onTap: _showCalendar,
                           ),
                         ],
                       ),
@@ -593,7 +605,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Column(
@@ -619,8 +631,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
               SizedBox(
-                width: 140,
+                width: 120,
                 height: 60,
                 child: CustomPaint(
                   painter: _GlowingDataPainter(data: dataPoints),
@@ -682,28 +695,33 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       children: [
         const Text("Behavioral Health", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildHealthTile(
-                title: "Doom-Scroll Meter",
-                value: "${(feedSecs / 60).toStringAsFixed(1)}m",
-                description: "Passive feed exposure",
-                icon: Icons.unfold_more_double,
-                color: Colors.orangeAccent,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildHealthTile(
+                  title: "Doom-Scroll Meter",
+                  value: "${(feedSecs / 60).toStringAsFixed(1)}m",
+                  description: "Passive feed exposure",
+                  icon: Icons.unfold_more_double,
+                  color: Colors.orangeAccent,
+                  useSpacer: true,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildHealthTile(
-                title: "Impulse Control",
-                value: "$failedExits",
-                description: "Failed exit attempts",
-                icon: Icons.bolt_rounded,
-                color: Colors.redAccent,
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildHealthTile(
+                  title: "Impulse Control",
+                  value: "$failedExits",
+                  description: "Failed exit attempts",
+                  icon: Icons.bolt_rounded,
+                  color: Colors.redAccent,
+                  useSpacer: true,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         _buildHealthTile(
@@ -713,6 +731,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           icon: Icons.replay_rounded,
           color: Colors.blueAccent,
           isWide: true,
+          useSpacer: false,
         ),
       ],
     );
@@ -725,6 +744,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     required IconData icon,
     required Color color,
     bool isWide = false,
+    bool useSpacer = false,
   }) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -747,20 +767,33 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               ),
             ],
           ),
+          if (useSpacer) const Spacer(),
           const SizedBox(height: 16),
           Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(description, style: const TextStyle(color: Colors.white24, fontSize: 11)),
+          if (useSpacer) const Spacer(),
         ],
       ),
     );
   }
 
-  Widget _buildIntelligenceCard() {
-    // We don't have direct drift score in the aggregate, but we can show fragmentation index or something similar if available
-    return Container(); 
+  Widget _buildHeaderIcon({required IconData icon, required VoidCallback onTap}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: IconButton(
+        onPressed: onTap,
+        icon: Icon(icon, color: Colors.white70, size: 20),
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        padding: EdgeInsets.zero,
+      ),
+    );
   }
 }
 
@@ -853,7 +886,7 @@ class _GlowingDataPainter extends CustomPainter {
 
     final path = Path();
     final double stepX = size.width / (data.length - 1);
-    final num maxVal = data.reduce((a, b) => a > b ? a : b);
+    final num maxVal = data.fold<num>(0, (prev, element) => prev > element ? prev : element);
     final double scaleY = maxVal == 0 ? 0 : size.height / maxVal;
 
     for (int i = 0; i < data.length; i++) {

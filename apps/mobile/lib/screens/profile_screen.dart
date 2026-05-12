@@ -9,8 +9,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
-import '../../screens/devices_screen.dart';
+import 'devices_screen.dart';
 import 'additional_features_screen.dart';
+import 'safecode_recovery_screen.dart';
+import 'safecode_setup_screen.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -116,91 +118,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showSafeCodeDialog() {
-    final TextEditingController controller = TextEditingController(text: _safeCode);
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF161620),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Emergency SafeCode",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Set a 4-digit code to bypass blocks in case of critical emergencies.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.white54),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              maxLength: 4,
-              obscureText: true,
-              style: const TextStyle(color: Colors.white, fontSize: 32, letterSpacing: 20),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                counterText: "",
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                hintText: "••••",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () async {
-                final newCode = controller.text;
-                if (newCode.length < 4) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Passcode must be 4 digits")),
-                  );
-                  return;
-                }
-                
-                final seconds = (_dailyLimit * 3600).toInt();
-                final success = await _backend.saveUserSettings(
-                  (_profile['name'] ?? '').toString(), 
-                  seconds,
-                  safeCode: newCode,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SafeCodeSetupScreen(
+          onComplete: (pin) async {
+            try {
+              final seconds = (_dailyLimit * 3600).toInt();
+              final success = await _backend.saveUserSettings(
+                (_profile['name'] ?? '').toString(),
+                seconds,
+                safeCode: pin,
+              );
+              
+              if (success && mounted) {
+                setState(() => _safeCode = pin);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Emergency SafeCode updated successfully"),
+                    backgroundColor: AppColors.primary,
+                  ),
                 );
-                
-                if (success) {
-                  setState(() => _safeCode = newCode);
-                  if (mounted) Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("SafeCode updated successfully")),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("SAVE PASSCODE"),
-            ),
-            const SizedBox(height: 24),
-          ],
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Failed to update SafeCode: $e")),
+                );
+              }
+            }
+          },
         ),
       ),
     );

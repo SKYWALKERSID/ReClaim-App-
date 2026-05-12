@@ -4,7 +4,7 @@ import '../services/backend_service.dart';
 import 'package:intl/intl.dart';
 
 import 'dart:async';
-import '../dashboard_screen.dart';
+import 'dashboard_screen.dart';
 
 class BrainMirrorDashboard extends StatefulWidget {
   const BrainMirrorDashboard({super.key});

@@ -1,0 +1,255 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="#F8F8F6"/>
+
+  <!-- ══════════════════════════════════════
+       COLUMN HEADERS (swim lane labels on left)
+  ══════════════════════════════════════ -->
+
+  <!-- Col label bg strip -->
+  <rect x="0" y="0" width="1920" height="1080" fill="#F8F8F6"/>
+
+  <!-- Left label column -->
+  <rect x="0" y="0" width="180" height="1080" fill="#EFEDE8"/>
+  <rect x="180" y="0" width="1" height="1080" fill="#D3D1C7"/>
+
+  <!-- Row label: Presentation -->
+  <text x="90" y="158" font-size="11" font-weight="700" fill="#534AB7" text-anchor="middle" letter-spacing="0.5">PRESENTATION</text>
+  <text x="90" y="173" font-size="10" fill="#534AB7" text-anchor="middle">Flutter UI</text>
+
+  <!-- Row label: Bridge -->
+  <text x="90" y="322" font-size="11" font-weight="700" fill="#5F5E5A" text-anchor="middle" letter-spacing="0.5">BRIDGE</text>
+  <text x="90" y="337" font-size="10" fill="#5F5E5A" text-anchor="middle">MethodChannel</text>
+
+  <!-- Row label: Execution -->
+  <text x="90" y="530" font-size="11" font-weight="700" fill="#0F6E56" text-anchor="middle" letter-spacing="0.5">EXECUTION</text>
+  <text x="90" y="545" font-size="10" fill="#0F6E56" text-anchor="middle">Kotlin Native</text>
+
+  <!-- Row label: Storage -->
+  <text x="90" y="726" font-size="11" font-weight="700" fill="#854F0B" text-anchor="middle" letter-spacing="0.5">SECURE</text>
+  <text x="90" y="741" font-size="10" fill="#854F0B" text-anchor="middle">STORAGE</text>
+
+  <!-- Row label: Network -->
+  <text x="90" y="865" font-size="11" font-weight="700" fill="#5F5E5A" text-anchor="middle" letter-spacing="0.5">NETWORK</text>
+  <text x="90" y="880" font-size="10" fill="#5F5E5A" text-anchor="middle">Security</text>
+
+  <!-- Row label: Backend -->
+  <text x="90" y="990" font-size="11" font-weight="700" fill="#185FA5" text-anchor="middle" letter-spacing="0.5">INTELLIGENCE</text>
+  <text x="90" y="1005" font-size="10" fill="#185FA5" text-anchor="middle">Node.js Backend</text>
+
+  <!-- ══════════════════════════════════════
+       ROW 1 — PRESENTATION PLANE  y=40..280
+  ══════════════════════════════════════ -->
+  <rect x="196" y="36" width="1700" height="244" rx="16" fill="#EEEDFE" stroke="#AFA9EC" stroke-width="1.2"/>
+  <text x="218" y="62" font-size="10" font-weight="700" fill="#534AB7" letter-spacing="1.5">MOBILE CLIENT — PRESENTATION PLANE (FLUTTER)</text>
+
+  <!-- Brain Mirror chip -->
+  <rect x="230" y="76" width="480" height="80" rx="10" fill="#ffffff" stroke="#AFA9EC" stroke-width="1"/>
+  <text x="470" y="107" font-size="17" font-weight="700" fill="#3C3489" text-anchor="middle">Brain Mirror™ dashboard</text>
+  <text x="470" y="130" font-size="13" fill="#534AB7" text-anchor="middle">Usage insights &amp; data viz</text>
+
+  <!-- Policy Config chip -->
+  <rect x="740" y="76" width="480" height="80" rx="10" fill="#ffffff" stroke="#AFA9EC" stroke-width="1"/>
+  <text x="980" y="107" font-size="17" font-weight="700" fill="#3C3489" text-anchor="middle">Policy configuration</text>
+  <text x="980" y="130" font-size="13" fill="#534AB7" text-anchor="middle">Screen rules &amp; limits</text>
+
+  <!-- FLAG_SECURE pill -->
+  <rect x="1260" y="76" width="600" height="80" rx="10" fill="#ffffff" stroke="#AFA9EC" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="1560" y="107" font-size="15" font-weight="700" fill="#3C3489" text-anchor="middle">FLAG_SECURE screens</text>
+  <text x="1560" y="130" font-size="12" fill="#534AB7" text-anchor="middle">All screens blocked from screenshots &amp; recordings</text>
+
+  <!-- vertical connector labels -->
+  <text x="470" y="186" font-size="11" fill="#888780" text-anchor="middle">passes UI events</text>
+  <text x="980" y="186" font-size="11" fill="#888780" text-anchor="middle">passes config</text>
+
+  <!-- arrows down from row 1 -->
+  <line x1="470" y1="156" x2="470" y2="272" stroke="#AFA9EC" stroke-width="1.4"/>
+  <polygon points="463,272 477,272 470,284" fill="#AFA9EC"/>
+  <line x1="980" y1="156" x2="980" y2="272" stroke="#AFA9EC" stroke-width="1.4"/>
+  <polygon points="973,272 987,272 980,284" fill="#AFA9EC"/>
+
+  <!-- ══════════════════════════════════════
+       ROW 2 — BRIDGE  y=284..372
+  ══════════════════════════════════════ -->
+  <rect x="196" y="284" width="1700" height="100" rx="16" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="1.2"/>
+  <text x="218" y="307" font-size="10" font-weight="700" fill="#5F5E5A" letter-spacing="1.5">BRIDGE LAYER</text>
+
+  <rect x="530" y="316" width="660" height="50" rx="10" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="860" y="337" font-size="16" font-weight="700" fill="#2C2C2A" text-anchor="middle">MethodChannel bridge</text>
+  <text x="860" y="356" font-size="12" fill="#5F5E5A" text-anchor="middle">Flutter ↔ Kotlin — routes calls between UI and native layer</text>
+
+  <!-- arrows down -->
+  <line x1="650" y1="366" x2="560" y2="432" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="553,429 567,435 560,444" fill="#B4B2A9"/>
+  <line x1="1070" y1="366" x2="1160" y2="432" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="1153,429 1167,435 1153,444" fill="#B4B2A9"/>
+
+  <!-- also connects to network (dashed) -->
+  <line x1="860" y1="366" x2="860" y2="820" stroke="#B4B2A9" stroke-width="1" stroke-dasharray="5 4"/>
+  <polygon points="853,820 867,820 860,832" fill="#B4B2A9"/>
+  <text x="872" y="600" font-size="10" fill="#888780">TLS 1.3 · RS256 JWT</text>
+
+  <!-- ══════════════════════════════════════
+       ROW 3 — EXECUTION PLANE  y=440..680
+  ══════════════════════════════════════ -->
+  <rect x="196" y="440" width="1700" height="280" rx="16" fill="#E1F5EE" stroke="#5DCAA5" stroke-width="1.2"/>
+  <text x="218" y="466" font-size="10" font-weight="700" fill="#0F6E56" letter-spacing="1.5">EXECUTION PLANE (KOTLIN NATIVE)</text>
+
+  <!-- Accessibility Service -->
+  <rect x="230" y="478" width="360" height="90" rx="10" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="410" y="512" font-size="16" font-weight="700" fill="#085041" text-anchor="middle">Accessibility service</text>
+  <text x="410" y="534" font-size="12" fill="#0F6E56" text-anchor="middle">System-level app transition</text>
+  <text x="410" y="551" font-size="12" fill="#0F6E56" text-anchor="middle">monitor</text>
+
+  <!-- Cognitive Drift Engine -->
+  <rect x="630" y="478" width="360" height="90" rx="10" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="810" y="512" font-size="16" font-weight="700" fill="#085041" text-anchor="middle">Cognitive Drift Engine™</text>
+  <text x="810" y="534" font-size="12" fill="#0F6E56" text-anchor="middle">Real-time scroll velocity</text>
+  <text x="810" y="551" font-size="12" fill="#0F6E56" text-anchor="middle">&amp; compulsion detection</text>
+
+  <!-- Intent Interception -->
+  <rect x="1040" y="478" width="300" height="90" rx="10" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="1190" y="512" font-size="16" font-weight="700" fill="#085041" text-anchor="middle">Intent interception</text>
+  <text x="1190" y="534" font-size="12" fill="#0F6E56" text-anchor="middle">Catches app-open</text>
+  <text x="1190" y="551" font-size="12" fill="#0F6E56" text-anchor="middle">events before launch</text>
+
+  <!-- Friction Layer -->
+  <rect x="230" y="590" width="360" height="90" rx="10" fill="#FAECE7" stroke="#F0997B" stroke-width="1"/>
+  <text x="410" y="624" font-size="16" font-weight="700" fill="#712B13" text-anchor="middle">Friction layer</text>
+  <text x="410" y="646" font-size="12" fill="#993C1D" text-anchor="middle">Intentional delay &amp;</text>
+  <text x="410" y="663" font-size="12" fill="#993C1D" text-anchor="middle">reflection prompts</text>
+
+  <!-- Overlay Rendering -->
+  <rect x="630" y="590" width="360" height="90" rx="10" fill="#FAECE7" stroke="#F0997B" stroke-width="1"/>
+  <text x="810" y="624" font-size="16" font-weight="700" fill="#712B13" text-anchor="middle">Overlay rendering</text>
+  <text x="810" y="646" font-size="12" fill="#993C1D" text-anchor="middle">Draws mindful prompts</text>
+  <text x="810" y="663" font-size="12" fill="#993C1D" text-anchor="middle">on top of any screen</text>
+
+  <!-- internal arrows in execution -->
+  <line x1="590" y1="523" x2="630" y2="523" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="627,517 641,523 627,529" fill="#5DCAA5"/>
+  <line x1="990" y1="523" x2="1040" y2="523" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="1037,517 1051,523 1037,529" fill="#5DCAA5"/>
+  <line x1="410" y1="568" x2="410" y2="590" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="403,587 417,587 410,598" fill="#5DCAA5"/>
+  <line x1="810" y1="568" x2="810" y2="590" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="803,587 817,587 810,598" fill="#5DCAA5"/>
+  <line x1="590" y1="635" x2="630" y2="635" stroke="#F0997B" stroke-width="1.2"/>
+  <polygon points="627,629 641,635 627,641" fill="#F0997B"/>
+
+  <!-- arrows down to storage -->
+  <line x1="410" y1="680" x2="410" y2="752" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="403,752 417,752 410,764" fill="#B4B2A9"/>
+  <line x1="810" y1="680" x2="810" y2="752" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="803,752 817,752 810,764" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       ROW 4 — SECURE STORAGE  y=764..860
+  ══════════════════════════════════════ -->
+  <rect x="196" y="764" width="1700" height="100" rx="16" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1.2"/>
+  <text x="218" y="787" font-size="10" font-weight="700" fill="#854F0B" letter-spacing="1.5">SECURE STORAGE (HARDWARE-BACKED)</text>
+
+  <rect x="230" y="800" width="520" height="50" rx="10" fill="#ffffff" stroke="#EF9F27" stroke-width="1"/>
+  <text x="490" y="821" font-size="15" font-weight="700" fill="#633806" text-anchor="middle">Trusted Execution Environment (TEE)</text>
+  <text x="490" y="840" font-size="12" fill="#854F0B" text-anchor="middle">Hardware keystore · RS256 asymmetric key storage</text>
+
+  <rect x="790" y="800" width="520" height="50" rx="10" fill="#ffffff" stroke="#EF9F27" stroke-width="1"/>
+  <text x="1050" y="821" font-size="15" font-weight="700" fill="#633806" text-anchor="middle">Encrypted shared prefs</text>
+  <text x="1050" y="840" font-size="12" fill="#854F0B" text-anchor="middle">AES-256-GCM · all user data encrypted at rest</text>
+
+  <!-- ══════════════════════════════════════
+       ROW 5 — NETWORK  y=876..960
+  ══════════════════════════════════════ -->
+  <rect x="196" y="876" width="1700" height="96" rx="16" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="1.2"/>
+  <text x="218" y="899" font-size="10" font-weight="700" fill="#5F5E5A" letter-spacing="1.5">NETWORK &amp; SECURITY</text>
+
+  <rect x="380" y="908" width="440" height="50" rx="10" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <circle cx="414" cy="933" r="7" fill="#888780"/>
+  <text x="620" y="927" font-size="15" font-weight="700" fill="#2C2C2A" text-anchor="middle">TLS 1.3 transport</text>
+  <text x="620" y="946" font-size="12" fill="#5F5E5A" text-anchor="middle">End-to-end encryption on all API calls</text>
+
+  <rect x="860" y="908" width="440" height="50" rx="10" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <circle cx="894" cy="933" r="7" fill="#888780"/>
+  <text x="1080" y="927" font-size="15" font-weight="700" fill="#2C2C2A" text-anchor="middle">RS256 JWT authentication</text>
+  <text x="1080" y="946" font-size="12" fill="#5F5E5A" text-anchor="middle">Asymmetric signing · non-repudiation</text>
+
+  <!-- arrow down to backend -->
+  <line x1="620" y1="958" x2="620" y2="988" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="613,988 627,988 620,1000" fill="#B4B2A9"/>
+  <line x1="1080" y1="958" x2="1080" y2="988" stroke="#B4B2A9" stroke-width="1.4"/>
+  <polygon points="1073,988 1087,988 1080,1000" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       ROW 6 — BACKEND (two sub-lanes side by side)  y=988..1064
+  ══════════════════════════════════════ -->
+  <rect x="196" y="988" width="1700" height="80" rx="16" fill="#E6F1FB" stroke="#85B7EB" stroke-width="1.2"/>
+  <text x="218" y="1010" font-size="10" font-weight="700" fill="#185FA5" letter-spacing="1.5">INTELLIGENCE PLANE — API GATEWAY · CORE SERVICES · PERSISTENCE</text>
+
+  <!-- Gateway chips -->
+  <rect x="230" y="1018" width="180" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="320" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Helmet.js</text>
+  <text x="320" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">HSTS · CSP headers</text>
+
+  <rect x="426" y="1018" width="180" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="516" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Rate limiting</text>
+  <text x="516" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Throttles abuse</text>
+
+  <rect x="622" y="1018" width="180" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="712" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Zod validation</text>
+  <text x="712" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Schema checks</text>
+
+  <rect x="818" y="1018" width="180" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="908" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Auth handler</text>
+  <text x="908" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Verifies JWT</text>
+
+  <!-- divider -->
+  <line x1="1022" y1="1005" x2="1022" y2="1068" stroke="#85B7EB" stroke-width="0.8" stroke-dasharray="4 3"/>
+
+  <!-- Services chips -->
+  <rect x="1040" y="1018" width="162" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="1121" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Analytics</text>
+  <text x="1121" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Drift reports</text>
+
+  <rect x="1218" y="1018" width="162" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="1299" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Reward engine</text>
+  <text x="1299" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Autonomy scores</text>
+
+  <rect x="1396" y="1018" width="162" height="40" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="1477" y="1033" font-size="13" font-weight="700" fill="#0C447C" text-anchor="middle">Pattern engine</text>
+  <text x="1477" y="1049" font-size="10" fill="#185FA5" text-anchor="middle">Trend detection</text>
+
+  <!-- DB chip -->
+  <rect x="1574" y="1018" width="296" height="40" rx="8" fill="#EAF3DE" stroke="#97C459" stroke-width="1"/>
+  <text x="1722" y="1033" font-size="14" font-weight="700" fill="#27500A" text-anchor="middle">PostgreSQL 14</text>
+  <text x="1722" y="1049" font-size="10" fill="#3B6D11" text-anchor="middle">Persistent data store</text>
+
+  <!-- ══════════════════════════════════════
+       TITLE  (bottom-right watermark)
+  ══════════════════════════════════════ -->
+  <text x="1890" y="1068" font-size="11" fill="#B4B2A9" text-anchor="end">ReClaim™ System Architecture</text>
+
+  <!-- ══════════════════════════════════════
+       LEGEND  (bottom-left)
+  ══════════════════════════════════════ -->
+  <rect x="196" y="36" width="0" height="0"/>
+
+  <rect x="196" y="46" width="14" height="14" rx="3" fill="#534AB7"/>
+  <text x="216" y="58" font-size="11" fill="#444441">Flutter UI</text>
+
+  <rect x="310" y="46" width="14" height="14" rx="3" fill="#1D9E75"/>
+  <text x="330" y="58" font-size="11" fill="#444441">Kotlin execution</text>
+
+  <rect x="460" y="46" width="14" height="14" rx="3" fill="#D85A30"/>
+  <text x="480" y="58" font-size="11" fill="#444441">Friction &amp; overlay</text>
+
+  <rect x="620" y="46" width="14" height="14" rx="3" fill="#BA7517"/>
+  <text x="640" y="58" font-size="11" fill="#444441">Secure storage</text>
+
+  <rect x="760" y="46" width="14" height="14" rx="3" fill="#378ADD"/>
+  <text x="780" y="58" font-size="11" fill="#444441">Node.js backend</text>
+
+  <rect x="910" y="46" width="14" height="14" rx="3" fill="#639922"/>
+  <text x="930" y="58" font-size="11" fill="#444441">Database</text>
+
+</svg>

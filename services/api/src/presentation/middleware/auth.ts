@@ -21,6 +21,7 @@ declare global {
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   // Public routes
+  console.log(`[authMiddleware] Path: ${req.path}`);
   if (publicPaths.has(req.path)) {
     return next();
   }

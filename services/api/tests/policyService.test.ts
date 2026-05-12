@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluatePolicy } from "../src/application/policyService.js";
+import { evaluatePolicy } from "../src/services/policy.service.js";
 
 const mockCommitment = {
   userId: "u1",
@@ -8,8 +8,8 @@ const mockCommitment = {
   focusWindows: [
     { start: "09:00", end: "17:00", daysOfWeek: [1, 2, 3, 4, 5] }
   ],
-  whitelistPackages: ["com.android.settings"],
-  blacklistPackages: ["com.instagram.android"],
+  whitelist: ["com.android.settings"],
+  blacklist: ["com.instagram.android"],
   allowWhatsApp: true,
   maxOverridesPerDay: 2,
   rewardSystemEnabled: true

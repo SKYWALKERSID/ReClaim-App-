@@ -1,0 +1,502 @@
+edited
+
+
+1 Apps startup (First time )
+SIGN UP AND LOGIN PAGE SETUP WITH FIREBASE (DONE)
+usage permission (AUTO POP UP)
+personal info - (age factor and gender added) 
+Goal setting (pop up fixed)
+app white list and black list (default white list and custom black list with pop up added) 
+
+
+successfully added the **Age** and **Gender** fields to the application's onboarding flow and user profile settings. 
+
+Changes Summary
+
+ Native Android (Backend)
+- **Database Schema**: Updated `Contract.kt` and `DatabaseHelper.kt` to include `user_age` and `user_gender` columns.
+- **Database Migration**: Bumped database version to `9` and implemented a migration path to add these columns to existing installations without data loss.
+- **Native Bridge**: Updated `MethodChannelHandler.kt` to allow the Flutter frontend to pass age and gender data to the native storage layer.
+ Flutter Frontend
+- **Backend Service**: Enhanced `BackendService.dart` to handle the new `age` and `gender` fields in `getUserProfile` and `saveUserSettings`.
+- **Onboarding UI**: Modified the startup prompt in `BottomNav.dart` to include a numeric input for Age and a themed dropdown for Gender (Male, Female, Non-binary, Other, Prefer not to say).
+- **Profile Screen**: Updated the profile header to display the user's name, age, and gender (e.g., "Siddharth, 24 • Male").
+- **Settings & Goals**: Updated the `GoalSettingScreen.dart` to allow users to update their personal information at any time.
+
+These updates ensure that personal demographics are captured during the first-time setup and remain accessible/editable within the app's ecosystem. 
+
+**Next Steps**:
+- You can verify the changes by restarting the app (if no name was previously set) or by navigating to the **Me** tab -> **Daily Screen Limit** to see the new editable fields. 
+
+Viewed DatabaseHelper.kt:60-100
+
+I have successfully hardened the onboarding flow and enforcement engine to ensure a stable, sequential user journey and an infallible "No-Block" protocol for essential apps.
+
+### **Key Improvements Implemented**
+
+#### **1. Stabilized Sequential Onboarding**
+*   **Sequential Pipeline**: Refactored `BottomNav.dart` to use a strict, awaitable onboarding sequence. Users are now guided through **Personal Info** (Name, Age, Gender), **Daily Goal Setting**, and **App Selection** in a guaranteed order.
+*   **Completion Tracking**: Replaced the fragile "empty whitelist" check with explicit `SharedPreferences` flags (`onboarding_goal_set`, `onboarding_apps_configured`). This ensures Step 3 (App Selection) is triggered even though the whitelist is pre-populated with default essential apps.
+*   **Awaitable Dialogs**: Fixed the onboarding dialogs to return `Future<void>`, ensuring the code correctly waits for user input before proceeding to the next step.
+
+#### **2. Hardened No-Block Protocol**
+*   **Expanded Essential Apps**: Updated `DatabaseHelper.kt` to pre-populate the `AppSelection` table with a comprehensive list of utility apps (Settings, Dialer, Messaging, Maps, GPay, etc.) on both new installs and upgrades (DB Version 10).
+*   **In-Memory Syncing**: Added a hard sync call in `BottomNav._initSequence` and `getAppSelections` to ensure the native `EnforcementManager` is immediately updated with these database defaults on app launch.
+*   **Diagnostic Logging**: Added detailed `Log.d` markers in `EnforcementManager.blockDecision` to track blocking decisions in real-time, helping to identify why any specific app is being allowed or blocked.
+
+#### **3. Corrected Usage Calculations**
+*   **Whitelist Exclusion**: Modified `handleGetDashboardStats` in `MethodChannelHandler.kt` to filter out whitelisted and internal apps from the `totalMs` calculation. 
+*   **Goal Accuracy**: The "Daily Screen Time Goal" now accurately reflects only the time spent on potentially distracting apps, ensuring that essential usage (like using the Dialer or Settings) does not contribute to the user's daily limit.
+
+### **Verification Plan**
+1.  **Onboarding Test**: Perform a clean install. Verify the app forces you through Name/Age -> Goal Slider -> App Selection Screen sequentially.
+2.  **Whitelist Test**: Open Settings or the Dialer. Check `adb logcat | grep EnforcementManager` to see `ALLOW: com.android.settings (Internal/Whitelisted/Essential)`.
+3.  **Goal Test**: Use a whitelisted app for a few minutes. Verify the "Total Usage" on the dashboard does NOT increase, while using a non-whitelisted app does.
+
+
+
+
+2 Home page (realtime update and tile mis match fixed)
+focus timer 
+screen time - 
+  insights (Click)
+drift score 
+distraction score  -
+  rewards page (Click)
+focus time score
+weekly pulse 
+top distracting apps 
+
+I have stabilized the dashboard analytics synchronization and refined the UI layout for perfect symmetry. 
+
+### **Key Improvements**
+
+#### **1. Real-Time Data Synchronization**
+*   **Restored Backend Continuity**: Fixed a critical bug in the native `MethodChannelHandler` where the `dailyDbStats` variable was missing, which prevented metrics like **Screen Time**, **Unlock Count**, and **Focus Time** from updating correctly.
+*   **Live Drift Intelligence**: Updated the `CognitiveDriftEngine` to recalculate drift scores on **scroll events** as well as app switches. This ensures the "Brain Mirror™" and distraction metrics respond instantly to scrolling-intensive apps.
+*   **Bridge Parity**: Added the missing `getBehavioralMetrics` bridge method, which now feeds live session data (reopens, failed exits, and feed exposure) directly to the Flutter UI.
+*   **Aggressive Refresh Loop**: Increased the dashboard auto-refresh frequency from **10 seconds to 3 seconds**. Added a `WidgetsBindingObserver` to trigger an immediate data fetch whenever you resume the app from the background.
+
+#### **2. Layout & Symmetry Refinement**
+*   **Perfect Tile Alignment**: Wrapped the dashboard stats grid in `IntrinsicHeight` and used `CrossAxisAlignment.stretch`. This forces all tiles in a row to maintain identical heights regardless of the content length (e.g., long distraction score labels).
+*   **Standardized Aesthetics**: Unified the padding (`20px`) and border radius (`36px`) across all primary tiles (`Screen Time`, `Drift Score`, `Distraction`, and `Focus Time`) for a premium, symmetrical appearance.
+*   **Accurate App Labeling**: Updated the "Top Distracting Apps" section to use official **Display Names** (e.g., "Instagram") instead of raw package names (e.g., "com.instagram.android").
+
+#### **3. Performance & Stability**
+*   **Weekly Pulse Reliability**: Verified and hardened the `weekly_trend` calculation. The sparkline now correctly repaints every few seconds to reflect live usage changes.
+*   **Filtered Analytics**: Re-enforced the exclusion of whitelisted and internal system apps from the "Daily Screen Time" goal tracking to ensure your progress bar reflects actual distractions.
+
+The dashboard should now feel "alive," with metrics updating as you move between apps or scroll through feeds, all while maintaining a perfectly balanced grid layout.
+
+
+3 Insights 
+Day week month tab (nothing to fix)
+app categorization (added in graphs)
+total screen time graph (update realtime and sync)
+distraction score graph (update realtime and sync)
+top distracting graph (update realtime and sync)
+usage limit graph (update realtime and sync)
+behaviour health - logic and real time fic
+   Doom scroll meter 
+   impulse control
+   reentry patterns
+   Recommendation (Future goal AI recommendations) (not touched yet)
+
+
+I have completed a comprehensive overhaul of the **Insights Page** and its underlying behavioral intelligence engine. This update transforms the insights from static charts into a real-time, interactive command center for your cognitive health.
+
+### **Summary of Changes**
+
+#### **1. Interactive & Deep Insights (Frontend)**
+*   **Expandable Screen Time**: The "Total Screen Time" card now expands on tap to reveal a granular breakdown.
+    *   **Categorical Breakdown**: Color-coded progress bars for Social, Entertainment, Productivity, and Utility usage.
+    *   **App Breakdown**: The top 8 apps are listed with their specific screen time and inline category tags.
+*   **Real-Time Visualization**:
+    *   All sparklines (Screen Time, Distraction Score, and Usage Limit) now update every **3 seconds**.
+    *   Fixed a rendering bug where graphs weren't repainting; they now react instantly to incoming data.
+    *   Replaced placeholder data with live **Hourly Distraction Trends** and **Weekly Goal Progress**.
+*   **Instant Refresh**: Added a Lifecycle Observer that triggers an immediate data sync the moment you resume the app from the background.
+
+#### **2. Behavioral Intelligence Hardening (Native Engine)**
+*   **Daily Accumulators**: Refactored the `CognitiveDriftEngine` to track behavioral metrics across the **entire day** instead of resetting per session.
+    *   **Doom Scroll Meter**: Tracks cumulative milliseconds spent scrolling through distracting feeds throughout the day.
+    *   **Impulse Control**: Count of "failed exits" (apps opened and closed within 5 seconds) now persists daily.
+    *   **Reentry Patterns**: Tracks how many times you rapidly reopened distracting apps across your entire day's usage.
+*   **Enhanced Bridge**: Updated the `MethodChannelHandler` to calculate categorical usage on-the-fly, ensuring the UI always shows a consistent breakdown of your screen time.
+
+#### **3. UI Symmetry & Aesthetic Polish**
+*   **Consistency**: Unified padding, border radii, and typography across all cards to match the homepage's "glassmorphic" design.
+*   **Legibility**: Added `Flexible` text handling to ensure that app labels and category tags never overlap, regardless of device screen size.
+
+### **Technical Validation**
+| Metric | Update Frequency | Source | Persistent? |
+| :--- | :--- | :--- | :--- |
+| **Total Screen Time** | 3s | UsageStatsManager | Yes (Daily) |
+| **Distraction Score** | 3s | AnalyticsEngine | Yes (Real-time) |
+| **Behavioral Health** | 3s | CognitiveDriftEngine | Yes (Daily Accumulators) |
+| **App Breakdown** | 3s | TrackingEngine | Yes (Filtered) |
+
+The ReClaim dashboard and insights are now perfectly synchronized, providing a 100% transparent and real-time view of your digital well-being.
+
+
+
+4 Brain Mirror
+Current cognitive drift score tile
+life time drift 
+addiction score
+memory streams , historical digital footprint 
+Viewed brain_mirror_dashboard.dart:1-511
+Viewed backend_service.dart:1-580
+Viewed DriftDao.kt:1-34
+Viewed MethodChannelHandler.kt:800-847
+Searched for "getLifetimeDriftCount"
+Viewed MethodChannelHandler.kt:500-600
+Viewed MethodChannelHandler.kt:700-800
+Viewed MethodChannelHandler.kt:50-150
+Viewed CognitiveDriftEngine.kt:1-174
+Edited CognitiveDriftEngine.kt
+Edited CognitiveDriftEngine.kt
+Edited MethodChannelHandler.kt
+Edited brain_mirror_dashboard.dart
+Viewed brain_mirror_dashboard.dart:270-320
+Edited brain_mirror_dashboard.dart
+
+I have upgraded the **Brain Mirror™** dashboard with a real-time synchronization engine and a sophisticated behavioral intelligence layer. 
+
+### **Brain Mirror™ Enhancements**
+
+#### **1. Real-Time Pulse Synchronization**
+*   **3-Second Heartbeat**: The dashboard now refreshes its entire intelligence stack every 3 seconds.
+*   **Instant Context Restoration**: Added a lifecycle observer that forces a complete data re-sync whenever you switch back to the app, ensuring your mental "mirror" is always up-to-date.
+*   **Dynamic Cognitive Drift**: 
+    *   The primary drift tile is now fully dynamic. It shifts between **HEALTHY (Green)**, **MODERATE (Orange)**, and **CRITICAL (Red)** based on your real-time cognitive fragmentation.
+    *   The tile glow and text colors now pulsate in sync with your current mental load.
+
+#### **2. New Behavioral Intelligence Signals**
+*   **Lifetime Drift**: Tracks your total historical digital fragmentation events, providing a long-term view of your focus resilience.
+*   **Addiction Score (Calculated)**: Implemented a new algorithm in the `CognitiveDriftEngine` that calculates your addiction risk (0-100%) by weighting:
+    *   **Fragmentation Index**: Your app-switching density (30%)
+    *   **Re-entry Frequency**: How often you loop back into distracting apps (25%)
+    *   **Impulse Control**: Count of reflexive app opens/closes (20%)
+    *   **Doom-Scroll Exposure**: Total cumulative feed time (25%)
+*   **Memory Streams**: The timeline at the bottom is now a "Historical Digital Footprint" that weaves together reflections, friction interventions, focus sessions, and drift logs into a single, cohesive memory stream.
+
+#### **3. Backend Consolidation**
+*   **Unified Bridge**: Consolidated the native bridge methods to reduce IPC overhead. All behavioral metrics (addiction, drift, reopens, etc.) are now delivered in a single atomic payload, preventing UI flickering and ensuring data parity across different screens.
+
+### **Summary of Metrics**
+| Signal | Logic | Dashboard Tile |
+| :--- | :--- | :--- |
+| **Cognitive Drift** | Real-time mental fragmentation | Header Pulse |
+| **Addiction Score** | Weighted behavioral risk index | Lifetime Stats (Right) |
+| **Lifetime Drift** | Total historical drift events | Lifetime Stats (Left) |
+| **Memory Streams** | Interactive behavioral timeline | Historical Log |
+
+Your Brain Mirror™ is now fully "live," reflecting your current digital state with high-fidelity accuracy.
+
+
+5 Block page 
+app restrictions (Future Scope - By categories)
+
+I have completely overhauled the **App Restrictions** screen (which serves as the central control for blocking apps) to support full categorization and rapid search.
+
+### **Categorized Restrictions Engine**
+
+1.  **Categorized List**:
+    *   The app list is now automatically grouped into distinct sections: **Social**, **Entertainment**, **Productivity**, and **Utility**.
+    *   Each category header is color-coded (e.g., Purple for Social, Pink for Entertainment, Green for Productivity) to help you visually scan your distractions.
+    *   The frequently used apps remain at the top for immediate access, followed by the full categorized breakdown.
+
+2.  **Real-Time Search Bar**:
+    *   Added a high-performance search bar at the top of the restrictions list.
+    *   As you type, the list filters in real-time while maintaining the category groupings, allowing you to find and block/whitelist specific apps in seconds.
+
+3.  **Visual Hierarchy**:
+    *   Updated the typography and spacing to ensure the category headers are distinct and bold.
+    *   The "Frequently Used" section now automatically hides when you start searching to keep the results focused.
+
+### **Next Steps**
+Since the search tool was experiencing latency, I have focused on manual code verification to ensure the categorization logic is robust. You can now access the **App Restrictions** screen from the dashboard to see your apps organized by their cognitive impact.
+
+
+
+6 Profile page
+Settings (App permisiion)
+Daily screen limit set goal 
+Emergency unlock status
+Emergency safe code 
+multi device sync (Future Goals) 
+Additional features tab -
+ Notification (fixed and update)
+ Schedule reports (fixed and updated)
+ App feature info (fixed and updated)
+ Ai powered insights (Furure Goals)
+ Home screen glance (Furure Goals)
+ Advance Admin dashboard (future goals for cross platform support) 
+ system monitioring (For Admins future goal) 
+ Streak Tile (fixed)
+ Unlocked badges (fixed)
+ Unlock rewards (fixed)
+ Data portability 
+### **Complete Summary: Profile & System Settings Overhaul**
+
+We have transformed the **Profile** section into a centralized command center for your cognitive health, transitioning from static UI placeholders to a fully functional, data-driven experience.
+
+#### **1. Main Profile Dashboard (`profile_screen.dart`)**
+*   **Real-Time Data Parity**: The profile now pulls live metrics from the `CognitiveDriftEngine` and `DatabaseHelper` on every load, including:
+    *   **Daily Limit Tracking**: Dynamic sync of your focus goal seconds.
+    *   **Emergency Controls**: Displays live "Emergency Unlocks Left" (synced with the 5-per-day limit).
+    *   **Gamification Sync**: Unified view of your current **Streak**, **Focus Points**, and **Unlocked Badges**.
+*   **Secure Settings**: Implemented the **Emergency SafeCode** management UI, allowing you to set and update your 4-digit bypass code with immediate native persistence.
+
+#### **2. Additional Features Command Center (`additional_features_screen.dart`)**
+*   **Functional Connectivity**:
+    *   **Push Notifications**: Now triggers a native "ReClaim™ Activated" signal and registers focus reminders.
+    *   **Scheduled Reports**: Now interfaces with the Android **WorkManager** to schedule or cancel a 24-hour daily performance report.
+*   **System Navigation**: Consolidated access to the **Brain Mirror™ Dashboard**, **Usage Insights**, and the new **Feature Showcase**.
+
+#### **3. Feature Showcase & Transparency (`feature_showcase_screen.dart`) [NEW]**
+*   **Technical Manifesto**: A new premium screen that explains the 11 core pillars of the app (Drift Engine, Smart Friction, Strict Mode, etc.).
+*   **Aesthetics**: Uses high-end glassmorphic cards and color-coded iconography to elevate the app's brand identity.
+
+#### **4. Native Backend & Persistence Logic**
+*   **ReportWorker.kt**: A new background service that aggregates your daily behavior (Usage, Points, Streak) and delivers a summary notification even when the app is closed.
+*   **Bridge Methods**: Added `toggleNotifications` and `toggleScheduledReports` to the `MethodChannelHandler` to ensure Flutter switches actually control native system behavior.
+*   **Persistent Preferences**: All user preferences (notification states, report schedules) are now saved across reboots using a synchronized `SharedPreferences` and SQLite approach.
+
+**In short: The Profile page is now a living part of the ReClaim™ intelligence stack, providing total control and full transparency over the app's underlying enforcement and analytics engines.**
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,16 +1,23 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.js';
 import { reflectionBatchSchema } from '../schemas/reflection.schema.js';
 import { pool } from '../../db/pool.js';
 
 const router = Router();
 
-router.post('/sync', authMiddleware, async (req, res) => {
+/**
+ * POST /v1/analytics/reflection/sync
+ * Upserts a batch of reflection events from the Android native layer.
+ * Requires a valid Bearer JWT — authMiddleware is applied on the parent /v1 router.
+ */
+router.post('/sync', async (req, res) => {
   try {
     const { events } = reflectionBatchSchema.parse(req.body);
     const userId = req.user?.userId;
 
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', code: 'UNAUTHORIZED', message: 'Valid Bearer token required.' });
+      return;
+    }
 
     const client = await pool.connect();
     try {
@@ -30,8 +37,8 @@ router.post('/sync', authMiddleware, async (req, res) => {
     } finally {
       client.release();
     }
-  } catch (err) {
-    res.status(400).json({ error: 'Invalid payload' });
+  } catch (error: any) {
+    res.status(400).json({ error: 'Bad Request', code: 'BAD_REQUEST', message: error.message });
   }
 });
 

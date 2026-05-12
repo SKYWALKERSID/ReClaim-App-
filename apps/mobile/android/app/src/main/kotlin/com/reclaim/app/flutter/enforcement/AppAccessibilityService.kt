@@ -95,37 +95,66 @@ class AppAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val packageName = event.packageName?.toString() ?: return
         val pkg = packageName.lowercase()
-        if (EnforcementManager.isInternalPackage(packageName)) return
         
-        // Feed events to CognitiveDriftEngine
-        CognitiveDriftEngine.onAccessibilityEvent(this, packageName, event.eventType)
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            Log.d("AppAccessibility", "Window changed to: $pkg")
+        }
 
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        
-        if (packageName == lastPackageName && SystemClock.elapsedRealtime() - lastEventAtElapsedMs < 200) return
-        
-        lastPackageName = packageName
-        lastEventAtElapsedMs = SystemClock.elapsedRealtime()
+        val className = event.className?.toString()
 
-        serviceScope.launch {
-            IntentEngine.onAppSwitch(this@AppAccessibilityService, packageName)
-            
-            val frictionType = FrictionOrchestrator.getFrictionType(this@AppAccessibilityService, packageName)
-            FrictionOrchestrator.logFriction(this@AppAccessibilityService, packageName, frictionType, false)
-
-            if (frictionType == FrictionOrchestrator.FrictionType.HARD_BLOCK) {
-                BlockingOverlayService.show(this@AppAccessibilityService, packageName, "Passive hard-block due to high cognitive drift.", "hard")
-                return@launch
+        // 1. Internal/Self-Package Bypass
+        if (pkg == this.packageName.lowercase() || EnforcementManager.isInternalPackage(packageName)) {
+            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                // If it's the ReClaim app itself, only hide if we are in MainActivity (avoids overlay loop)
+                if (pkg == this.packageName.lowercase()) {
+                    if (className?.contains("MainActivity") == true) {
+                        BlockingOverlayService.hide(this)
+                    }
+                } else {
+                    // For all other internal packages (Settings, Launcher, etc.), hide immediately
+                    BlockingOverlayService.hide(this)
+                }
             }
+            return
+        }
+        
+        // Feed events to engines in background
+        serviceScope.launch(Dispatchers.Default) {
+            CognitiveDriftEngine.onAccessibilityEvent(this@AppAccessibilityService, packageName, event.eventType)
 
-            if (frictionType != FrictionOrchestrator.FrictionType.NONE) {
-                FrictionOverlayService.start(this@AppAccessibilityService, packageName, frictionType)
-                return@launch
-            }
+            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                if (packageName == lastPackageName && SystemClock.elapsedRealtime() - lastEventAtElapsedMs < 200) return@launch
+                
+                lastPackageName = packageName
+                lastEventAtElapsedMs = SystemClock.elapsedRealtime()
 
-            val decision = EnforcementManager.blockDecision(packageName)
-            if (decision.shouldBlock) {
-                BlockingOverlayService.show(this@AppAccessibilityService, packageName, decision.reason, decision.mode)
+                Log.v("AppAccessibility", "Evaluating app switch to: $packageName")
+                EnforcementManager.onAppSwitch(this@AppAccessibilityService, packageName)
+                IntentEngine.onAppSwitch(this@AppAccessibilityService, packageName)
+                
+                val frictionType = FrictionOrchestrator.getFrictionType(this@AppAccessibilityService, packageName)
+                
+                withContext(Dispatchers.Main) {
+                    FrictionOrchestrator.logFriction(this@AppAccessibilityService, packageName, frictionType, false)
+
+                    if (frictionType == FrictionOrchestrator.FrictionType.HARD_BLOCK) {
+                        val reason = if (EnforcementManager.isLocked) "Daily limit reached." else if (EnforcementManager.isFocusModeActive) "Focus mode active." else "Passive hard-block due to high cognitive drift."
+                        BlockingOverlayService.show(this@AppAccessibilityService, packageName, reason, "hard")
+                    } else {
+                        if (EnforcementManager.isWhitelisted(packageName)) {
+                            BlockingOverlayService.hide(this@AppAccessibilityService)
+                        }
+
+                        if (frictionType != FrictionOrchestrator.FrictionType.NONE) {
+                            FrictionOverlayService.start(this@AppAccessibilityService, packageName, frictionType)
+                        } else {
+                            val decision = EnforcementManager.blockDecision(packageName)
+                            if (decision.shouldBlock) {
+                                BlockingOverlayService.show(this@AppAccessibilityService, packageName, decision.reason, decision.mode)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

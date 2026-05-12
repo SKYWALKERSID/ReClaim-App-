@@ -105,10 +105,18 @@ object TrackingEngine {
     }
 
     fun getAllTodayUsage(context: Context): Map<String, Long> {
+        val start = System.currentTimeMillis()
         val cal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
-        return getPreciseUsageForRange(context, cal.timeInMillis, System.currentTimeMillis())
+        val usage = getPreciseUsageForRange(context, cal.timeInMillis, System.currentTimeMillis())
+        val duration = System.currentTimeMillis() - start
+        if (duration > 500) {
+            android.util.Log.w("TrackingEngine", "getAllTodayUsage took ${duration}ms!")
+        } else {
+            android.util.Log.d("TrackingEngine", "getAllTodayUsage took ${duration}ms")
+        }
+        return usage
     }
     
     fun getHourlyUsageForDay(context: Context, cal: Calendar, targetCategory: String? = null): LongArray {

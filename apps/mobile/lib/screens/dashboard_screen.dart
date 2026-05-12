@@ -6,7 +6,7 @@ import 'dart:math' as math;
 import '../widgets/custom_card.dart';
 import '../constants/colors.dart';
 import '../services/backend_service.dart';
-import '../bottom_nav.dart';
+import 'bottom_nav.dart';
 import 'app_selection_screen.dart';
 import 'goal_setting_screen.dart';
 import '../widgets/usage_bar.dart';
@@ -103,8 +103,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     if (!isSilent) setState(() => _isLoadingData = true);
     try {
       final stats = await _backendService.fetchDashboardStats();
-      final driftStats = await _backendService.fetchDriftStats();
-      final craving = await _backendService.invokeMethod('fetchActiveCravingWindow'); 
+      final driftStats = await _backendService.fetchBehavioralMetrics();
+      final craving = await _backendService.getCravingStatus(); 
       final profile = await _backendService.getUserProfile();
       final usage = await _backendService.fetchAppUsage();
       final permissions = await _backendService.getPermissionStatus();
@@ -129,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Future<void> _checkPendingReflection() async {
-    final reflection = await _backendService.invokeMethod('getPendingReflection');
+    final reflection = await _backendService.getPendingReflection();
     if (reflection != null && mounted) {
       final String sessionId = reflection['sessionId'];
       final String promptType = reflection['promptType'];
@@ -144,12 +144,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           promptType: promptType,
           driftScore: driftScore,
           onResponse: (response) async {
-            await _backendService.invokeMethod('submitReflection', {
-              'session_id': sessionId,
-              'prompt_type': promptType,
-              'response': response,
-              'drift_score': driftScore,
-            });
+            await _backendService.submitReflection(
+              sessionId,
+              promptType,
+              response,
+              driftScore,
+            );
             Navigator.pop(context);
           },
         ),
@@ -295,16 +295,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               children: [
                 const SizedBox(height: 12),
                 _buildHeader(),
+                const SizedBox(height: 24),
                 if (_topApps.isEmpty && !_isLoadingData) ...[
-                  const SizedBox(height: 24),
                   _buildOnboardingCard(),
+                  const SizedBox(height: 24),
                 ],
                 if (!_hasRequiredPermissions) ...[
-                  const SizedBox(height: 24),
                   _buildPermissionWarning(),
+                  const SizedBox(height: 24),
                 ],
                 _entryAnimation(delay: 0, child: _buildProgressSection()),
-                if (_activeCravingWindow != null) ...[
+                const SizedBox(height: 24),
+                if (_activeCravingWindow?['isActive'] == true) ...[
                   _entryAnimation(delay: 1, child: _buildCravingAlert()),
                   const SizedBox(height: 24),
                 ],
@@ -514,18 +516,17 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: CustomCard(
-                  useGlass: true,
-                  padding: const EdgeInsets.all(20),
-                  borderRadius: 36,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      DriftScoreRing(
-                        score: (_driftStats?['drift_score'] as num?)?.toDouble() ?? 0.0,
-                        fragmentation: (_driftStats?['fragmentation_index'] as num?)?.toDouble() ?? 0.0,
-                      ),
-                    ],
+                child: _StatsCard(
+                  label: "DRIFT SCORE",
+                  value: "",
+                  trend: (_driftStats?['drift_score'] as num? ?? 0) < 50 ? "Stable" : "High Drift",
+                  isTrendPositive: (_driftStats?['drift_score'] as num? ?? 0) < 50,
+                  icon: Icons.psychology_outlined,
+                  onTap: _navigateToBrainMirror,
+                  child: DriftScoreRing(
+                    score: (_driftStats?['drift_score'] as num?)?.toDouble() ?? 0.0,
+                    fragmentation: (_driftStats?['fragmentation_index'] as num?)?.toDouble() ?? 0.0,
+                    showLabel: false,
                   ),
                 ),
               ),
@@ -984,6 +985,8 @@ class _StatsCard extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onTap;
 
+  final Widget? child;
+
   const _StatsCard({
     required this.label,
     required this.value,
@@ -991,6 +994,7 @@ class _StatsCard extends StatefulWidget {
     required this.isTrendPositive,
     required this.icon,
     this.onTap,
+    this.child,
   });
 
   @override
@@ -1044,7 +1048,6 @@ class _StatsCardState extends State<_StatsCard> with SingleTickerProviderStateMi
           padding: const EdgeInsets.all(20),
           borderRadius: 36,
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -1066,17 +1069,17 @@ class _StatsCardState extends State<_StatsCard> with SingleTickerProviderStateMi
                   Icon(widget.icon, size: 16, color: Colors.white54),
                 ],
               ),
-              const SizedBox(height: 4),
-              const Text("Today", style: TextStyle(fontSize: 12, color: Colors.white38)),
               const SizedBox(height: 16),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  widget.value,
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white),
+              Center(
+                child: widget.child ?? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.value,
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Icon(trendIcon, size: 12, color: trendColor),

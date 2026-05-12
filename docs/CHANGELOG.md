@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-05-11
+### Added
+- **Social Accountability Plane**: Full peer-to-peer buddy system and community challenges.
+- **Intelligence Plane Upgrade**: High-resolution Drift Session syncing and predictive Craving Windows.
+- **Variable Latency Friction**: Intervention intensity now scales dynamically with the Cognitive Drift Score.
+- **Unified Documentation Suite**: Total overhaul of API, Architecture, and Algorithm specifications to reflect v2.0 state.
+- **Automated Setup**: New `reclaim-setup.ps1` for one-command environment preparation.
+
 ## [1.1.0] - 2026-05-10
 ### Added
 - **Architectural Stabilization**: Complete refactor into modular layered structure (Presentation, Service, Domain, Persistence).

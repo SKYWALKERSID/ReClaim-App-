@@ -1,0 +1,199 @@
+<svg width="720" height="1080" viewBox="0 0 720 1080" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="720" height="1080" fill="#F8F8F6" rx="0"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 1 — PRESENTATION PLANE
+  ══════════════════════════════════════ -->
+  <rect x="24" y="24" width="672" height="148" rx="12" fill="#EEEDFE" stroke="#AFA9EC" stroke-width="1"/>
+  <text x="40" y="44" font-size="9" font-weight="600" fill="#534AB7" letter-spacing="1.2">MOBILE CLIENT — PRESENTATION PLANE (FLUTTER)</text>
+
+  <!-- Brain Mirror chip -->
+  <rect x="40" y="54" width="290" height="52" rx="8" fill="#ffffff" stroke="#AFA9EC" stroke-width="1"/>
+  <text x="185" y="75" font-size="13" font-weight="600" fill="#3C3489" text-anchor="middle">Brain Mirror™ dashboard</text>
+  <text x="185" y="93" font-size="11" fill="#534AB7" text-anchor="middle">Usage insights &amp; data viz</text>
+
+  <!-- Policy Config chip -->
+  <rect x="350" y="54" width="330" height="52" rx="8" fill="#ffffff" stroke="#AFA9EC" stroke-width="1"/>
+  <text x="515" y="75" font-size="13" font-weight="600" fill="#3C3489" text-anchor="middle">Policy configuration</text>
+  <text x="515" y="93" font-size="11" fill="#534AB7" text-anchor="middle">Screen rules &amp; limits</text>
+
+  <!-- FLAG_SECURE bar -->
+  <rect x="40" y="118" width="640" height="44" rx="7" fill="#ffffff" stroke="#AFA9EC" stroke-width="0.8" stroke-dasharray="5 3"/>
+  <text x="360" y="136" font-size="11" font-weight="600" fill="#3C3489" text-anchor="middle">FLAG_SECURE screens</text>
+  <text x="360" y="153" font-size="10" fill="#534AB7" text-anchor="middle">All screens protected from screenshots &amp; recordings</text>
+
+  <!-- Arrow down -->
+  <line x1="200" y1="172" x2="200" y2="196" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="195,196 205,196 200,204" fill="#B4B2A9"/>
+  <line x1="520" y1="172" x2="520" y2="196" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="515,196 525,196 520,204" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 2 — BRIDGE
+  ══════════════════════════════════════ -->
+  <rect x="24" y="204" width="672" height="68" rx="12" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="40" y="224" font-size="9" font-weight="600" fill="#5F5E5A" letter-spacing="1.2">BRIDGE LAYER</text>
+
+  <rect x="210" y="232" width="300" height="30" rx="7" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="360" y="251" font-size="12" font-weight="600" fill="#2C2C2A" text-anchor="middle">MethodChannel bridge — Flutter ↔ Kotlin relay</text>
+
+  <!-- Arrow down -->
+  <line x1="360" y1="272" x2="360" y2="296" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="355,296 365,296 360,304" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 3 — EXECUTION PLANE
+  ══════════════════════════════════════ -->
+  <rect x="24" y="304" width="672" height="172" rx="12" fill="#E1F5EE" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="40" y="324" font-size="9" font-weight="600" fill="#0F6E56" letter-spacing="1.2">EXECUTION PLANE (KOTLIN NATIVE)</text>
+
+  <!-- Row 1: Accessibility + Drift Engine -->
+  <rect x="40" y="332" width="300" height="52" rx="8" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="190" y="353" font-size="13" font-weight="600" fill="#085041" text-anchor="middle">Accessibility service</text>
+  <text x="190" y="371" font-size="11" fill="#0F6E56" text-anchor="middle">Monitors app transitions</text>
+
+  <rect x="360" y="332" width="320" height="52" rx="8" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="520" y="353" font-size="13" font-weight="600" fill="#085041" text-anchor="middle">Cognitive Drift Engine™</text>
+  <text x="520" y="371" font-size="11" fill="#0F6E56" text-anchor="middle">Detects scroll compulsion patterns</text>
+
+  <!-- inner arrows -->
+  <line x1="190" y1="384" x2="190" y2="400" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="185,400 195,400 190,408" fill="#5DCAA5"/>
+  <line x1="520" y1="384" x2="520" y2="400" stroke="#5DCAA5" stroke-width="1.2"/>
+  <polygon points="515,400 525,400 520,408" fill="#5DCAA5"/>
+
+  <!-- Row 2: Intent + Friction + Overlay -->
+  <rect x="40" y="408" width="188" height="52" rx="8" fill="#ffffff" stroke="#5DCAA5" stroke-width="1"/>
+  <text x="134" y="429" font-size="12" font-weight="600" fill="#085041" text-anchor="middle">Intent interception</text>
+  <text x="134" y="447" font-size="10" fill="#0F6E56" text-anchor="middle">Catches app-open events</text>
+
+  <rect x="244" y="408" width="196" height="52" rx="8" fill="#FAECE7" stroke="#F0997B" stroke-width="1"/>
+  <text x="342" y="429" font-size="12" font-weight="600" fill="#712B13" text-anchor="middle">Friction layer</text>
+  <text x="342" y="447" font-size="10" fill="#993C1D" text-anchor="middle">Delay &amp; reflection prompt</text>
+
+  <rect x="456" y="408" width="224" height="52" rx="8" fill="#FAECE7" stroke="#F0997B" stroke-width="1"/>
+  <text x="568" y="429" font-size="12" font-weight="600" fill="#712B13" text-anchor="middle">Overlay rendering</text>
+  <text x="568" y="447" font-size="10" fill="#993C1D" text-anchor="middle">Draws prompts on screen</text>
+
+  <!-- Arrow down -->
+  <line x1="360" y1="476" x2="360" y2="500" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="355,500 365,500 360,508" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 4 — SECURE STORAGE
+  ══════════════════════════════════════ -->
+  <rect x="24" y="508" width="672" height="80" rx="12" fill="#FAEEDA" stroke="#EF9F27" stroke-width="1"/>
+  <text x="40" y="528" font-size="9" font-weight="600" fill="#854F0B" letter-spacing="1.2">SECURE STORAGE (HARDWARE-BACKED)</text>
+
+  <rect x="40" y="536" width="300" height="42" rx="8" fill="#ffffff" stroke="#EF9F27" stroke-width="1"/>
+  <text x="190" y="553" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">Trusted Execution Environment</text>
+  <text x="190" y="569" font-size="10" fill="#854F0B" text-anchor="middle">Hardware keystore · RS256 key storage</text>
+
+  <rect x="360" y="536" width="320" height="42" rx="8" fill="#ffffff" stroke="#EF9F27" stroke-width="1"/>
+  <text x="520" y="553" font-size="12" font-weight="600" fill="#633806" text-anchor="middle">Encrypted shared prefs</text>
+  <text x="520" y="569" font-size="10" fill="#854F0B" text-anchor="middle">AES-256-GCM at rest</text>
+
+  <!-- Arrow down with label -->
+  <line x1="360" y1="588" x2="360" y2="608" stroke="#B4B2A9" stroke-width="1.2" stroke-dasharray="4 2"/>
+  <text x="370" y="601" font-size="9" fill="#888780">TLS 1.3 · RS256 JWT</text>
+  <polygon points="355,608 365,608 360,616" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 5 — NETWORK
+  ══════════════════════════════════════ -->
+  <rect x="24" y="616" width="672" height="74" rx="12" fill="#F1EFE8" stroke="#D3D1C7" stroke-width="1"/>
+  <text x="40" y="636" font-size="9" font-weight="600" fill="#5F5E5A" letter-spacing="1.2">NETWORK &amp; SECURITY</text>
+
+  <rect x="80" y="644" width="240" height="36" rx="8" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <circle cx="104" cy="662" r="5" fill="#888780"/>
+  <text x="118" y="658" font-size="12" font-weight="600" fill="#2C2C2A">TLS 1.3 transport</text>
+  <text x="118" y="673" font-size="10" fill="#5F5E5A">End-to-end encryption</text>
+
+  <rect x="400" y="644" width="240" height="36" rx="8" fill="#ffffff" stroke="#D3D1C7" stroke-width="1"/>
+  <circle cx="424" cy="662" r="5" fill="#888780"/>
+  <text x="438" y="658" font-size="12" font-weight="600" fill="#2C2C2A">RS256 JWT auth</text>
+  <text x="438" y="673" font-size="10" fill="#5F5E5A">Asymmetric token signing</text>
+
+  <!-- Arrow down -->
+  <line x1="360" y1="690" x2="360" y2="714" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="355,714 365,714 360,722" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 6 — API GATEWAY
+  ══════════════════════════════════════ -->
+  <rect x="24" y="722" width="672" height="108" rx="12" fill="#E6F1FB" stroke="#85B7EB" stroke-width="1"/>
+  <text x="40" y="742" font-size="9" font-weight="600" fill="#185FA5" letter-spacing="1.2">INTELLIGENCE PLANE — API GATEWAY (EXPRESS.JS)</text>
+
+  <rect x="40" y="750" width="144" height="66" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="112" y="773" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Helmet.js</text>
+  <text x="112" y="790" font-size="10" fill="#185FA5" text-anchor="middle">HSTS &amp; CSP</text>
+  <text x="112" y="805" font-size="10" fill="#185FA5" text-anchor="middle">headers</text>
+
+  <rect x="200" y="750" width="144" height="66" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="272" y="773" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Rate limiting</text>
+  <text x="272" y="790" font-size="10" fill="#185FA5" text-anchor="middle">Throttles</text>
+  <text x="272" y="805" font-size="10" fill="#185FA5" text-anchor="middle">abuse</text>
+
+  <rect x="360" y="750" width="144" height="66" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="432" y="773" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Zod validation</text>
+  <text x="432" y="790" font-size="10" fill="#185FA5" text-anchor="middle">Schema</text>
+  <text x="432" y="805" font-size="10" fill="#185FA5" text-anchor="middle">enforcement</text>
+
+  <rect x="520" y="750" width="160" height="66" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="600" y="773" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Auth handler</text>
+  <text x="600" y="790" font-size="10" fill="#185FA5" text-anchor="middle">Verifies</text>
+  <text x="600" y="805" font-size="10" fill="#185FA5" text-anchor="middle">JWT tokens</text>
+
+  <!-- 4 arrows down -->
+  <line x1="112" y1="830" x2="112" y2="854" stroke="#85B7EB" stroke-width="1.2"/>
+  <polygon points="107,854 117,854 112,862" fill="#85B7EB"/>
+  <line x1="272" y1="830" x2="272" y2="854" stroke="#85B7EB" stroke-width="1.2"/>
+  <polygon points="267,854 277,854 272,862" fill="#85B7EB"/>
+  <line x1="432" y1="830" x2="432" y2="854" stroke="#85B7EB" stroke-width="1.2"/>
+  <polygon points="427,854 437,854 432,862" fill="#85B7EB"/>
+  <line x1="600" y1="830" x2="600" y2="854" stroke="#85B7EB" stroke-width="1.2"/>
+  <polygon points="595,854 605,854 600,862" fill="#85B7EB"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 7 — CORE SERVICES
+  ══════════════════════════════════════ -->
+  <rect x="24" y="862" width="672" height="80" rx="12" fill="#E6F1FB" stroke="#85B7EB" stroke-width="1"/>
+  <text x="40" y="882" font-size="9" font-weight="600" fill="#185FA5" letter-spacing="1.2">CORE SERVICES</text>
+
+  <rect x="40" y="890" width="144" height="42" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="112" y="907" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Analytics</text>
+  <text x="112" y="922" font-size="10" fill="#185FA5" text-anchor="middle">Weekly drift reports</text>
+
+  <rect x="200" y="890" width="144" height="42" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="272" y="907" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Reward engine</text>
+  <text x="272" y="922" font-size="10" fill="#185FA5" text-anchor="middle">Autonomy scores</text>
+
+  <rect x="360" y="890" width="144" height="42" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="432" y="907" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Pattern engine</text>
+  <text x="432" y="922" font-size="10" fill="#185FA5" text-anchor="middle">Trend detection</text>
+
+  <rect x="520" y="890" width="160" height="42" rx="8" fill="#ffffff" stroke="#85B7EB" stroke-width="1"/>
+  <text x="600" y="907" font-size="12" font-weight="600" fill="#0C447C" text-anchor="middle">Notifications</text>
+  <text x="600" y="922" font-size="10" fill="#185FA5" text-anchor="middle">Nudges &amp; alerts</text>
+
+  <!-- Arrow down -->
+  <line x1="360" y1="942" x2="360" y2="966" stroke="#B4B2A9" stroke-width="1.2"/>
+  <polygon points="355,966 365,966 360,974" fill="#B4B2A9"/>
+
+  <!-- ══════════════════════════════════════
+       LANE 8 — DATABASE
+  ══════════════════════════════════════ -->
+  <rect x="24" y="974" width="672" height="68" rx="12" fill="#EAF3DE" stroke="#97C459" stroke-width="1"/>
+  <text x="40" y="994" font-size="9" font-weight="600" fill="#3B6D11" letter-spacing="1.2">PERSISTENCE</text>
+
+  <rect x="200" y="1002" width="320" height="30" rx="7" fill="#ffffff" stroke="#97C459" stroke-width="1"/>
+  <text x="360" y="1013" font-size="13" font-weight="600" fill="#27500A" text-anchor="middle">PostgreSQL 14</text>
+  <text x="360" y="1027" font-size="10" fill="#3B6D11" text-anchor="middle">Hardened persistent data store</text>
+
+  <!-- ══════════════════════════════════════
+       LEGEND (outside lanes, bottom strip already inside viewBox)
+  ══════════════════════════════════════ -->
+
+</svg>

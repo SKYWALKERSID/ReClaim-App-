@@ -1,70 +1,99 @@
 # ReClaim™ Database Schema
 
-ReClaim uses PostgreSQL 14 as its primary relational engine, optimized for time-series ingestion of usage events and state-management of user commitments.
+ReClaim uses PostgreSQL 14 with a modular, scalable schema optimized for time-series ingestion and relational social accountability.
 
 ---
 
-## 🏗️ Table Definitions
+## 🏗️ Core Tables
 
 ### 1. `users`
-Core user identity (synced with Firebase Auth).
 - `id`: UUID (Primary Key)
-- `firebase_uid`: VARCHAR(255) (Unique)
-- `email`: VARCHAR(255)
-- `created_at`: TIMESTAMP
+- `firebase_uid`: VARCHAR(255) (Unique) - Synced with Google Identity.
+- `preferences`: JSONB - User-specific UI/Notification settings.
+- `created_at`: TIMESTAMPTZ
 
 ### 2. `usage_events`
-Time-series data for app usage.
 - `id`: BIGSERIAL (Primary Key)
-- `user_id`: UUID (Foreign Key -> users.id)
-- `package_name`: VARCHAR(255)
-- `started_at`: TIMESTAMP
-- `ended_at`: TIMESTAMP
+- `user_id`: UUID (FK -> users.id)
+- `package_name`: TEXT
+- `started_at`: TIMESTAMPTZ
+- `ended_at`: TIMESTAMPTZ
 - `duration_seconds`: INTEGER
-- `event_type`: VARCHAR(50) (usage, blocked, override)
+- `event_type`: TEXT (usage, blocked_attempt, override)
+- `metadata`: JSONB (Includes `snapshotTotalMinutes`, `category`)
+- `client_event_id`: TEXT (For idempotency)
 
 ### 3. `commitments`
-User-defined discipline policies.
-- `id`: UUID (Primary Key)
-- `user_id`: UUID (Foreign Key -> users.id)
+- `user_id`: UUID (Primary Key, FK -> users.id)
 - `daily_limit_minutes`: INTEGER
-- `focus_windows`: JSONB (Array of windows)
-- `blacklist`: TEXT[]
-- `whitelist`: TEXT[]
-- `max_overrides`: INTEGER
+- `focus_windows`: JSONB
+- `whitelist_packages`: TEXT[]
+- `blacklist_packages`: TEXT[]
+- `allow_whatsapp`: BOOLEAN
+- `max_overrides_per_day`: INTEGER
+- `reward_system_enabled`: BOOLEAN
 
-### 4. `daily_analytics`
-Aggregated daily metrics.
-- `id`: UUID (Primary Key)
+---
+
+## 🧠 Intelligence Plane
+
+### 4. `drift_sessions`
+High-resolution metrics from the Cognitive Drift Engine™.
+- `session_id`: UUID (Primary Key)
 - `user_id`: UUID
-- `date`: DATE
-- `total_usage_minutes`: INTEGER
-- `drift_score`: DECIMAL(3,2)
-- `points_earned`: INTEGER
-- `was_compliant`: BOOLEAN
+- `app_package`: TEXT
+- `peak_drift_score`: DECIMAL(3,2)
+- `fragmentation_index`: DECIMAL(3,2)
+- `reopen_count`: INTEGER
+- `feed_exposure_seconds`: INTEGER
+- `intent_confidence`: DECIMAL(3,2)
 
 ### 5. `craving_windows`
-Predicted high-risk interaction clusters.
+Predicted risk clusters.
 - `id`: UUID (Primary Key)
 - `user_id`: UUID
-- `window_start`: TIMESTAMP
-- `window_end`: TIMESTAMP
-- `confidence`: DECIMAL(3,2)
+- `window_start`: TIMESTAMPTZ
+- `window_end`: TIMESTAMPTZ
+- `probability`: DECIMAL(3,2)
 
 ---
 
-## 📈 Optimization Strategies
+## 🤝 Social & Auth
 
-### 1. Partitioning
-The `usage_events` table is designed for range-based partitioning by `started_at` to ensure fast queries as the dataset grows.
+### 6. `buddies`
+- `user_id`: UUID
+- `buddy_id`: UUID
+- `status`: TEXT (pending, accepted)
 
-### 2. Indexes
-- **Usage Events**: `CREATE INDEX idx_usage_user_time ON usage_events (user_id, started_at DESC);`
-- **Commitments**: `CREATE INDEX idx_commitments_user ON commitments (user_id);`
-- **Analytics**: `CREATE UNIQUE INDEX idx_analytics_user_date ON daily_analytics (user_id, date);`
+### 7. `challenges`
+- `id`: UUID (Primary Key)
+- `title`: TEXT
+- `goal_minutes`: INTEGER
+- `start_time`: TIMESTAMPTZ
+- `end_time`: TIMESTAMPTZ
 
-### 3. Data Retention
-A background cron job (`purging.job.ts`) automatically archives and prunes events older than 90 days from the hot storage.
+### 8. `refresh_tokens`
+- `id`: UUID (Primary Key)
+- `user_id`: UUID
+- `token_hash`: TEXT
+- `expires_at`: TIMESTAMPTZ
+- `is_revoked`: BOOLEAN
 
 ---
-*Schema Version: 1.0.14*
+
+## 📈 Optimization & Integrity
+
+### Partitioning
+`usage_events` is range-partitioned by `started_at`. Current strategy partitions by month.
+
+### Indexes
+- `usage_events_idempotency_idx`: Partial unique index on `client_event_id` to prevent duplicate ingestion.
+- `usage_events_user_started_idx`: Optimized for reverse-chronological dashboard fetches.
+
+### Maintenance
+- `purging.job.ts`: Automatically prunes events older than 90 days.
+- `daily_analytics` is refreshed every 4 hours via background worker.
+
+---
+*Schema Version: 2.0.14*
+*Last Verified: May 11, 2026*

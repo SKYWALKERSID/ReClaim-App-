@@ -8,9 +8,31 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(":app")
+
+    // Ensure all subprojects use Java 17 for compatibility with modern libraries
+    def configureJava = { p ->
+        if (p.hasProperty('android')) {
+            p.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+                if (p.android.hasProperty('kotlinOptions')) {
+                    p.android.kotlinOptions {
+                        jvmTarget = '17'
+                    }
+                }
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureJava(project)
+    } else {
+        project.afterEvaluate {
+            configureJava(project)
+        }
+    }
 }
 
 tasks.register("clean", Delete) {

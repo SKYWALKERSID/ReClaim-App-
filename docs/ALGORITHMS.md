@@ -1,73 +1,68 @@
 # ReClaim™ Behavioral Algorithms
 
-ReClaim utilizes proprietary algorithms to model attention fragmentation and enforce behavioral discipline.
+ReClaim's unique value proposition is its ability to quantify and intervene in digital behavior using data-driven algorithms.
 
 ---
 
 ## 1. Cognitive Drift Engine™ (CDE)
 
-The CDE quantifies the "decay" of human attention during digital interaction.
+The CDE quantifies the state of a user's attention during a session.
 
-### The Fragmentation Index ($\mathcal{F}$)
-The Fragmentation Index measures the volatility of context switching. 
+### Fragmentation Index ($\mathcal{F}$)
+Measures how "scattered" the user's attention is based on rapid app-switching.
 
-$$\mathcal{F} = \frac{\sum_{i=1}^{n} \Delta P_i}{T_{total}}$$
+$$\mathcal{F} = \frac{\sum_{i=1}^{n} \text{Weight}(P_i)}{T_{\text{total}}}$$
 
-Where:
-- $n$ is the number of app transitions.
-- $\Delta P_i$ is a weight assigned to the switch (higher for switching to "Red" category apps).
-- $T_{total}$ is the total interaction time.
+- **High Fragmentation ($\mathcal{F} > 0.5$)**: Triggers the **Hard Friction** layer.
+- **Low Fragmentation ($\mathcal{F} < 0.2$)**: Indicates a "Flow State," rewards bonus points.
 
-**Thresholds:**
-- **$\mathcal{F} < 0.2$**: Focused State.
-- **$0.2 \le \mathcal{F} < 0.5$**: Mild Drift.
-- **$\mathcal{F} \ge 0.5$**: High Fragmentation (Triggers Hard Friction).
+### Drift Score ($D$)
+A real-time metric (0.0 to 1.0) based on interaction velocity and feed exposure time.
 
 ---
 
-## 2. The Friction Layer Algorithm
+## 2. Dynamic Friction Layer
 
-The Friction Layer breaks the automaticity of app-opening habits.
+Instead of static blocks, ReClaim uses **Variable Latency Response ($L$)**.
 
-### Variable Latency Response ($L$)
-The delay injected before an app opens is not static; it scales based on the user's current Drift Score ($D$).
+$$L = L_{\text{base}} \times (1 + \alpha D)$$
 
-$$L = L_{base} \times (1 + \alpha D)$$
-
-Where:
-- $L_{base}$ is the user's configured minimum friction (e.g., 5s).
-- $\alpha$ is the sensitivity coefficient.
-- $D$ is the current Drift Score (0.0 to 1.0).
-
-**Logic Flow:**
-1. Package transition detected via `AccessibilityService`.
-2. Check if package is in `Blacklist`.
-3. If True, calculate $L$.
-4. Launch `FrictionOverlay` and hold for $L$ seconds.
-5. Surface a **Reflection Prompt** (e.g., "Is this intentional?").
-6. On confirmation, permit intent; otherwise, terminate.
+As the user's **Drift Score** ($D$) increases (indicating fatigue or mindless scrolling), the countdown timer before opening a restricted app increases automatically. This forces a longer "Reflection Gap."
 
 ---
 
-## 3. Craving Window Prediction
+## 3. Pattern Recognition & Risk Scoring
 
-ReClaim analyzes historical usage clusters to predict future lapses.
+The **PatternEngine** analyzes historical clusters to assign a **Distraction Risk Score**.
 
-**Cluster Analysis:**
-1. Group `UsageEvents` by hour of day over a 7-day rolling window.
-2. Calculate the standard deviation of starting times.
-3. If a cluster has high density ($N > 3$) and high average $D$, mark as a **High-Risk Window**.
-4. Trigger a **Pre-emptive Nudge** 15 minutes before the predicted window start.
+### Risk Calculation Components:
+1. **App Switches Per Hour**: High frequency indicates "digital restlessness."
+2. **Late-Night Usage**: Weighted heavily (0.9 multiplier) due to its impact on sleep and next-day willpower.
+3. **Continuous Session Length**: Flags sessions >30m in "Red" category apps.
+
+### Tomorrow's Prediction:
+The system predicts the user's focus quality for the next day based on today's performance. High late-night usage triggers a "Willpower Fatigue" warning for the next morning.
+
+---
+
+## 4. The Discipline Quotient (DQ)
+
+DQ is a rolling metric of a user's digital autonomy.
+
+### Reward Calculation:
+- **Base Points**: 50 per compliant day.
+- **Bonus**: 10 per completed 25m Focus Session.
+- **Multiplier**: Streak bonus grows by 2.5% per consecutive day (capped at 50%).
+- **Deduction**: Overrides and Late-night usage deduct points directly from the DQ.
 
 ---
 
-## 4. Reward System (Discipline Points)
+## 5. Intent Verification
 
-Points are awarded based on adherence to the "Discipline Quotient."
-
-**Daily Points ($P$):**
-$$P = 50_{base} + (FocusSessions \times 10) + (StreakDays \times 2.5)$$
-*Deductions apply for late-night usage or excessive overrides.*
+When a user attempts to open a "Red" app, the **Intent Recognition** algorithm (v0.7) evaluates the context.
+- If the user has a **High Drift Score**, the system asks for a **Reflection Prompt** ("Is this intentional?").
+- If the user is in **Deep Focus Mode**, the **SafeCode™** barrier is activated, requiring a 4-digit security code stored in the hardware vault.
 
 ---
-*Technical Specification: ReClaim Intelligence Suite*
+*Technical Specification: ReClaim Intelligence Suite v2.1*
+*Last Verified: May 11, 2026*

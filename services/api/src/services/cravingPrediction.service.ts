@@ -8,13 +8,13 @@ export class CravingPredictionService {
       // We look for hours where drift score is consistently high (>60)
       const query = `
         SELECT 
-          EXTRACT(HOUR FROM TO_TIMESTAMP(timestamp / 1000)) as hour,
-          AVG(drift_score) as avg_drift,
+          EXTRACT(HOUR FROM TO_TIMESTAMP(start_time / 1000)) as hour,
+          AVG(avg_drift_score) as avg_drift,
           COUNT(*) as session_count
         FROM drift_sessions
-        WHERE user_id = $1 AND timestamp > (EXTRACT(EPOCH FROM NOW()) - 604800) * 1000
+        WHERE user_id = $1 AND start_time > (EXTRACT(EPOCH FROM NOW()) - 604800) * 1000
         GROUP BY hour
-        HAVING AVG(drift_score) > 50
+        HAVING AVG(avg_drift_score) > 50
         ORDER BY avg_drift DESC
         LIMIT 3
       `;

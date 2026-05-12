@@ -36,7 +36,7 @@ class BackendService {
     try {
       await platform.invokeMethod('openSettings');
     } catch (e) {
-      // debugPrint("openSettings error: $e"); // Removed for security
+      // Silently swallow — this is a best-effort UI navigation call.
     }
   }
 
@@ -54,7 +54,7 @@ class BackendService {
     try {
       await platform.invokeMethod('openPermissionSettings', {'permission': permission});
     } catch (e) {
-      // debugPrint("openPermissionSettings($permission) error: $e");
+      // Silently swallow — best-effort UI navigation.
     }
   }
 
@@ -71,16 +71,30 @@ class BackendService {
   Future<Map<String, dynamic>> fetchBehavioralMetrics() async {
     try {
       final dynamic result = await platform.invokeMethod('getBehavioralMetrics');
-      if (result == null || result is! Map) return {"feed_exposure_seconds": 0, "failed_exits": 0, "reopen_count": 0};
+      if (result == null || result is! Map) {
+        return {
+          "drift_score": 0.0,
+          "fragmentation_index": 0.0,
+          "reopen_count": 0,
+          "failed_exits": 0,
+          "feed_exposure_seconds": 0,
+          "addiction_score": 0.0
+        };
+      }
       return Map<String, dynamic>.from(result);
     } catch (e) {
-      return {"feed_exposure_seconds": 0, "failed_exits": 0, "reopen_count": 0};
+      return {
+        "drift_score": 0.0,
+        "fragmentation_index": 0.0,
+        "reopen_count": 0,
+        "failed_exits": 0,
+        "feed_exposure_seconds": 0,
+        "addiction_score": 0.0
+      };
     }
   }
 
-  Future<Map<String, dynamic>> fetchDriftStats() async {
-    return fetchBehavioralMetrics();
-  }
+  // fetchDriftStats() removed — was a dead alias for fetchBehavioralMetrics(); use that directly.
 
   Future<Map<String, dynamic>> fetchAppUsage() async {
     try {
@@ -267,8 +281,8 @@ class BackendService {
       if (data.containsKey("recommendations")) {
         return (data["recommendations"] as List).map((e) => e.toString()).toList();
       }
-    } catch (e) {
-      // debugPrint("fetchInsights error: $e");
+    } catch (_) {
+      // Silently fall back to default insight.
     }
     return ["Your usage looks healthy today. Keep it up!"];
   }
@@ -280,8 +294,8 @@ class BackendService {
         try {
           await Future.delayed(const Duration(seconds: 1));
           token = await FirebaseMessaging.instance.getToken();
-        } catch (e) {
-          // debugPrint("FCM Token fetch failed: $e");
+        } catch (_) {
+          // FCM token not available; device registration will proceed without push capability.
         }
       }
 
@@ -373,7 +387,8 @@ class BackendService {
 
   Future<bool> sendNudge(String title, String body) async {
     try {
-      final response = await _api.dio.post("/analytics/nudge", data: {"title": title, "body": body});
+      // Backend route is POST /v1/nudge (not /analytics/nudge)
+      final response = await _api.dio.post("/nudge", data: {"title": title, "body": body});
       return response.statusCode == 200;
     } catch (e) {
       return false;
@@ -392,7 +407,7 @@ class BackendService {
     }
   }
 
-  Future<bool> submitReflection(int sessionId, String promptType, String response, double driftScore) async {
+  Future<bool> submitReflection(String sessionId, String promptType, String response, int driftScore) async {
     try {
       return await platform.invokeMethod('submitReflection', {
         'sessionId': sessionId,
@@ -458,7 +473,8 @@ class BackendService {
   Future<Map<String, dynamic>> getCravingStatus() async {
     try {
       final dynamic result = await platform.invokeMethod('getCravingStatus');
-      return (result as Map).cast<String, dynamic>();
+      if (result == null || result is! Map) return {'isActive': false, 'windowName': 'None'};
+      return Map<String, dynamic>.from(result);
     } catch (e) {
       return {'isActive': false, 'windowName': 'None'};
     }

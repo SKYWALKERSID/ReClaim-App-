@@ -1,12 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import { type ZodTypeAny } from 'zod';
 
-export const validate = (schema: any) => async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * validate(schema) — Express middleware factory for Zod body validation.
+ * Parses req.body against the provided Zod schema asynchronously.
+ * Returns a generic 400 on failure to avoid leaking schema structure.
+ */
+export const validate = (schema: ZodTypeAny) => async (req: Request, res: Response, next: NextFunction) => {
   try {
     await schema.parseAsync(req.body);
     return next();
-  } catch (error) {
-    // Return generic error for security
-    return res.status(400).json({ error: 'Invalid request data' });
+  } catch {
+    return res.status(400).json({ error: 'Bad Request', code: 'VALIDATION_ERROR', message: 'Invalid request data.' });
   }
 };

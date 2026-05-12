@@ -96,10 +96,12 @@ class BlockingOverlayService : Service() {
 
     private fun showOverlay() {
         if (EnforcementManager.isInternalPackage(currentPackageName)) {
-            Log.d("BlockingOverlay", "Aborting showOverlay for internal package: $currentPackageName")
+            Log.w("BlockingOverlay", "ABORT: Attempted to show overlay for internal package: $currentPackageName")
             stopSelf()
             return
         }
+        
+        Log.i("BlockingOverlay", "Showing overlay for $currentPackageName. Reason: $currentReason")
         
         if (!Settings.canDrawOverlays(this)) {
             Log.e("BlockingOverlay", "Missing overlay permission, stopping service.")
@@ -122,7 +124,7 @@ class BlockingOverlayService : Service() {
         remainingText?.text = if (currentMode == "soft") {
             "Soft block active. You can continue after a short pause."
         } else {
-            "Emergency unlocks left today: ${EnforcementManager.overridesRemaining}"
+            "Emergency unlocks left today: ${EnforcementManager.remainingOverrides}"
         }
         
         overlayView?.systemUiVisibility =
@@ -206,7 +208,7 @@ class BlockingOverlayService : Service() {
         }
 
         remainingText = TextView(this).apply {
-            text = "Overrides remaining: ${EnforcementManager.overridesRemaining}"
+            text = "Overrides remaining: ${EnforcementManager.remainingOverrides}"
             textSize = 14f
             setTextColor(Color.parseColor("#80FFFFFF"))
             gravity = Gravity.CENTER
@@ -350,7 +352,7 @@ class BlockingOverlayService : Service() {
             .setPositiveButton("Confirm") { _, _ ->
                 if (!EnforcementManager.requestTemporaryUnlock(this, currentPackageName)) {
                     Toast.makeText(this, "No overrides remaining today.", Toast.LENGTH_SHORT).show()
-                    remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.overridesRemaining}"
+                    remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.remainingOverrides}"
                     return@setPositiveButton
                 }
 
@@ -361,7 +363,7 @@ class BlockingOverlayService : Service() {
                     metadata = mapOf("graceMinutes" to 5)
                 )
 
-                remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.overridesRemaining}"
+                remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.remainingOverrides}"
                 hideOverlay()
                 launchBlockedApp()
             }

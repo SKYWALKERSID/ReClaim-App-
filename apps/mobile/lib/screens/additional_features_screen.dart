@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/colors.dart';
-import '../../screens/devices_screen.dart';
+import 'devices_screen.dart';
 import 'insights_screen.dart';
 import 'brain_mirror_dashboard.dart';
 

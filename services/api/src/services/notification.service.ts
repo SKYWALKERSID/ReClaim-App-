@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import { logger } from "../utils/logger.js";
 import { AnalyticsRepository } from "../db/repositories/analytics.repository.js";
 
 /**
@@ -15,7 +16,7 @@ export class NotificationService {
     try {
       let rawConfig = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (!rawConfig) {
-        console.warn("[NotificationService] FIREBASE_SERVICE_ACCOUNT not set. Running in mock mode.");
+        logger.warn("[NotificationService] FIREBASE_SERVICE_ACCOUNT not set. Running in mock mode.");
         return;
       }
 
@@ -45,10 +46,13 @@ export class NotificationService {
           credential: admin.credential.cert(serviceAccount),
         });
         this.isInitialized = true;
-        console.log("[NotificationService] Firebase Admin initialized");
+        logger.info("[NotificationService] Firebase Admin initialized successfully.");
+      } else {
+        // Firebase already initialized by a previous instance; re-use it.
+        this.isInitialized = true;
       }
     } catch (e) {
-      console.error("[NotificationService] Firebase Admin init failed with invalid credentials:", e);
+      logger.error("[NotificationService] Firebase Admin init failed with invalid credentials:", { error: String(e) });
     }
   }
 
@@ -70,12 +74,12 @@ export class NotificationService {
     const tokens = devices.map(d => d.fcmToken).filter(t => !!t) as string[];
 
     if (tokens.length === 0) {
-      console.log(`[NotificationService] No FCM tokens found for User ${userId}`);
+      logger.debug(`[NotificationService] No FCM tokens found for User ${userId}`);
       return { sent: 0, failed: 0 };
     }
 
     if (!this.isInitialized) {
-      console.log(`[NotificationService] [MOCK] Sending notification to ${tokens.length} devices for User ${userId}: ${notification.title}`);
+      logger.info(`[NotificationService] [MOCK] Notification to ${tokens.length} device(s) for User ${userId}: "${notification.title}"`);
       return { sent: tokens.length, failed: 0 };
     }
 
@@ -94,10 +98,10 @@ export class NotificationService {
         }
       });
 
-      console.log(`[NotificationService] FCM batch sent: ${response.successCount} success, ${response.failureCount} failure`);
+      logger.info(`[NotificationService] FCM batch result: ${response.successCount} sent, ${response.failureCount} failed.`);
       return { sent: response.successCount, failed: response.failureCount };
     } catch (e) {
-      console.error("[NotificationService] FCM send failed:", e);
+      logger.error("[NotificationService] FCM sendEachForMulticast failed:", { error: String(e) });
       return { sent: 0, failed: tokens.length };
     }
   }

@@ -20,7 +20,7 @@ object IntentEngine {
     private const val MAX_PROMPTS_PER_DAY = 5
     private const val REOPEN_THRESHOLD = 3
 
-    fun onAppSwitch(context: Context, packageName: String) {
+    suspend fun onAppSwitch(context: Context, packageName: String) {
         if (packageName == context.packageName) return
         
         val now = System.currentTimeMillis()

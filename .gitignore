@@ -46,6 +46,15 @@ GoogleService-Info.plist
 !Dockerfile
 !docker-compose.yml
 
+# Android signing keystores (NEVER commit these — rotate if previously committed)
+*.keystore
+*.jks
+
+# Generated Word/Office documents
+*.docx
+*.doc
+*.pptx
+
 # Web/Node
 node_modules/
 **/node_modules/

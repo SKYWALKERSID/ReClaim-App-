@@ -2,6 +2,8 @@ package com.reclaim.app.flutter.enforcement
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -31,6 +33,7 @@ data class OverrideUsage(
 data class EnforcementState(
     val isFocusActive: Boolean,
     val isLocked: Boolean,
+    val remainingOverrides: Int,
     val lastEvaluatedAt: Long
 )
 
@@ -122,8 +125,17 @@ object FocusPolicyStore {
     fun loadPolicy(context: Context): FocusPolicy {
         val raw = prefs(context).getString(POLICY_JSON, null)
             ?: return FocusPolicy(
-                dailyLimitMinutes = 120,
-                whitelistPackages = emptySet(),
+                dailyLimitMinutes = 1440,
+                whitelistPackages = setOf(
+                    "com.whatsapp",
+                    "com.google.android.gm",
+                    "com.android.settings",
+                    "com.google.android.settings",
+                    "com.android.deskclock",
+                    "com.google.android.deskclock",
+                    "com.google.android.apps.maps",
+                    "com.google.android.calendar"
+                ),
                 blacklistPackages = emptySet(),
                 focusWindows = emptyList(),
                 maxOverridesPerDay = 5,
@@ -142,7 +154,7 @@ object FocusPolicyStore {
         val windows = json.optJSONArray("focusWindows")?.toFocusWindows().orEmpty()
 
         return FocusPolicy(
-            dailyLimitMinutes = json.optInt("dailyLimitMinutes", 120),
+            dailyLimitMinutes = json.optInt("dailyLimitMinutes", 1440),
             whitelistPackages = json.optJSONArray("whitelistPackages").toStringSet(),
             blacklistPackages = json.optJSONArray("blacklistPackages").toStringSet(),
             focusWindows = windows,
@@ -204,6 +216,7 @@ object FocusPolicyStore {
         val json = JSONObject().apply {
             put("isFocusActive", state.isFocusActive)
             put("isLocked", state.isLocked)
+            put("remainingOverrides", state.remainingOverrides)
             put("lastEvaluatedAt", state.lastEvaluatedAt)
         }
         prefs(context).edit().putString(STATE_JSON, json.toString()).apply()
@@ -212,17 +225,18 @@ object FocusPolicyStore {
     fun loadEnforcementState(context: Context): EnforcementState {
         val raw = prefs(context).getString(STATE_JSON, null)
         if (raw == null) {
-            return EnforcementState(isFocusActive = false, isLocked = false, lastEvaluatedAt = 0L)
+            return EnforcementState(isFocusActive = false, isLocked = false, remainingOverrides = 5, lastEvaluatedAt = 0L)
         }
         return try {
             val json = JSONObject(raw)
             EnforcementState(
                 isFocusActive = json.optBoolean("isFocusActive", false),
                 isLocked = json.optBoolean("isLocked", false),
+                remainingOverrides = json.optInt("remainingOverrides", 5),
                 lastEvaluatedAt = json.optLong("lastEvaluatedAt", 0L)
             )
         } catch (e: Exception) {
-            EnforcementState(isFocusActive = false, isLocked = false, lastEvaluatedAt = 0L)
+            EnforcementState(isFocusActive = false, isLocked = false, remainingOverrides = 5, lastEvaluatedAt = 0L)
         }
     }
 
@@ -327,10 +341,6 @@ object FocusPolicyStore {
 
         pref.edit().putString(EVENT_QUEUE, "[]").commit()
         return output
-    }
-
-    private fun prefs(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     }
 
     private fun JSONArray?.toStringSet(): Set<String> {
