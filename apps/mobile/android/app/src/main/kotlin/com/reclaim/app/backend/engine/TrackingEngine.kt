@@ -5,9 +5,26 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.os.Process
+import android.os.PowerManager
 import java.util.Calendar
 
 object TrackingEngine {
+    private var lastTodayUsageMap: Map<String, Long>? = null
+    private var lastTodayUsageTime: Long = 0L
+    private const val CACHE_DURATION_MS = 5000L 
+    private const val TREND_CACHE_DURATION_MS = 60000L 
+
+    private val breakdownCache = mutableMapOf<String, Pair<Long, List<Long>>>()
+    private val categoryCache = mutableMapOf<String, String>()
+
+    fun clearCaches() {
+        lastTodayUsageMap = null
+        lastTodayUsageTime = 0L
+        breakdownCache.clear()
+        hourlyCache.clear()
+        // We keep categoryCache as it's static-ish and expensive to rebuild
+    }
+
 
     private fun hasUsagePermission(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -32,7 +49,13 @@ object TrackingEngine {
             val usageMap = mutableMapOf<String, Long>()
             val packageStartTimes = mutableMapOf<String, Long>()
             val currentEvent = UsageEvents.Event()
-            var isScreenOn = true // Assume on at start of range, events will correct this
+            
+            val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+            var isScreenOn = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+                powerManager?.isInteractive ?: true
+            } else {
+                true
+            }
             
             while (events.hasNextEvent()) {
                 events.getNextEvent(currentEvent)
@@ -55,7 +78,7 @@ object TrackingEngine {
                         isScreenOn = false
                         // Pause timers for all "active" packages
                         packageStartTimes.forEach { (activePkg, start) ->
-                            if (effectiveTime > start) {
+                            if (start != -1L && effectiveTime > start) {
                                 usageMap[activePkg] = (usageMap[activePkg] ?: 0L) + (effectiveTime - start)
                             }
                         }
@@ -97,35 +120,82 @@ object TrackingEngine {
     }
 
     fun getTodayUsage(context: Context, packageName: String): Long {
-        val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-        }
-        val usage = getPreciseUsageForRange(context, cal.timeInMillis, System.currentTimeMillis())
-        return usage[packageName] ?: 0L
+        return getAllTodayUsage(context)[packageName] ?: 0L
     }
 
     fun getAllTodayUsage(context: Context): Map<String, Long> {
-        val start = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        
+        // Return cached value if it's still fresh
+        lastTodayUsageMap?.let {
+            if (now - lastTodayUsageTime < CACHE_DURATION_MS) {
+                return it
+            }
+        }
+
+        if (!hasUsagePermission(context)) return emptyMap()
+
         val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
-        val usage = getPreciseUsageForRange(context, cal.timeInMillis, System.currentTimeMillis())
-        val duration = System.currentTimeMillis() - start
-        if (duration > 500) {
-            android.util.Log.w("TrackingEngine", "getAllTodayUsage took ${duration}ms!")
-        } else {
-            android.util.Log.d("TrackingEngine", "getAllTodayUsage took ${duration}ms")
+        val startTime = cal.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        val usageMap = mutableMapOf<String, Long>()
+        val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        
+        // Strategy: Use queryUsageStats for total daily numbers as it is more consistent
+        // than queryEvents for "total time in foreground"
+        val stats = usageManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+        if (stats != null && stats.isNotEmpty()) {
+            for (stat in stats) {
+                val pkg = stat.packageName
+                // Skip our own app, system internals, and home launchers.
+                // The home screen / launcher should not count as "screen time" for the user.
+                if (pkg == context.packageName) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isInternalPackage(pkg)) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isLauncherPackage(pkg)) continue
+                
+                val timeMs = stat.totalTimeInForeground
+                if (timeMs > 0) {
+                    usageMap[pkg] = (usageMap[pkg] ?: 0L) + timeMs
+                }
+            }
         }
-        return usage
+
+        // If queryUsageStats returned nothing (can happen on some devices or if the day just started),
+        // fallback to the precise event-based calculation
+        if (usageMap.isEmpty()) {
+            val preciseUsage = getPreciseUsageForRange(context, startTime, endTime)
+            usageMap.putAll(preciseUsage)
+        }
+
+        // Update cache
+        lastTodayUsageMap = usageMap
+        lastTodayUsageTime = now
+
+        return usageMap
     }
-    
+
+    private val hourlyCache = mutableMapOf<String, Pair<Long, LongArray>>()
+
     fun getHourlyUsageForDay(context: Context, cal: Calendar, targetCategory: String? = null): LongArray {
+        val now = System.currentTimeMillis()
+        val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.DAY_OF_YEAR)}-$targetCategory"
+        
+        hourlyCache[dateKey]?.let { (time, data) ->
+            if (now - time < CACHE_DURATION_MS) return data
+        }
+
         val hourlyUsage = LongArray(24) { 0L }
         val startOfDay = cal.clone() as Calendar
         startOfDay.set(Calendar.HOUR_OF_DAY, 0); startOfDay.set(Calendar.MINUTE, 0); startOfDay.set(Calendar.SECOND, 0); startOfDay.set(Calendar.MILLISECOND, 0)
         
         val start = startOfDay.timeInMillis
-        val end = if (isToday(startOfDay)) System.currentTimeMillis() else start + 86400000L
+        val end = if (isToday(startOfDay)) now else start + 86400000L
         
         val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val events = usageManager.queryEvents(start, end) ?: return hourlyUsage
@@ -137,7 +207,7 @@ object TrackingEngine {
         while (events.hasNextEvent()) {
             events.getNextEvent(currentEvent)
             val time = currentEvent.timeStamp
-            val pkg = currentEvent.packageName
+            val pkg = currentEvent.packageName ?: continue
             
             if (pkg == context.packageName) continue
             if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
@@ -151,9 +221,9 @@ object TrackingEngine {
                 }
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
                     isScreenOn = false
-                    packageStartTimes.forEach { (activePkg, start) ->
-                        if (time > start && start != -1L) {
-                            addDurationToBuckets(hourlyUsage, start, end, start, time)
+                    packageStartTimes.forEach { (activePkg, startTime) ->
+                        if (time > startTime && startTime != -1L) {
+                            addDurationToBuckets(hourlyUsage, start, end, startTime, time)
                         }
                     }
                     packageStartTimes.keys.forEach { activePkg ->
@@ -183,6 +253,8 @@ object TrackingEngine {
                 }
             }
         }
+        
+        hourlyCache[dateKey] = now to hourlyUsage
         return hourlyUsage
     }
 
@@ -197,18 +269,11 @@ object TrackingEngine {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             add(Calendar.DAY_OF_YEAR, -6)
         }
-        val days = mutableListOf<Long>()
-        for (i in 0..6) {
-            val start = cal.timeInMillis
-            val end = start + 86400000L
-            val usageMap = getPreciseUsageForRange(context, start, end)
-            val filteredUsage = if (targetCategory != null) {
-                usageMap.filter { getAppCategory(context, it.key) == targetCategory }
-            } else usageMap
-            days.add(filteredUsage.values.sum())
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return days
+        val startTime = cal.timeInMillis
+        val endTime = System.currentTimeMillis()
+        
+        // OPTIMIZATION: For ranges > 1 day, use queryUsageStats instead of queryEvents
+        return getSummarizedUsageBreakdownForRange(context, startTime, endTime, 7, targetCategory)
     }
 
     fun getMonthlyBreakdown(context: Context, targetCategory: String? = null): List<Long> {
@@ -216,18 +281,127 @@ object TrackingEngine {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             add(Calendar.DAY_OF_YEAR, -29)
         }
-        val days = mutableListOf<Long>()
-        for (i in 0..29) {
-            val start = cal.timeInMillis
-            val end = start + 86400000L
-            val usageMap = getPreciseUsageForRange(context, start, end)
-            val filteredUsage = if (targetCategory != null) {
-                usageMap.filter { getAppCategory(context, it.key) == targetCategory }
-            } else usageMap
-            days.add(filteredUsage.values.sum())
-            cal.add(Calendar.DAY_OF_YEAR, 1)
+        val startTime = cal.timeInMillis
+        val endTime = System.currentTimeMillis()
+        
+        // OPTIMIZATION: For ranges > 1 day, use queryUsageStats instead of queryEvents
+        return getSummarizedUsageBreakdownForRange(context, startTime, endTime, 30, targetCategory)
+    }
+
+    private fun getSummarizedUsageBreakdownForRange(context: Context, rangeStart: Long, rangeEnd: Long, numDays: Int, targetCategory: String? = null): List<Long> {
+        val dailyTotals = LongArray(numDays) { 0L }
+        val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val stats = usageManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, rangeStart, rangeEnd)
+
+        if (stats != null) {
+            for (usageStat in stats) {
+                val pkg = usageStat.packageName
+                if (pkg == context.packageName) continue
+                if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
+                
+                val timeMs = usageStat.totalTimeInForeground
+                if (timeMs <= 0) continue
+
+                // Distribute usage over the days (this is an approximation for non-precise ranges)
+                // For INTERVAL_DAILY, usageStat represents a single day's total.
+                val dayStart = usageStat.firstTimeStamp
+                val dayIndex = ((dayStart - rangeStart) / 86400000L).toInt()
+                if (dayIndex in 0 until numDays) {
+                    dailyTotals[dayIndex] += timeMs
+                }
+            }
         }
-        return days
+        return dailyTotals.toList()
+    }
+
+    private fun getDailyUsageBreakdownForRange(context: Context, rangeStart: Long, rangeEnd: Long, numDays: Int, targetCategory: String? = null): List<Long> {
+        val roundedEnd = (rangeEnd / 10000) * 10000
+        val cacheKey = "breakdown_${rangeStart}_${roundedEnd}_${numDays}_${targetCategory ?: "all"}"
+        breakdownCache[cacheKey]?.let { (cachedTime, list) ->
+            if (System.currentTimeMillis() - cachedTime < TREND_CACHE_DURATION_MS) {
+                return list
+            }
+        }
+        val dailyTotals = LongArray(numDays) { 0L }
+        if (!hasUsagePermission(context)) return dailyTotals.toList()
+        
+        try {
+            val usageManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val events = usageManager.queryEvents(rangeStart, rangeEnd) ?: return dailyTotals.toList()
+            
+            val packageStartTimes = mutableMapOf<String, Long>()
+            val currentEvent = UsageEvents.Event()
+            var isScreenOn = true
+            
+            while (events.hasNextEvent()) {
+                events.getNextEvent(currentEvent)
+                val time = currentEvent.timeStamp
+                val pkg = currentEvent.packageName
+                
+                if (pkg == context.packageName) continue
+                if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
+                
+                val effectiveTime = time.coerceIn(rangeStart, rangeEnd)
+                
+                when (currentEvent.eventType) {
+                    UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                        isScreenOn = true
+                        packageStartTimes.keys.forEach { packageStartTimes[it] = effectiveTime }
+                    }
+                    UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                        isScreenOn = false
+                        packageStartTimes.forEach { (activePkg, start) ->
+                            if (start != -1L && effectiveTime > start) {
+                                addDurationToDayBuckets(dailyTotals, rangeStart, start, effectiveTime)
+                            }
+                        }
+                        packageStartTimes.keys.forEach { packageStartTimes[it] = -1L }
+                    }
+                    UsageEvents.Event.ACTIVITY_RESUMED, UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                        packageStartTimes[pkg] = if (isScreenOn) effectiveTime else -1L
+                    }
+                    UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED, UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                        val start = packageStartTimes[pkg]
+                        if (start != null && start != -1L && effectiveTime > start) {
+                            addDurationToDayBuckets(dailyTotals, rangeStart, start, effectiveTime)
+                        }
+                        packageStartTimes.remove(pkg)
+                    }
+                }
+            }
+            
+            // Handle active apps at end of range
+            if (isScreenOn) {
+                packageStartTimes.forEach { (_, start) ->
+                    if (start != -1L && rangeEnd > start) {
+                        addDurationToDayBuckets(dailyTotals, rangeStart, start, rangeEnd)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TrackingEngine", "Error in breakdown: ${e.message}")
+        }
+        
+        // Update breakdown cache
+        val resultList = dailyTotals.toList()
+        breakdownCache[cacheKey] = System.currentTimeMillis() to resultList
+        return resultList
+    }
+
+    private fun addDurationToDayBuckets(dailyTotals: LongArray, rangeStart: Long, start: Long, end: Long) {
+        var current = start
+        val dayMs = 86400000L
+        
+        while (current < end) {
+            val dayIndex = ((current - rangeStart) / dayMs).toInt()
+            if (dayIndex !in dailyTotals.indices) break
+            
+            val nextDayBoundary = rangeStart + (dayIndex + 1L) * dayMs
+            val sliceEnd = minOf(end, nextDayBoundary)
+            
+            dailyTotals[dayIndex] += (sliceEnd - current)
+            current = sliceEnd
+        }
     }
 
     fun getUsageForDateRange(context: Context, startTimestamp: Long, endTimestamp: Long): Map<String, Long> {
@@ -236,18 +410,28 @@ object TrackingEngine {
             timeInMillis = startTimestamp
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }
-        while (cal.timeInMillis < endTimestamp) {
-            val start = cal.timeInMillis
-            val end = start + 86400000L
+        val startTime = cal.timeInMillis
+        val numDays = (((endTimestamp - startTime) / 86400000L).toInt() + 1).coerceAtLeast(1)
+        
+        val dailyTotals = getDailyUsageBreakdownForRange(context, startTime, endTimestamp, numDays)
+        
+        for (i in dailyTotals.indices) {
             val dateKey = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH) + 1}-${cal.get(Calendar.DAY_OF_MONTH)}"
-            resultMap[dateKey] = getPreciseUsageForRange(context, start, end).values.sum() / 1000
+            resultMap[dateKey] = dailyTotals[i] / 1000
             cal.add(Calendar.DAY_OF_YEAR, 1)
         }
+        
         return resultMap
     }
 
     fun getTopAppsWithMetadata(context: Context, startTime: Long, endTime: Long, targetCategory: String? = null): List<Map<String, Any>> {
-        val usageMap = getPreciseUsageForRange(context, startTime, endTime)
+        val now = System.currentTimeMillis()
+        val usageMap = if (Math.abs(endTime - now) < 60000 && Math.abs(startTime - (now - (now % 86400000))) < 60000) {
+            // If the range is essentially "Today", use the more reliable aggregate stats
+            getAllTodayUsage(context)
+        } else {
+            getPreciseUsageForRange(context, startTime, endTime)
+        }
         val pm = context.packageManager
         
         return usageMap.entries
@@ -285,12 +469,17 @@ object TrackingEngine {
     }
 
     fun getAppCategory(context: Context, packageName: String): String {
+        categoryCache[packageName]?.let { return it }
+
         val dbHelper = com.reclaim.app.backend.db.DatabaseHelper.getInstance(context)
         val custom = dbHelper.getAppCategory(packageName)
-        if (custom != null) return custom
+        if (custom != null) {
+            categoryCache[packageName] = custom
+            return custom
+        }
 
         val pm = context.packageManager
-        return try {
+        val category = try {
             val appInfo = pm.getApplicationInfo(packageName, 0)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 when (appInfo.category) {
@@ -307,6 +496,8 @@ object TrackingEngine {
         } catch (e: Exception) {
             getCategoryFallback(packageName)
         }
+        categoryCache[packageName] = category
+        return category
     }
 
     private fun getCategoryFallback(packageName: String): String {

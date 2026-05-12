@@ -34,6 +34,13 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
     private val dbHelper = DatabaseHelper.getInstance(context)
     private val apiClient = com.reclaim.app.data.ApiClient()
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    
+    private var lastPermissionStatus: Map<String, Any>? = null
+    private var lastPermissionCheckTime: Long = 0L
+    
+    private var cachedInstalledApps: Map<String, Any>? = null
+    private var lastAppsFetchTime: Long = 0L
+
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         try {
@@ -93,12 +100,37 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         }
                     }
                 }
+                "getAppIcon" -> {
+                    scope.launch(Dispatchers.IO) {
+                        handleGetAppIcon(call, result)
+                    }
+                }
                 "getInsightsTrends" -> {
-                    result.success(mapOf(
-                        "daily" to TrackingEngine.getHourlyUsageForDay(context, java.util.Calendar.getInstance()).map { (it / 1000).toInt() },
-                        "weekly" to TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() },
-                        "monthly" to TrackingEngine.getMonthlyBreakdown(context).map { (it / 1000).toInt() }
-                    ))
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val dailyDeferred = async { TrackingEngine.getHourlyUsageForDay(context, java.util.Calendar.getInstance()).map { (it / 1000).toInt() } }
+                            val weeklyDeferred = async { TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() } }
+                            val monthlyDeferred = async { TrackingEngine.getMonthlyBreakdown(context).map { (it / 1000).toInt() } }
+                            
+                            val trends = mapOf(
+                                "daily" to dailyDeferred.await(),
+                                "weekly" to weeklyDeferred.await(),
+                                "monthly" to monthlyDeferred.await()
+                            )
+                            withContext(Dispatchers.Main) { result.success(trends) }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) { result.error("INSIGHTS_ERROR", e.message, null) }
+                        }
+                    }
+                }
+                "getInsightsData" -> {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            handleGetInsightsData(call, result)
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) { result.error("INSIGHTS_ERROR", e.message, null) }
+                        }
+                    }
                 }
                 "startFocusMode" -> {
                     val duration = call.argument<Int>("duration_minutes") ?: 25
@@ -118,14 +150,17 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                 }
                 "getBehavioralMetrics" -> {
-                    result.success(mapOf(
-                        "drift_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getCurrentDriftScore(),
-                        "fragmentation_index" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFragmentationIndex(),
-                        "reopen_count" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getReopenCount(),
-                        "failed_exits" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFailedExits(),
-                        "feed_exposure_seconds" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFeedExposureSeconds(),
-                        "addiction_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getAddictionScore()
-                    ))
+                    scope.launch(Dispatchers.IO) {
+                        val metrics = mapOf(
+                            "drift_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getCurrentDriftScore(),
+                            "fragmentation_index" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFragmentationIndex(),
+                            "reopen_count" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getReopenCount(),
+                            "failed_exits" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFailedExits(),
+                            "feed_exposure_seconds" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFeedExposureSeconds(),
+                            "addiction_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getAddictionScore()
+                        )
+                        withContext(Dispatchers.Main) { result.success(metrics) }
+                    }
                 }
                 "getPendingReflection" -> result.success(com.reclaim.app.backend.engine.ReflectionEngine.getPendingReflection())
                 "submitReflection" -> {
@@ -162,7 +197,12 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         }
                     }
                 }
-                "checkNightTimeOveruse" -> result.success(TrackingEngine.checkNightTimeOveruse(context))
+                "checkNightTimeOveruse" -> {
+                    scope.launch(Dispatchers.IO) {
+                        val overuse = TrackingEngine.checkNightTimeOveruse(context)
+                        withContext(Dispatchers.Main) { result.success(overuse) }
+                    }
+                }
                 "getFrictionInterventions" -> {
                     scope.launch(Dispatchers.IO) {
                         try {
@@ -250,7 +290,10 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                 }
                 "getCravingStatus" -> {
-                    result.success(com.reclaim.app.backend.engine.CravingPredictor.getCravingStatus(context))
+                    scope.launch(Dispatchers.IO) {
+                        val status = com.reclaim.app.backend.engine.CravingPredictor.getCravingStatus(context)
+                        withContext(Dispatchers.Main) { result.success(status) }
+                    }
                 }
                 "getLifetimeDriftCount" -> {
                     scope.launch(Dispatchers.IO) {
@@ -375,9 +418,11 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 "getUsageForDateRange" -> {
                     val start = call.argument<Long>("start") ?: 0L
                     val end = call.argument<Long>("end") ?: System.currentTimeMillis()
-                    result.success(TrackingEngine.getUsageForDateRange(context, start, end))
+                    scope.launch(Dispatchers.IO) {
+                        val usage = TrackingEngine.getUsageForDateRange(context, start, end)
+                        withContext(Dispatchers.Main) { result.success(usage) }
+                    }
                 }
-                "getAppIcon" -> handleGetAppIcon(call, result)
                 "registerDevice" -> handleRegisterDevice(call, result)
                 "saveAuth" -> {
                     val jwt = call.argument<String>("jwt_token")
@@ -397,6 +442,9 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                 "syncAllData" -> {
                     scope.launch(Dispatchers.IO) {
                         try {
+                            // 0. Force hard refresh of engine caches
+                            TrackingEngine.clearCaches()
+                            
                             // 1. Sync Tracking Engine - just pull usage to force update
                             TrackingEngine.getAllTodayUsage(context)
                             
@@ -454,6 +502,10 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     }
                     result.success(true)
                 }
+                "hideBlockingOverlay" -> {
+                    com.reclaim.app.flutter.enforcement.BlockingOverlayService.hide(context)
+                    result.success(true)
+                }
                 else -> result.notImplemented()
             }
         } catch (e: Exception) {
@@ -477,6 +529,13 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
     }
 
     private fun getPermissionStatus(): Map<String, Any> {
+        val now = System.currentTimeMillis()
+        lastPermissionStatus?.let {
+            if (now - lastPermissionCheckTime < 2000) { // 2 second cache
+                return it
+            }
+        }
+
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
 
@@ -496,15 +555,19 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         val accessibility = AppAccessibilityService.isEnabled(context)
         val overlay = Settings.canDrawOverlays(context)
 
-        Log.d("ReClaimPermissions", "Status - Usage: $usage, Access: $accessibility, Overlay: $overlay")
+        Log.d("ReClaimPermissions", "Status (QUERY) - Usage: $usage, Access: $accessibility, Overlay: $overlay")
 
-        return mapOf(
+        val status = mapOf(
             "usage_access" to usage,
             "accessibility_access" to accessibility,
             "overlay_access" to overlay,
             "notification_access" to notificationsEnabled,
             "battery_optimization_ignored" to ignoringBatteryOptimizations
         )
+        
+        lastPermissionStatus = status
+        lastPermissionCheckTime = now
+        return status
     }
 
     private fun openPermissionSettings(permission: String) {
@@ -566,8 +629,11 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         EnforcementManager.syncPolicy(context, payload)
     }
 
-    private fun handleGetDashboardStats(result: MethodChannel.Result) {
-        val usageMap = TrackingEngine.getAllTodayUsage(context)
+    private suspend fun handleGetDashboardStats(result: MethodChannel.Result) = withContext(Dispatchers.IO) {
+        val usageMapDeferred = async { TrackingEngine.getAllTodayUsage(context) }
+        val weeklyTrendDeferred = async { TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() } }
+        
+        val usageMap = usageMapDeferred.await()
         val userSettings = dbHelper.getUserSettings()
         val goalSeconds = (userSettings["goal_seconds"] as? Int) ?: 7200
 
@@ -584,6 +650,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         val distractionScore = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionScore(context, usageMap, totalMs, goalSeconds)
         val distractionPercentage = com.reclaim.app.backend.engine.AnalyticsEngine.calculateDistractionPercentage(usageMap, totalMs, context)
         val usageLimitPercentage = (totalSeconds.toFloat() / goalSeconds.toFloat()) * 100f
+        val weeklyTrend = weeklyTrendDeferred.await()
 
         val statsMap = mapOf(
             "total_usage_seconds" to totalSeconds,
@@ -597,24 +664,35 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             "distraction_score" to distractionScore.toDouble(),
             "distraction_percentage" to distractionPercentage.toDouble(),
             "usage_limit_percentage" to usageLimitPercentage.toDouble(),
-            "weekly_trend" to TrackingEngine.getWeeklyBreakdown(context).map { (it / 1000).toInt() }
+            "weekly_trend" to weeklyTrend
         )
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
+        withContext(Dispatchers.Main) {
             result.success(statsMap)
         }
     }
 
     private fun handleGetHourlyDistractionTrend(result: MethodChannel.Result) {
-        val cal = java.util.Calendar.getInstance()
-        val socialTrend = TrackingEngine.getHourlyUsageForDay(context, cal, "Social")
-        val entertainmentTrend = TrackingEngine.getHourlyUsageForDay(context, cal, "Entertainment")
-        
-        val distractionTrend = IntArray(24) { i ->
-            ((socialTrend[i] + entertainmentTrend[i]) / 1000).toInt()
-        }
-        
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            result.success(distractionTrend.toList())
+        scope.launch(Dispatchers.IO) {
+            try {
+                val cal = java.util.Calendar.getInstance()
+                val socialDeferred = async { TrackingEngine.getHourlyUsageForDay(context, cal, "Social") }
+                val entertainmentDeferred = async { TrackingEngine.getHourlyUsageForDay(context, cal, "Entertainment") }
+                
+                val socialTrend = socialDeferred.await()
+                val entertainmentTrend = entertainmentDeferred.await()
+                
+                val distractionTrend = IntArray(24) { i ->
+                    ((socialTrend[i] + entertainmentTrend[i]) / 1000).toInt()
+                }
+                
+                withContext(Dispatchers.Main) {
+                    result.success(distractionTrend.toList())
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    result.error("TREND_ERROR", e.message, null)
+                }
+            }
         }
     }
 
@@ -640,7 +718,6 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         "display_name" to pm.getApplicationLabel(appInfo).toString(), 
                         "usage_seconds" to (timeMs / 1000).toInt(), 
                         "session_count" to sessionCount,
-                        "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo)),
                         "category" to category
                     ))
                 } catch (e: Exception) {
@@ -658,6 +735,14 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
     }
 
     private fun handleGetInstalledApps(result: MethodChannel.Result) {
+        val now = System.currentTimeMillis()
+        if (cachedInstalledApps != null && now - lastAppsFetchTime < 30000) {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                result.success(cachedInstalledApps)
+            }
+            return
+        }
+
         val pm = context.packageManager
         val appsList = mutableListOf<Map<String, Any>>()
         val usageMap = TrackingEngine.getAllTodayUsage(context)
@@ -687,7 +772,6 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     "display_name" to pm.getApplicationLabel(appInfo).toString(),
                     "usage_seconds" to (timeMs / 1000).toInt(),
                     "session_count" to sessionCount,
-                    "icon_bytes" to drawableToPngBytes(pm.getApplicationIcon(appInfo)),
                     "category" to category
                 ))
             } catch (e: Exception) {
@@ -699,8 +783,12 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         val sortedList = appsList.sortedWith(compareByDescending<Map<String, Any>> { (it["usage_seconds"] as? Int) ?: 0 }
             .thenBy { (it["display_name"] as? String)?.lowercase() ?: "" })
 
+        val resultMap = mapOf("apps" to sortedList)
+        cachedInstalledApps = resultMap
+        lastAppsFetchTime = now
+
         android.os.Handler(android.os.Looper.getMainLooper()).post {
-            result.success(mapOf("apps" to sortedList))
+            result.success(resultMap)
         }
     }
 
@@ -741,38 +829,37 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         
         return stream.toByteArray()
     }
-    private fun handleGetInsightsData(call: MethodCall, result: MethodChannel.Result) {
+    private suspend fun handleGetInsightsData(call: MethodCall, result: MethodChannel.Result) = withContext(Dispatchers.IO) {
         val period = call.argument<String>("period") ?: "Day"
         val category = call.argument<String>("category")
-        val cal = Calendar.getInstance()
         
-        val trend: List<Int>
-        val startTime: Long
+        // Force a fresh sync for insights to ensure they update immediately
+        TrackingEngine.clearCaches()
+        
+        val cal = Calendar.getInstance()
         val endTime = cal.timeInMillis
 
-        when (period) {
-            "Day" -> {
-                trend = TrackingEngine.getHourlyUsageForDay(context, cal, category).map { (it / 1000).toInt() }
-                cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-                startTime = cal.timeInMillis
-            }
-            "Week" -> {
-                trend = TrackingEngine.getWeeklyBreakdown(context, category).map { (it / 1000).toInt() }
-                cal.add(Calendar.DAY_OF_YEAR, -6)
-                startTime = cal.timeInMillis
-            }
-            "Month" -> {
-                trend = TrackingEngine.getMonthlyBreakdown(context, category).map { (it / 1000).toInt() }
-                cal.add(Calendar.DAY_OF_YEAR, -29)
-                startTime = cal.timeInMillis
-            }
+        val trendDeferred = when (period) {
+            "Day" -> async { TrackingEngine.getHourlyUsageForDay(context, cal, category).map { (it / 1000).toInt() } }
+            "Week" -> async { TrackingEngine.getWeeklyBreakdown(context, category).map { (it / 1000).toInt() } }
+            "Month" -> async { TrackingEngine.getMonthlyBreakdown(context, category).map { (it / 1000).toInt() } }
             else -> {
-                result.error("INVALID_PERIOD", "Invalid period requested", null)
-                return
+                withContext(Dispatchers.Main) { result.error("INVALID_PERIOD", "Invalid period", null) }
+                return@withContext
             }
         }
 
-        val topApps = TrackingEngine.getTopAppsWithMetadata(context, startTime, endTime, category)
+        val startTime = when (period) {
+            "Day" -> { cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0); cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0); cal.timeInMillis }
+            "Week" -> { cal.add(Calendar.DAY_OF_YEAR, -6); cal.timeInMillis }
+            "Month" -> { cal.add(Calendar.DAY_OF_YEAR, -29); cal.timeInMillis }
+            else -> 0L
+        }
+
+        val topAppsDeferred = async { TrackingEngine.getTopAppsWithMetadata(context, startTime, endTime, category) }
+        
+        val trend = trendDeferred.await()
+        val topApps = topAppsDeferred.await()
         
         // Calculate category breakdown
         val categoryBreakdown = mutableMapOf<String, Int>()
@@ -788,19 +875,20 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
             "total_usage_seconds" to trend.sum(),
             "category_breakdown" to categoryBreakdown
         )
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
+        withContext(Dispatchers.Main) {
             result.success(resultMap)
         }
     }
 
-    private fun handleGetAppIcon(call: MethodCall, result: MethodChannel.Result) {
+    private suspend fun handleGetAppIcon(call: MethodCall, result: MethodChannel.Result) {
         val pkg = call.argument<String>("package_name") 
-            ?: return result.error("BAD_ARGUMENT", "package_name required", null)
+            ?: return withContext(Dispatchers.Main) { result.error("BAD_ARGUMENT", "package_name required", null) }
         try {
             val icon = context.packageManager.getApplicationIcon(pkg)
-            result.success(drawableToPngBytes(icon))
+            val iconBytes = drawableToPngBytes(icon)
+            withContext(Dispatchers.Main) { result.success(iconBytes) }
         } catch (e: Exception) {
-            result.error("ICON_ERROR", e.message, null)
+            withContext(Dispatchers.Main) { result.error("ICON_ERROR", e.message, null) }
         }
     }
 

@@ -31,7 +31,7 @@
             android:name="com.reclaim.app.flutter.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@style/NormalTheme">
+            android:theme="@style/LaunchTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

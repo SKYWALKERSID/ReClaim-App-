@@ -7,6 +7,7 @@ import 'constants/theme_manager.dart';
 import 'services/backend_service.dart';
 import 'screens/login_screen.dart';
 import 'services/auth_service.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,9 +80,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: mode,
-              home: (_auth.currentUser == null && !_auth.isGuest) 
-                ? const LoginScreen() 
-                : const BottomNav(),
+              home: const SplashScreen(),
             );
           },
         );

@@ -26,15 +26,22 @@ object FrictionOrchestrator {
 
     fun getFrictionType(context: Context, packageName: String): FrictionType {
         if (!EnforcementManager.isInitialized()) return FrictionType.NONE
-        
         val pkg = packageName.lowercase()
-        // CRITICAL: Never block Settings, Launcher, or System UI even if scores are high
-        if (pkg.contains("settings") || pkg.contains("launcher") || pkg.contains("systemui") || pkg.contains("accessibility")) return FrictionType.NONE
         
-        if (EnforcementManager.isInternalPackage(pkg) || EnforcementManager.isWhitelisted(pkg)) return FrictionType.NONE
-        
-        if (EnforcementManager.isFocusModeActive || EnforcementManager.isLocked) return FrictionType.HARD_BLOCK
-        
+        if (EnforcementManager.isBypassedForToday) return FrictionType.NONE
+
+        // 0. EXEMPTION: Never apply friction to internal tools or user's explicit whitelist
+        if (EnforcementManager.isInternalPackage(pkg) || EnforcementManager.isWhitelisted(pkg)) {
+            return FrictionType.NONE
+        }
+
+        // 1. Check strict enforcement policy first (Focus Mode, Daily Limits, System Locks)
+        val decision = EnforcementManager.blockDecision(packageName)
+        if (decision.shouldBlock) {
+            return if (decision.mode == "hard") FrictionType.HARD_BLOCK else FrictionType.SOFT_DELAY
+        }
+
+        // 2. If policy allows, check for adaptive drift/craving friction
         val count = (reopenCounts[packageName] ?: 0) + 1
         reopenCounts[packageName] = count
 
@@ -48,12 +55,12 @@ object FrictionOrchestrator {
 
         // Adaptive Escalation
         val baseFriction = when {
-            count >= 4 -> FrictionType.HARD_BLOCK
-            count >= 3 -> FrictionType.SOFT_DELAY
-            driftScore > 85 -> FrictionType.HARD_BLOCK
-            driftScore > 70 -> FrictionType.HOLD_TO_OPEN
+            driftScore > 90 -> FrictionType.HARD_BLOCK
+            driftScore > 75 -> FrictionType.HOLD_TO_OPEN
             driftScore > 50 -> FrictionType.SOFT_DELAY
             driftScore > 30 -> FrictionType.EXIT_REFLECTION
+            count >= 4 -> FrictionType.HOLD_TO_OPEN // Downgraded from HARD_BLOCK
+            count >= 2 -> FrictionType.SOFT_DELAY
             else -> FrictionType.NONE
         }
 

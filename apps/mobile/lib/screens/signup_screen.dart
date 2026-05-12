@@ -90,14 +90,14 @@ class _SignupScreenState extends State<SignupScreen> {
                       TextButton(
                         onPressed: () => _auth.continueAsGuest(),
                         style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.05),
+                          backgroundColor: Colors.white.withOpacity(0.05),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         ),
                         child: Text(
                           'SKIP',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: Colors.white.withOpacity(0.4),
                             fontWeight: FontWeight.w800,
                             fontSize: 12,
                             letterSpacing: 1.5,
@@ -139,13 +139,30 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildAppLogo() {
     return Container(
-      padding: const EdgeInsets.all(10),
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.2)),
+        color: Colors.white.withOpacity(0.03),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B82F6).withOpacity(0.15),
+            blurRadius: 15,
+            spreadRadius: 2,
+          ),
+        ],
       ),
-      child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF7C3AED), size: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
     );
   }
 
@@ -161,10 +178,10 @@ class _SignupScreenState extends State<SignupScreen> {
               height: 400,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                color: const Color(0xFF7C3AED).withOpacity(0.15),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+                    color: const Color(0xFF7C3AED).withOpacity(0.2),
                     blurRadius: 120,
                     spreadRadius: 60,
                   ),
@@ -180,10 +197,10 @@ class _SignupScreenState extends State<SignupScreen> {
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                color: const Color(0xFF3B82F6).withOpacity(0.1),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                    color: const Color(0xFF3B82F6).withOpacity(0.15),
                     blurRadius: 100,
                     spreadRadius: 50,
                   ),
@@ -208,7 +225,7 @@ class _SignupScreenState extends State<SignupScreen> {
             letterSpacing: -1,
             height: 1,
             shadows: [
-              Shadow(color: const Color(0xFF7C3AED).withValues(alpha: 0.4), blurRadius: 15),
+              Shadow(color: const Color(0xFF7C3AED).withOpacity(0.4), blurRadius: 15),
             ],
           ),
         ),
@@ -216,7 +233,7 @@ class _SignupScreenState extends State<SignupScreen> {
         Text(
           'Join 10,000+ intentional minds.',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.4),
+            color: Colors.white.withOpacity(0.4),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
@@ -233,9 +250,9 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: Colors.white.withOpacity(0.03),
             borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
           ),
           child: Column(
             children: [
@@ -292,15 +309,15 @@ class _SignupScreenState extends State<SignupScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.05))),
+            Expanded(child: Divider(color: Colors.white.withOpacity(0.05))),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'OR SIGN UP WITH',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
+                style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
               ),
             ),
-            Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.05))),
+            Expanded(child: Divider(color: Colors.white.withOpacity(0.05))),
           ],
         ),
         const SizedBox(height: 24),
@@ -311,7 +328,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 onPressed: () => _handleSocialLogin('google'),
                 icon: Icons.g_mobiledata_rounded,
                 label: 'GOOGLE',
-                color: Colors.white.withValues(alpha: 0.03),
+                color: Colors.white.withOpacity(0.03),
               ),
             ),
             const SizedBox(width: 16),
@@ -320,7 +337,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 onPressed: () => _handleSocialLogin('apple'),
                 icon: Icons.apple_rounded,
                 label: 'APPLE',
-                color: Colors.white.withValues(alpha: 0.03),
+                color: Colors.white.withOpacity(0.03),
               ),
             ),
           ],
@@ -337,7 +354,7 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Text(
               "Already joined? ",
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+              style: TextStyle(color: Colors.white.withOpacity(0.4)),
             ),
             GestureDetector(
               onTap: () => Navigator.pop(context),
@@ -357,7 +374,7 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Text(
             'CONTINUE AS GUEST',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: Colors.white.withOpacity(0.3),
               fontSize: 12,
               fontWeight: FontWeight.w900,
               letterSpacing: 2,
@@ -381,7 +398,7 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1F1F23),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: TextField(
         controller: controller,
@@ -415,7 +432,7 @@ class _SignupScreenState extends State<SignupScreen> {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: InkWell(
         onTap: onPressed,
@@ -435,3 +452,4 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+

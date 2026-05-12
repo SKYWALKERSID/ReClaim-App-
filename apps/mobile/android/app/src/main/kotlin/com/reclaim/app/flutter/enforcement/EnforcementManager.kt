@@ -39,9 +39,11 @@ object EnforcementManager {
     private var policy: FocusPolicy = defaultPolicy()
     private val temporaryUnlockMap = mutableMapOf<String, Long>()
     private var overrideUsage = OverrideUsage("", 0)
-    private var isBypassedForToday = false
+    @Volatile var isBypassedForToday: Boolean = false
+        private set
     private var launcherPackage: String? = null
     private var lastForegroundPackage: String? = null
+    private val systemPackages = mutableSetOf<String>()
 
     @Volatile var isLocked: Boolean = false
         private set
@@ -85,6 +87,10 @@ object EnforcementManager {
                 temporaryUnlockMap.putAll(FocusPolicyStore.loadTemporaryUnlockMap(appCtx))
                 overrideUsage = FocusPolicyStore.loadOverrideUsage(appCtx)
 
+                // 2.5 Auto-detect system packages
+                detectSystemPackages(appCtx)
+
+
                 // 3. Initial state refresh
                 refreshStateInternal(appCtx, forceUsageSync = true)
                 
@@ -126,11 +132,23 @@ object EnforcementManager {
 
     fun shouldBlock(packageName: String): Boolean = blockDecision(packageName).shouldBlock
 
+    fun isBlacklisted(packageName: String): Boolean {
+        synchronized(monitor) {
+            ensureInitialized()
+            val pkg = packageName.lowercase()
+            return policy.blacklistPackages.any { it.lowercase() == pkg }
+        }
+    }
+
     fun isWhitelisted(packageName: String): Boolean {
         synchronized(monitor) {
             ensureInitialized()
             val pkg = packageName.lowercase()
-            return policy.whitelistPackages.any { it.lowercase() == pkg }
+            
+            // Check manual whitelist (User defined)
+            if (policy.whitelistPackages.any { it.lowercase() == pkg }) return true
+            
+            return false
         }
     }
 
@@ -153,48 +171,60 @@ object EnforcementManager {
         if (!initialized.get()) return BlockDecision(false, "Initializing...")
         val pkg = packageName.lowercase()
         
-        // CRITICAL: Never block the app itself or system essentials
-        if (isInternalPackage(pkg) || isWhitelisted(pkg) || isEssentialPackage(pkg)) {
-            Log.v("EnforcementManager", "Evaluating $pkg -> ALLOW (Internal/Whitelisted/Essential)")
+        // 0. HARD BYPASS: Never block internal tools or user's explicit whitelist
+        if (isInternalPackage(pkg) || isWhitelisted(pkg)) {
             return BlockDecision(false, "Internal or Whitelisted")
         }
 
-        if (isBypassedForToday) return BlockDecision(false, "Bypassed via SafeCode")
-        if (pkg == launcherPackage) return BlockDecision(false, "Launcher allowed for viewing")
-        
-        if (isTemporarilyUnlocked(pkg)) {
-            Log.d("EnforcementManager", "ALLOW: $pkg (Temporarily Unlocked)")
-            return BlockDecision(false, "Temporarily unlocked")
-        }
-
-        if (isSensitiveBypassTarget(pkg, className)) {
-            Log.d("EnforcementManager", "BLOCK: $pkg (Sensitive Bypass Target)")
-            return BlockDecision(true, "Enforcement settings are protected right now.", "hard")
-        }
-
+        // 1. FORCED LOCK: Check if the system is explicitly locked by policy
         if (policy.policyStatus.equals("LOCKED", ignoreCase = true)) {
             Log.d("EnforcementManager", "BLOCK: $pkg (Policy LOCKED)")
             return BlockDecision(true, "System is locked by your commitment.", "hard")
         }
 
+        // 2. FOCUS MODE: Highest priority runtime check
         if (isFocusModeActive) {
+            // During Focus Mode, even "Essential" apps like Maps or Calendar are BLOCKED
+            // unless the user explicitly whitelisted them for this session.
             Log.d("EnforcementManager", "BLOCK: $pkg (Focus Mode Active)")
-            return BlockDecision(true, "Focus Mode is active.", "hard")
+            return BlockDecision(true, "Focus Mode is active. Stay focused!", "hard")
         }
 
+        // 3. SCHEDULED WINDOWS: Check if current time falls into a focus window
         if (isFocusWindowActive(LocalDateTime.now())) {
+            // Focus windows allow ONLY internal or user-whitelisted apps.
             Log.d("EnforcementManager", "BLOCK: $pkg (Focus Window Active)")
-            return BlockDecision(true, "Focus window active. Essential apps only.", "hard")
+            return BlockDecision(true, "Focus window active. Stay focused!", "hard")
         }
 
+        // 4. DAILY LIMITS: Check if the user has reached their goal usage
         if (isLocked) {
-            Log.d("EnforcementManager", "BLOCK: $pkg (Daily Limit Reached - Global Lock)")
+            // During daily limit locks, we allow "Essential" tools (Phone, Settings, Clock)
+            // to ensure the device remains a tool, not a toy.
+            if (isEssentialPackage(pkg)) {
+                return BlockDecision(false, "Essential app allowed during lock")
+            }
+
+            Log.d("EnforcementManager", "BLOCK: $pkg (Daily Limit Reached)")
             return if (policy.enforcementMode == "soft") {
                 BlockDecision(true, "Pause before opening this app.", "soft")
             } else {
-                BlockDecision(true, "Daily limit reached. Essential apps only.", "hard")
+                BlockDecision(true, "Daily limit reached. Try again tomorrow.", "hard")
             }
         }
+
+        // 5. SECURITY BYPASS PROTECTION: Prevent uninstall/disable during enforcement
+        if (isSensitiveBypassTarget(pkg, className)) {
+            // This is checked last so it only applies if one of the above modes is active
+            // (The isSensitiveBypassTarget check internally checks isLocked || isFocusModeActive)
+            Log.d("EnforcementManager", "BLOCK: $pkg (Sensitive Bypass Target)")
+            return BlockDecision(true, "Security settings are protected during focus.", "hard")
+        }
+
+        // 6. AD-HOC BYPASSES
+        if (isBypassedForToday) return BlockDecision(false, "Bypassed via SafeCode")
+        if (pkg == launcherPackage) return BlockDecision(false, "Launcher allowed")
+        if (isTemporarilyUnlocked(pkg)) return BlockDecision(false, "Temporarily unlocked")
 
         return BlockDecision(false, "Allowed")
     }
@@ -207,6 +237,41 @@ object EnforcementManager {
                 return true
             }
             return false
+        }
+    }
+
+    fun requestUninstallOTP(context: Context, callback: (Boolean) -> Unit) {
+        val userId = FocusPolicyStore.getAuthUserId(context) ?: return callback(false)
+        val jwt = FocusPolicyStore.getAuthJwt(context)
+        
+        scope.launch(Dispatchers.IO) {
+            try {
+                val apiClient = com.reclaim.app.data.ApiClient()
+                apiClient.sendOTP(userId, null, jwt)
+                withContext(Dispatchers.Main) { callback(true) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send OTP", e)
+                withContext(Dispatchers.Main) { callback(false) }
+            }
+        }
+    }
+
+    fun verifyUninstallOTP(context: Context, otp: String, callback: (Boolean) -> Unit) {
+        val userId = FocusPolicyStore.getAuthUserId(context) ?: return callback(false)
+        val jwt = FocusPolicyStore.getAuthJwt(context)
+
+        scope.launch(Dispatchers.IO) {
+            try {
+                val apiClient = com.reclaim.app.data.ApiClient()
+                val success = apiClient.verifyOTP(userId, otp, jwt)
+                if (success) {
+                    disableEnforcementForToday()
+                }
+                withContext(Dispatchers.Main) { callback(success) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to verify OTP", e)
+                withContext(Dispatchers.Main) { callback(false) }
+            }
         }
     }
 
@@ -317,7 +382,10 @@ object EnforcementManager {
             
             val isManualFocus = FocusSessionManager.isFocusActive(context)
             val newFocusActive = isFocusActive || isManualFocus
-            val newLocked = (newFocusActive || limitReached) && !isInternalPackage(lastForegroundPackage ?: "")
+            // isLocked should be set purely on daily limit — focus mode is tracked separately.
+            // Do NOT gate isLocked on lastForegroundPackage because that causes the
+            // hard block to silently remain inactive when the foreground app is "internal".
+            val newLocked = limitReached
             
             // Usage Milestones (Nudges)
             checkAndSendUsageNudges(context, cachedUsageMinutes, policy.dailyLimitMinutes)
@@ -540,7 +608,15 @@ object EnforcementManager {
 
             val stats = usageManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, now)
             val totalMs = stats
-                ?.filter { it.packageName != context.packageName }
+                ?.filter { stat ->
+                    val pkg = stat.packageName
+                    // Exclude self, launchers (home screen counts as usage but isn't "phone usage"),
+                    // and internal system packages from daily limit calculation.
+                    pkg != context.packageName &&
+                    !isInternalPackage(pkg) &&
+                    !isLauncherPackage(pkg) &&
+                    !isWhitelisted(pkg)
+                }
                 ?.sumOf { it.totalTimeInForeground } ?: 0L
 
             (totalMs / 60_000L).toInt()
@@ -567,24 +643,19 @@ object EnforcementManager {
     }
 
     private fun isEssentialPackage(packageName: String): Boolean {
+        // ONLY include critical communication and system tools that should NEVER be hard-blocked by daily limits.
+        // During FOCUS MODE, these are still blocked unless explicitly whitelisted.
         val essentials = mutableSetOf(
-            "com.whatsapp",
-            "com.google.android.gm",
-            "com.google.android.googlequicksearchbox",
             "com.android.settings",
             "com.google.android.settings",
             "com.android.deskclock",
             "com.google.android.deskclock",
             "com.android.camera",
             "com.google.android.GoogleCamera",
-            "com.android.gallery3d",
-            "com.google.android.apps.photos",
-            "com.google.android.apps.maps",
-            "com.google.android.calendar",
+            "com.android.phone",
+            "com.android.server.telecom",
             "com.google.android.contacts",
-            "com.google.android.calculator",
-            "com.google.android.apps.messaging",
-            "com.android.chrome"
+            "com.android.contacts"
         )
 
         appContext?.let { context ->
@@ -594,52 +665,36 @@ object EnforcementManager {
                 pm.resolveActivity(dialerIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
                     ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
             } catch (e: Exception) { /* ignore */ }
-
-            try {
-                val smsIntent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_MESSAGING) }
-                pm.resolveActivity(smsIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                    ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
-            } catch (e: Exception) { /* ignore */ }
-
-            try {
-                val cameraIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
-                pm.resolveActivity(cameraIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
-                    ?.activityInfo?.packageName?.let { essentials.add(it.lowercase()) }
-            } catch (e: Exception) { /* ignore */ }
         }
 
-        return packageName in essentials
+        return packageName.lowercase() in essentials
     }
 
     fun isInternalPackage(packageName: String?): Boolean {
         if (packageName == null || packageName.isEmpty()) return true
         val pkg = packageName.lowercase()
         
-        // 1. Hardcoded known internal strings (Infallible)
-        if (pkg.contains("reclaim") || 
-            pkg.contains("minimalism") ||
-            pkg.contains("focus") ||
-            pkg.contains("flutter") ||
+        // 1. ReClaim components (NEVER block our own app)
+        if (pkg.contains("com.reclaim.app")) return true
+            
+        // 2. Critical System Components (Always allow to prevent device bricking/bootloops)
+        if (pkg == "android" || 
+            pkg == "com.android.systemui" ||
             pkg.contains("settings") || 
             pkg.contains("accessibility") ||
-            pkg.contains("launcher") || 
-            pkg.contains("home") ||
-            pkg.contains("systemui") ||
-            pkg.contains("packageinstaller") ||
-            pkg.contains("permissioncontroller") ||
-            pkg.contains("vending") || 
-            pkg.contains("google.android.gms") ||
-            pkg == "android" ||
-            pkg == "com.android.settings" ||
-            pkg.contains("inputmethod")
+            pkg.contains("com.android.packageinstaller") ||
+            pkg.contains("com.google.android.packageinstaller") ||
+            pkg.contains("com.android.permissioncontroller") ||
+            pkg.contains("com.google.android.permissioncontroller") ||
+            pkg.contains("com.google.android.gms") ||
+            pkg.contains("com.android.vending") // Play Store for updates
         ) return true
-            
-        // 2. Dynamic context check
-        val contextPkg = appContext?.packageName?.lowercase()
-        if (contextPkg != null && (pkg == contextPkg || pkg.contains(contextPkg))) return true
         
-        // 3. Launcher check
-        return isLauncherPackage(pkg) || isEssentialPackage(pkg)
+        // 3. Input Methods (Keyboards)
+        if (pkg.contains("inputmethod") || pkg.contains("keyboard")) return true
+        
+        // 4. Launcher check
+        return isLauncherPackage(pkg)
     }
 
     fun isLauncherPackage(packageName: String): Boolean {
@@ -711,14 +766,10 @@ object EnforcementManager {
         return FocusPolicy(
             dailyLimitMinutes = 1440,
             whitelistPackages = setOf(
-                "com.whatsapp",
-                "com.google.android.gm",
                 "com.android.settings",
                 "com.google.android.settings",
                 "com.android.deskclock",
-                "com.google.android.deskclock",
-                "com.google.android.apps.maps",
-                "com.google.android.calendar"
+                "com.google.android.deskclock"
             ),
             blacklistPackages = emptySet(),
             focusWindows = emptyList(),
@@ -728,5 +779,33 @@ object EnforcementManager {
             enforcementMode = "hard",
             safeCode = null
         )
+    }
+
+    private fun detectSystemPackages(context: Context) {
+        try {
+            val pm = context.packageManager
+            val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getInstalledPackages(android.content.pm.PackageManager.PackageInfoFlags.of(0))
+            } else {
+                pm.getInstalledPackages(0)
+            }
+            
+            synchronized(monitor) {
+                systemPackages.clear()
+                for (pkg in packages) {
+                    val appInfo = pkg.applicationInfo
+                    if (appInfo != null) {
+                        val isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                                       (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                        if (isSystem) {
+                            systemPackages.add(pkg.packageName.lowercase())
+                        }
+                    }
+                }
+                Log.d(TAG, "Detected ${systemPackages.size} system packages for auto-whitelist.")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to detect system packages", e)
+        }
     }
 }

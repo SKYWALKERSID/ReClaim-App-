@@ -23,6 +23,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   Map<String, dynamic> _stats = {};
   Map<String, dynamic>? _driftStats;
   bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _isScreenTimeExpanded = false;
   List<String> _recommendations = [];
   Timer? _refreshTimer;
@@ -34,7 +35,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) _loadData(isSilent: true);
     });
   }
@@ -73,25 +74,40 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   }
 
   Future<void> _loadData({bool isSilent = false}) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    
     if (!isSilent) setState(() => _isLoading = true);
     try {
-      final insights = await _backend.getInsightsData(_activeTab, category: _selectedCategory);
-      final stats = await _backend.fetchDashboardStats();
-      final behavioral = await _backend.fetchBehavioralMetrics();
-      final recs = await _recommendationsService.getPersonalizedRecommendations();
-      final distractionTrend = await _backend.invokeMethod('getHourlyDistractionTrend');
-      
-      // Prefetch icons
+      // Parallelize core data fetching with increased timeout for reliability
+      final results = await Future.wait([
+        _backend.getInsightsData(_activeTab, category: _selectedCategory),
+        _backend.fetchDashboardStats(),
+        _backend.fetchBehavioralMetrics(),
+        _recommendationsService.getPersonalizedRecommendations(),
+        _backend.invokeMethod('getHourlyDistractionTrend'),
+      ]).timeout(const Duration(seconds: 30));
+
+      final insights = results[0] as Map<String, dynamic>;
+      final stats = results[1] as Map<String, dynamic>;
+      final behavioral = results[2] as Map<String, dynamic>;
+      final recs = results[3] as List<String>;
+      final distractionTrend = results[4] as List?;
+
+      // Prefetch icons in parallel - don't block UI
       if (insights['top_apps'] != null) {
-        for (var app in insights['top_apps']) {
+        final List<Map<String, dynamic>> apps = List<Map<String, dynamic>>.from(insights['top_apps']);
+        unawaited(Future.wait(apps.map((app) async {
           final pkg = app['package_name'];
-          if (!_iconCache.containsKey(pkg)) {
+          if (pkg != null && !_iconCache.containsKey(pkg)) {
             final iconBytes = await _backend.getAppIcon(pkg);
-            if (iconBytes != null) {
-              _iconCache[pkg] = MemoryImage(iconBytes);
+            if (iconBytes != null && mounted) {
+              setState(() {
+                _iconCache[pkg] = MemoryImage(iconBytes);
+              });
             }
           }
-        }
+        })).catchError((e) => debugPrint("Icon prefetch error: $e")));
       }
 
       if (mounted) {
@@ -100,20 +116,40 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           _stats = stats;
           _driftStats = behavioral;
           _recommendations = recs;
-          _distractionTrend = (distractionTrend as List?)?.cast<int>() ?? List.filled(24, 0);
+          _distractionTrend = distractionTrend?.cast<int>() ?? List.filled(24, 0);
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint("Insights data load error: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          // If it was a timeout and we have no data, show a snackbar
+          if (e is TimeoutException && _insightsData == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Loading took longer than expected. Please try a hard refresh."),
+                duration: Duration(seconds: 5),
+              ),
+            );
+          }
+        });
+      }
+    } finally {
+      _isRefreshing = false;
     }
   }
 
   Future<void> _hardRefresh() async {
     setState(() => _isLoading = true);
-    _iconCache.clear();
-    await _backend.invokeMethod('syncAllData'); 
-    await _loadData(isSilent: false);
+    try {
+      _iconCache.clear();
+      await _backend.invokeMethod('syncAllData'); 
+      await _loadData(isSilent: false);
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   String _formatUsage(int seconds) {
@@ -136,7 +172,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: _isScreenTimeExpanded ? AppColors.primary.withOpacity(0.3) : Colors.white.withValues(alpha: 0.05),
+            color: _isScreenTimeExpanded ? AppColors.primary.withOpacity(0.3) : Colors.white.withOpacity(0.05),
             width: _isScreenTimeExpanded ? 2 : 1,
           ),
           boxShadow: _isScreenTimeExpanded ? [
@@ -336,7 +372,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              backgroundColor: Colors.white.withOpacity(0.05),
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 4,
             ),
@@ -375,14 +411,24 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Insights", 
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                              fontSize: 32, 
-                              fontWeight: FontWeight.w700, 
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                            )
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.insights_rounded,
+                                color: AppColors.primary,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Insights", 
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontSize: 32, 
+                                  fontWeight: FontWeight.w700, 
+                                  color: Colors.white,
+                                  letterSpacing: -0.5,
+                                )
+                              ),
+                            ],
                           ),
                           const Text(
                             "Your cognitive performance",
@@ -471,7 +517,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                 });
                 _loadData();
               },
-              backgroundColor: Colors.white.withValues(alpha: 0.03),
+              backgroundColor: Colors.white.withOpacity(0.03),
               selectedColor: AppColors.primary,
               checkmarkColor: Colors.white,
               labelStyle: TextStyle(
@@ -481,7 +527,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08)),
+                side: BorderSide(color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.08)),
               ),
             ),
           );
@@ -495,9 +541,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03), 
+        color: Colors.white.withOpacity(0.03), 
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Row(
         children: ["Day", "Week", "Month"].map((tab) => Expanded(
@@ -540,9 +586,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.05),
+            color: AppColors.primary.withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+            border: Border.all(color: AppColors.primary.withOpacity(0.1)),
           ),
           child: Row(
             children: [
@@ -578,7 +624,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,7 +636,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(value, style: const TextStyle(color: Colors.white60, fontSize: 12)),
@@ -655,7 +701,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,7 +797,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,7 +808,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               Icon(icon, color: color, size: 24),
               if (!isWide) Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                 child: const Text("BRAIN", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
             ],
@@ -783,9 +829,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   Widget _buildHeaderIcon({required IconData icon, required VoidCallback onTap}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: IconButton(
         onPressed: onTap,
@@ -858,7 +904,7 @@ class _TopAppRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
               minHeight: 4,
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              backgroundColor: Colors.white.withOpacity(0.05),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
             ),
           ),
@@ -901,7 +947,7 @@ class _GlowingDataPainter extends CustomPainter {
 
     // Glow effect
     final glowPaint = Paint()
-      ..color = const Color(0xFF8B5CF6).withValues(alpha: 0.3)
+      ..color = const Color(0xFF8B5CF6).withOpacity(0.3)
       ..strokeWidth = 6
       ..style = PaintingStyle.stroke
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
@@ -915,9 +961,12 @@ class _GlowingDataPainter extends CustomPainter {
     
     final dotPaint = Paint()..color = const Color(0xFFD946EF);
     canvas.drawCircle(Offset(lastX, lastY), 4, dotPaint);
-    canvas.drawCircle(Offset(lastX, lastY), 8, Paint()..color = const Color(0xFFD946EF).withValues(alpha: 0.3));
+    canvas.drawCircle(Offset(lastX, lastY), 8, Paint()..color = const Color(0xFFD946EF).withOpacity(0.3));
   }
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
+
+
+

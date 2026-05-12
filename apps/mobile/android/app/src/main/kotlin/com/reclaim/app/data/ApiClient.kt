@@ -175,6 +175,37 @@ class ApiClient(
         }
     }
 
+    fun sendOTP(userId: String, email: String? = null, jwtToken: String? = null) {
+        val payload = JSONObject().apply {
+            put("userId", userId)
+            if (email != null) put("email", email)
+        }
+        executeWithRetry {
+            postJson(
+                path = "/auth/otp/send",
+                payload = payload,
+                bearerToken = jwtToken
+            )
+        }
+    }
+
+    fun verifyOTP(userId: String, otp: String, jwtToken: String? = null): Boolean {
+        val payload = JSONObject().apply {
+            put("userId", userId)
+            put("otp", otp)
+        }
+        return try {
+            postJson(
+                path = "/auth/otp/verify",
+                payload = payload,
+                bearerToken = jwtToken
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     private fun postJson(
         path: String,
         payload: JSONObject,

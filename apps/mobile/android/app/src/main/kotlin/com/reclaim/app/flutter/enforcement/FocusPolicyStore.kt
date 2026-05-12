@@ -111,6 +111,9 @@ object FocusPolicyStore {
         return Pair(p.getString(AUTH_USER_ID, null), p.getString(AUTH_JWT, null))
     }
 
+    fun getAuthUserId(context: Context): String? = prefs(context).getString(AUTH_USER_ID, null)
+    fun getAuthJwt(context: Context): String? = prefs(context).getString(AUTH_JWT, null)
+
     fun savePolicy(context: Context, payload: Map<*, *>) {
         val json = JSONObject()
         payload.forEach { (key, value) ->
@@ -127,14 +130,10 @@ object FocusPolicyStore {
             ?: return FocusPolicy(
                 dailyLimitMinutes = 1440,
                 whitelistPackages = setOf(
-                    "com.whatsapp",
-                    "com.google.android.gm",
                     "com.android.settings",
                     "com.google.android.settings",
                     "com.android.deskclock",
-                    "com.google.android.deskclock",
-                    "com.google.android.apps.maps",
-                    "com.google.android.calendar"
+                    "com.google.android.deskclock"
                 ),
                 blacklistPackages = emptySet(),
                 focusWindows = emptyList(),
@@ -152,12 +151,20 @@ object FocusPolicyStore {
         }
         val policyJson = json.optJSONObject("policy") ?: JSONObject()
         val windows = json.optJSONArray("focusWindows")?.toFocusWindows().orEmpty()
+        
+        // Migration: If the user has the old default focus windows, clear them.
+        // We don't want to block users by default during the hackathon.
+        val finalWindows = if (windows.any { it.start == "09:00" || it.start == "14:00" }) {
+            emptyList()
+        } else {
+            windows
+        }
 
         return FocusPolicy(
             dailyLimitMinutes = json.optInt("dailyLimitMinutes", 1440),
             whitelistPackages = json.optJSONArray("whitelistPackages").toStringSet(),
             blacklistPackages = json.optJSONArray("blacklistPackages").toStringSet(),
-            focusWindows = windows,
+            focusWindows = finalWindows,
             maxOverridesPerDay = json.optInt("maxOverridesPerDay", 5),
             policyStatus = policyJson.optString("status", "normal"),
             blockedPackages = policyJson.optJSONArray("blockedPackages").toStringSet(),

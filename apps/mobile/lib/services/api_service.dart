@@ -10,8 +10,8 @@ class ApiService {
 
   final Dio dio = Dio(BaseOptions(
     baseUrl: 'http://10.0.2.2:4000/v1',
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 3),
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 20),
   ));
 
   final _storage = const FlutterSecureStorage(

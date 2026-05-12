@@ -32,10 +32,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Timer? _countdownTimer;
   late AnimationController _backgroundPulseController;
   int _selectedDuration = 25; // Default focus duration
-  List<dynamic> _topApps = [];
-  List<int> _weeklyTrend = [];
   Map<String, dynamic> _permissionStatus = {};
   bool _isLoadingData = true;
+  bool _isRefreshing = false;
+  List<Map<String, dynamic>> _topApps = [];
+  List<int> _weeklyTrend = [];
+  final Map<String, ImageProvider> _iconCache = {};
 
   @override
   void initState() {
@@ -100,6 +102,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Future<void> _loadData({bool isSilent = false}) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    
     if (!isSilent) setState(() => _isLoadingData = true);
     try {
       final stats = await _backendService.fetchDashboardStats();
@@ -118,13 +123,28 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           _permissionStatus = permissions;
           _secondsRemaining = stats['remaining_focus_seconds'] as int? ?? 0;
           isFocusModeOn = _secondsRemaining > 0;
-          _topApps = (usage['apps'] as List).take(3).toList();
-          _weeklyTrend = (stats['weekly_trend'] as List?)?.cast<int>() ?? [12, 45, 28, 65, 42, 88, 54];
+          _topApps = List<Map<String, dynamic>>.from((usage['apps'] as List? ?? []).take(3));
+          _weeklyTrend = List<int>.from(stats['weekly_trend'] as List? ?? [12, 45, 28, 65, 42, 88, 54]);
           _isLoadingData = false;
         });
+
+        // Background fetch icons
+        for (var app in _topApps) {
+          final pkg = app['app_id'];
+          if (pkg != null && !_iconCache.containsKey(pkg)) {
+            final iconBytes = await _backendService.getAppIcon(pkg);
+            if (iconBytes != null && mounted) {
+              setState(() {
+                _iconCache[pkg] = MemoryImage(iconBytes);
+              });
+            }
+          }
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoadingData = false);
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -240,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     initialTimerDuration: Duration(minutes: _selectedDuration),
                     onTimerDurationChanged: (Duration newDuration) {
                       setState(() {
-                        _selectedDuration = newDuration.inMinutes.clamp(1, 1440);
+                        _selectedDuration = newDuration.inMinutes.toInt().clamp(1, 1440);
                       });
                     },
                   ),
@@ -347,99 +367,100 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Widget _buildHeader() {
     final rawName = (_userProfile?['name'] ?? '').toString().trim();
     final userName = rawName.isEmpty ? 'there' : rawName;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Hi, $userName",
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
-                ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Hi, $userName",
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white.withOpacity(0.5),
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              AnimatedBuilder(
-                animation: _backgroundPulseController,
-                builder: (context, child) {
-                  final double glowIntensity = 6.0 + (math.sin(_backgroundPulseController.value * 2 * math.pi) + 1.0) * 6.0;
-                  return RichText(
-                    text: TextSpan(
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1.0,
-                        height: 1.1,
-                        fontFamily: 'Inter',
-                      ),
-                      children: [
-                        const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
-                        TextSpan(
-                          text: "intentional,", 
-                          style: TextStyle(
-                            color: const Color(0xFFD946EF),
-                            shadows: [
-                              Shadow(
-                                color: const Color(0xFFD946EF).withValues(alpha: 0.6),
-                                blurRadius: glowIntensity,
-                              ),
-                              Shadow(
-                                color: const Color(0xFFD946EF).withValues(alpha: 0.3),
-                                blurRadius: glowIntensity * 1.5,
-                              ),
-                            ],
-                          ),
+            ),
+            Row(
+              children: [
+                _GlassIconButton(
+                  icon: Icons.shield_outlined,
+                  onTap: _navigateToBlockApps,
+                ),
+                const SizedBox(width: 12),
+                _GlassIconButton(
+                  icon: Icons.edit_outlined,
+                  onTap: _navigateToProfile,
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        AnimatedBuilder(
+          animation: _backgroundPulseController,
+          builder: (context, child) {
+            final double glowIntensity = 6.0 + (math.sin(_backgroundPulseController.value * 2 * math.pi) + 1.0) * 6.0;
+            return RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
+                  height: 1.1,
+                  fontFamily: 'Inter',
+                ),
+                children: [
+                  const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
+                  TextSpan(
+                    text: "intentional,", 
+                    style: TextStyle(
+                      color: const Color(0xFFD946EF),
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFFD946EF).withOpacity(0.6),
+                          blurRadius: glowIntensity,
                         ),
-                        const TextSpan(text: "\nnot ", style: TextStyle(color: Colors.white)),
-                        TextSpan(
-                          text: "distracted.", 
-                          style: TextStyle(
-                            color: const Color(0xFF60A5FA),
-                            shadows: [
-                              Shadow(
-                                color: const Color(0xFF60A5FA).withValues(alpha: 0.6),
-                                blurRadius: glowIntensity,
-                              ),
-                              Shadow(
-                                color: const Color(0xFF60A5FA).withValues(alpha: 0.3),
-                                blurRadius: glowIntensity * 1.5,
-                              ),
-                            ],
-                          ),
+                        Shadow(
+                          color: const Color(0xFFD946EF).withOpacity(0.3),
+                          blurRadius: glowIntensity * 1.5,
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                  const TextSpan(text: "\nnot ", style: TextStyle(color: Colors.white)),
+                  TextSpan(
+                    text: "distracted.", 
+                    style: TextStyle(
+                      color: const Color(0xFF60A5FA),
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF60A5FA).withOpacity(0.6),
+                          blurRadius: glowIntensity,
+                        ),
+                        Shadow(
+                          color: const Color(0xFF60A5FA).withOpacity(0.3),
+                          blurRadius: glowIntensity * 1.5,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Row(
-          children: [
-            _GlassIconButton(
-              icon: Icons.app_registration_rounded,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (c) => const AppSelectionScreen()),
-              ),
-            ),
-            const SizedBox(width: 12),
-            _GlassIconButton(
-              icon: Icons.settings_outlined,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (c) => const GoalSettingScreen()),
-              ),
-            ),
-          ],
+            );
+          },
         ),
       ],
     );
@@ -574,7 +595,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Stack(
           children: [
@@ -657,11 +678,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           height: 48,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
             gradient: LinearGradient(
               colors: [
-                const Color(0xFF8B5CF6).withValues(alpha: 0.6),
-                const Color(0xFFEC4899).withValues(alpha: 0.6),
+                const Color(0xFF8B5CF6).withOpacity(0.6),
+                const Color(0xFFEC4899).withOpacity(0.6),
               ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
@@ -843,8 +864,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               final seconds = app['usage_seconds'] as int;
               final maxSeconds = (_topApps.first['usage_seconds'] as int?) ?? 1;
               
+              final pkg = app['app_id'];
               return UsageBar(
-                icon: const Icon(Icons.apps_rounded, color: Colors.white, size: 20),
+                icon: _iconCache.containsKey(pkg) 
+                    ? Image(image: _iconCache[pkg]!, width: 24, height: 24)
+                    : const Icon(Icons.apps_rounded, color: Colors.white, size: 20),
                 title: name,
                 duration: _formatSeconds(seconds),
                 progress: (seconds / maxSeconds).clamp(0.0, 1.0),
@@ -1230,3 +1254,5 @@ class _ParticleWavePainter extends CustomPainter {
   bool shouldRepaint(covariant _ParticleWavePainter oldDelegate) => 
       oldDelegate.pulseValue != pulseValue || oldDelegate.isActive != isActive;
 }
+
+

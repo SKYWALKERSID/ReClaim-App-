@@ -106,7 +106,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -185,21 +185,21 @@ class _UsageCalendarState extends State<UsageCalendar> {
   }
 
   Widget _buildDayCell(int day, int usageSeconds, bool isToday, bool isSelected) {
-    Color color = Colors.white.withValues(alpha: 0.05);
+    Color color = Colors.white.withOpacity(0.05);
     
     if (usageSeconds > 0) {
       if (usageSeconds > widget.goalSeconds * 1.2) {
-        color = const Color(0xFFEF4444).withValues(alpha: 0.3);
+        color = const Color(0xFFEF4444).withOpacity(0.3);
       } else if (usageSeconds > widget.goalSeconds * 0.8) {
-        color = const Color(0xFFF59E0B).withValues(alpha: 0.3);
+        color = const Color(0xFFF59E0B).withOpacity(0.3);
       } else {
-        color = const Color(0xFF10B981).withValues(alpha: 0.3);
+        color = const Color(0xFF10B981).withOpacity(0.3);
       }
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : color,
+        color: isSelected ? AppColors.primary.withOpacity(0.4) : color,
         borderRadius: BorderRadius.circular(12),
         border: isSelected 
           ? Border.all(color: AppColors.primary, width: 2) 
@@ -225,9 +225,9 @@ class _UsageCalendarState extends State<UsageCalendar> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +322,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
       icon = Icons.check_circle_outline;
     } else if (totalUsage <= widget.goalSeconds) {
       message = "Good job! You stayed within your daily limit.";
-      color = Colors.greenAccent.withValues(alpha: 0.8);
+      color = Colors.greenAccent.withOpacity(0.8);
       icon = Icons.thumb_up_outlined;
     } else if (totalUsage < widget.goalSeconds * 1.3) {
       message = "A bit over the limit. Try to focus more tomorrow!";
@@ -337,7 +337,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -384,9 +384,9 @@ class _UsageCalendarState extends State<UsageCalendar> {
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.3),
+            color: color.withOpacity(0.3),
             borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: color.withValues(alpha: 0.5)),
+            border: Border.all(color: color.withOpacity(0.5)),
           ),
         ),
         const SizedBox(width: 8),
@@ -395,3 +395,4 @@ class _UsageCalendarState extends State<UsageCalendar> {
     );
   }
 }
+

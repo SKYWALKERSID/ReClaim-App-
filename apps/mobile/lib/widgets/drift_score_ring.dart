@@ -73,7 +73,7 @@ class _DriftScoreRingState extends State<DriftScoreRing> with SingleTickerProvid
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white.withOpacity(0.5),
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -126,7 +126,7 @@ class _DriftRingPainter extends CustomPainter {
 
     // Background track
     final trackPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
+      ..color = Colors.white.withOpacity(0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
@@ -155,7 +155,7 @@ class _DriftRingPainter extends CustomPainter {
 
     // Inner fragmentation ring
     final fragPaint = Paint()
-      ..color = _getFragmentationColor(fragmentation).withValues(alpha: 0.3)
+      ..color = _getFragmentationColor(fragmentation).withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.0
       ..strokeCap = StrokeCap.round;
@@ -181,3 +181,4 @@ class _DriftRingPainter extends CustomPainter {
     return oldDelegate.score != score || oldDelegate.fragmentation != fragmentation;
   }
 }
+

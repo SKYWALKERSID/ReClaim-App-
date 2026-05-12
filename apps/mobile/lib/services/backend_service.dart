@@ -13,6 +13,14 @@ class BackendService {
     // No-op for now, ApiService handles tokens internally
   }
 
+  Future<void> hideBlockingOverlay() async {
+    try {
+      await platform.invokeMethod('hideBlockingOverlay');
+    } catch (e) {
+      debugPrint("Failed to hide overlay: $e");
+    }
+  }
+
   // ─── Native Platform Methods (MethodChannel) ───
 
   Future<dynamic> invokeMethod(String method, [dynamic arguments]) async {
@@ -62,7 +70,7 @@ class BackendService {
     try {
       final dynamic result = await platform.invokeMethod('getDashboardStats');
       if (result == null || result is! Map) return {};
-      return Map<String, dynamic>.from(result);
+      return _deepCastMap(result);
     } catch (e) {
       return {};
     }
@@ -81,7 +89,7 @@ class BackendService {
           "addiction_score": 0.0
         };
       }
-      return Map<String, dynamic>.from(result);
+      return _deepCastMap(result);
     } catch (e) {
       return {
         "drift_score": 0.0,
@@ -95,6 +103,16 @@ class BackendService {
   }
 
   // fetchDriftStats() removed — was a dead alias for fetchBehavioralMetrics(); use that directly.
+
+  Future<Uint8List?> getAppIcon(String packageName) async {
+    try {
+      final dynamic result = await platform.invokeMethod('getAppIcon', {'package_name': packageName});
+      if (result == null || result is! Uint8List) return null;
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
 
   Future<Map<String, dynamic>> fetchAppUsage() async {
     try {
@@ -132,6 +150,26 @@ class BackendService {
       };
     } catch (e) {
       return {"daily": [], "weekly": [], "monthly": []};
+    }
+  }
+
+  Future<Map<String, dynamic>> getInsightsData(String period, {String? category}) async {
+    try {
+      final dynamic result = await platform.invokeMethod('getInsightsData', {
+        'period': period,       // Native handler reads 'period', not 'tab'
+        'category': category,
+      });
+      if (result == null || result is! Map) return {"top_apps": [], "trend": [], "total_usage_seconds": 0, "category_breakdown": {}};
+      
+      return {
+        "trend": List<dynamic>.from(result["trend"] ?? []).map((e) => (e as num).toInt()).toList(),
+        "top_apps": (result["top_apps"] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+        "total_usage_seconds": (result["total_usage_seconds"] as num?)?.toInt() ?? 0,
+        "category_breakdown": Map<String, dynamic>.from(result["category_breakdown"] as Map? ?? {}),
+      };
+    } catch (e) {
+      debugPrint('getInsightsData error: $e');
+      return {"top_apps": [], "trend": [], "total_usage_seconds": 0, "category_breakdown": {}};
     }
   }
 
@@ -252,28 +290,6 @@ class BackendService {
       return [];
     }
   }
-
-  Future<Map<String, dynamic>> getInsightsData(String period, {String? category}) async {
-    try {
-      final dynamic result = await platform.invokeMethod('getInsightsData', {
-        'period': period,
-        'category': category,
-      });
-      if (result == null || result is! Map) return {};
-      return Map<String, dynamic>.from(result);
-    } catch (e) {
-      return {};
-    }
-  }
-
-  Future<Uint8List?> getAppIcon(String pkg) async {
-    try {
-      return await platform.invokeMethod<Uint8List>('getAppIcon', {'package_name': pkg});
-    } catch (e) {
-      return null;
-    }
-  }
-
 
   Future<List<String>> fetchInsights() async {
     try {
@@ -538,5 +554,21 @@ class BackendService {
     } catch (e) {
       return false;
     }
+  }
+
+  Map<String, dynamic> _deepCastMap(dynamic map) {
+    if (map is! Map) return {};
+    return map.map((key, value) {
+      final String stringKey = key.toString();
+      if (value is Map) {
+        return MapEntry(stringKey, _deepCastMap(value));
+      } else if (value is List) {
+        return MapEntry(stringKey, value.map((e) {
+          if (e is Map) return _deepCastMap(e);
+          return e;
+        }).toList());
+      }
+      return MapEntry(stringKey, value);
+    }).cast<String, dynamic>();
   }
 }

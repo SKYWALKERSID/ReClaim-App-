@@ -55,7 +55,7 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                   center: Alignment.topCenter,
                   radius: 1.5,
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primary.withOpacity(0.15),
                     AppColors.background,
                   ],
                 ),
@@ -64,20 +64,44 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
           ),
           
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 60),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                const SizedBox(height: 20),
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withOpacity(0.1),
+                    border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.2),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: AppColors.primary,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   'SAFECODE',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontSize: 32,
+                    fontSize: 28,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 4.0,
-                    height: 1.1,
+                    letterSpacing: 8.0,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 60),
+                const SizedBox(height: 40),
                 const Text(
                   'Enter 4-digit code',
                   style: TextStyle(color: Colors.white60, fontSize: 16),
@@ -94,10 +118,10 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                       width: 52,
                       height: 62,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: Colors.white.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isFilled ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+                          color: isFilled ? AppColors.primary : Colors.white.withOpacity(0.1),
                           width: isFilled ? 2 : 1,
                         ),
                       ),
@@ -111,7 +135,7 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                             shape: BoxShape.circle,
                             boxShadow: isFilled ? [
                               BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: Colors.white.withOpacity(0.5),
                                 blurRadius: 10,
                               )
                             ] : [],
@@ -121,13 +145,13 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                     );
                   }),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 TextButton(
                   onPressed: _showForgotPinDialog,
                   child: const Text('Forgot PIN', style: TextStyle(color: Colors.white38, fontSize: 14)),
                 ),
                 
-                const Spacer(),
+                const SizedBox(height: 20),
                 
                 // Numeric Keypad
                 Container(
@@ -151,10 +175,11 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
               ],
             ),
           ),
+        ),
         ],
       ),
     );
@@ -198,7 +223,7 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
       child: InkWell(
         onTap: () => _onKeyPress(number),
         borderRadius: BorderRadius.circular(40),
-        splashColor: AppColors.primary.withValues(alpha: 0.2),
+        splashColor: AppColors.primary.withOpacity(0.2),
         child: Container(
           width: 70,
           height: 70,
@@ -233,3 +258,4 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
     );
   }
 }
+

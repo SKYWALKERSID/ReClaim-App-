@@ -53,23 +53,46 @@ object IntentEngine {
     }
 
     private suspend fun shouldTriggerPrompt(context: Context, packageName: String, reopenCount: Int): Boolean {
-        // 1. Never interrupt active focus sessions
+        // 0. Initial Filters
+        if (EnforcementManager.isInternalPackage(packageName)) return false
         if (EnforcementManager.isFocusModeActive) return false
 
-        // 2. Never appeared more than 5 times/day
+        // 1. Dynamic Thresholds based on package status
+        val isWhitelisted = EnforcementManager.isWhitelisted(packageName)
+        val isBlacklisted = EnforcementManager.isBlacklisted(packageName)
+
+        val maxPrompts = when {
+            isWhitelisted -> 1 // "Once in a while"
+            isBlacklisted -> 20 // "Regular interval" (high frequency)
+            else -> 5
+        }
+
+        val reopenThreshold = when {
+            isWhitelisted -> 8 // High threshold for whitelist
+            isBlacklisted -> 1 // Low threshold for blacklist
+            else -> 3
+        }
+
+        // 2. Daily limit and Time Throttle check
         val db = LocalDatabase.getDatabase(context)
         val todayStart = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
         }.timeInMillis
         
-        val countToday = db.intentDao().getEventCountSince(todayStart)
-        if (countToday >= MAX_PROMPTS_PER_DAY) return false
+        val lastPromptTime = db.intentDao().getLastPromptTime(packageName)
+        val now = System.currentTimeMillis()
+        if (now - lastPromptTime < 15 * 60_000) return false // 15 min throttle per app
 
-        // 3. Trigger conditions: reopenCount >= 3 OR craving window active
+        val countToday = db.intentDao().getEventCountSince(todayStart)
+        if (countToday >= maxPrompts) return false
+
+        // 3. Trigger conditions
         val isCravingWindow = isCravingWindowActive()
         val isDriftElevated = isDriftScoreElevated(context)
 
-        return reopenCount >= REOPEN_THRESHOLD || isCravingWindow || isDriftElevated
+        // For blacklisted apps, we trigger on the first REOPEN or behavioral signals
+        // (reopenCount >= 1 for blacklist, instead of every single open)
+        return reopenCount >= reopenThreshold || isCravingWindow || isDriftElevated
     }
 
     private fun isCravingWindowActive(): Boolean {

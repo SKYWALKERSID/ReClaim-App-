@@ -3,8 +3,8 @@ import 'colors.dart';
 
 class AppTheme {
   // Glassmorphism Design Tokens
-  static Color glassColor = Colors.white.withValues(alpha: 0.08);
-  static Color glassBorder = Colors.white.withValues(alpha: 0.12);
+  static Color glassColor = Colors.white.withOpacity(0.08);
+  static Color glassBorder = Colors.white.withOpacity(0.12);
   static double glassBlur = 16.0;
 
   static ThemeData dark = ThemeData(
@@ -46,7 +46,7 @@ class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.transparent,
-      indicatorColor: AppColors.primary.withValues(alpha: 0.1),
+      indicatorColor: Colors.transparent,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
           return const TextStyle(
@@ -72,3 +72,4 @@ class AppTheme {
   // For compatibility, we map light to dark to enforce the overhaul
   static ThemeData light = dark;
 }
+

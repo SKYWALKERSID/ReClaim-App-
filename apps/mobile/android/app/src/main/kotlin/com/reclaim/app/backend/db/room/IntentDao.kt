@@ -16,6 +16,9 @@ interface IntentDao {
     @Query("SELECT COUNT(*) FROM intent_events WHERE timestamp >= :since")
     suspend fun getEventCountSince(since: Long): Int
 
+    @Query("SELECT MAX(timestamp) FROM intent_events WHERE packageName = :packageName")
+    suspend fun getLastPromptTime(packageName: String): Long
+
     @Query("SELECT * FROM intent_events ORDER BY timestamp DESC")
     suspend fun getAll(): List<IntentEvent>
 }

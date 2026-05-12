@@ -155,7 +155,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -168,7 +168,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
+                        color: AppColors.primary.withOpacity(0.3),
                         blurRadius: 8,
                       ),
                     ],
@@ -329,3 +329,4 @@ class _GlassMetricTile extends StatelessWidget {
     );
   }
 }
+

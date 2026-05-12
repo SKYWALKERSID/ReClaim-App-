@@ -16,6 +16,7 @@ class BrainMirrorDashboard extends StatefulWidget {
 class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with WidgetsBindingObserver {
   final BackendService _backend = BackendService();
   bool _isLoading = true;
+  bool _isRefreshing = false;
   Timer? _refreshTimer;
   
   List<Map<String, dynamic>> _reflections = [];
@@ -54,46 +55,101 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _loadData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      _loadData(isSilent: true);
     });
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool isSilent = false}) async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    
+    if (!isSilent && mounted) {
+      setState(() => _isLoading = true);
+    }
     try {
+      // Fetch all data in parallel with a generous timeout.
+      // Each result is individually guarded so one failure won't kill the page.
       final results = await Future.wait([
-        _backend.getReflectionHistory(),
-        _backend.getFrictionInterventions(),
-        _backend.getIntentHistory(),
-        _backend.checkNightTimeOveruse(),
-        _backend.fetchBehavioralMetrics(),
-        _backend.getDriftHistory(),
-        _backend.getRecommendations(),
-        _backend.getCravingStatus(),
-        _backend.getLifetimeDriftCount(),
-        _backend.getFocusHistory(),
-        _backend.getUnsyncedCount(),
-      ]);
+        _backend.getReflectionHistory().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.getFrictionInterventions().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.getIntentHistory().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.checkNightTimeOveruse().catchError((_) => false),
+        _backend.fetchBehavioralMetrics().catchError((_) => <String, dynamic>{}),
+        _backend.getDriftHistory().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.getRecommendations().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.getCravingStatus().catchError((_) => <String, dynamic>{'isActive': false, 'windowName': 'None'}),
+        _backend.getLifetimeDriftCount().catchError((_) => 0),
+        _backend.getFocusHistory().catchError((_) => <Map<String, dynamic>>[]),
+        _backend.getUnsyncedCount().catchError((_) => 0),
+        _backend.fetchDashboardStats().catchError((_) => <String, dynamic>{}),
+      ]).timeout(const Duration(seconds: 15));
 
       if (mounted) {
         setState(() {
-          _reflections = (results[0] as List).cast<Map<String, dynamic>>();
-          _interventions = (results[1] as List).cast<Map<String, dynamic>>();
-          _intents = (results[2] as List).cast<Map<String, dynamic>>();
-          _nightTimeOveruse = results[3] as bool;
-          _behavioralMetrics = results[4] as Map<String, dynamic>;
-          _driftHistory = (results[5] as List).cast<Map<String, dynamic>>();
-          _recommendations = (results[6] as List).cast<Map<String, dynamic>>();
-          _cravingStatus = results[7] as Map<String, dynamic>;
-          _lifetimeDriftCount = results[8] as int;
-          _focusHistory = (results[9] as List).cast<Map<String, dynamic>>();
-          _unsyncedCount = results[10] as int;
+          _reflections = List<Map<String, dynamic>>.from(results[0] as List? ?? []);
+          _interventions = List<Map<String, dynamic>>.from(results[1] as List? ?? []);
+          _intents = List<Map<String, dynamic>>.from(results[2] as List? ?? []);
+          _nightTimeOveruse = results[3] as bool? ?? false;
+          _behavioralMetrics = results[4] is Map ? Map<String, dynamic>.from(results[4] as Map) : {};
+          _driftHistory = List<Map<String, dynamic>>.from(results[5] as List? ?? []);
+          _recommendations = _filterRecommendations(List<Map<String, dynamic>>.from(results[6] as List? ?? []));
+          _cravingStatus = results[7] is Map ? Map<String, dynamic>.from(results[7] as Map) : {'isActive': false, 'windowName': 'None'};
+          _lifetimeDriftCount = results[8] as int? ?? 0;
+          _focusHistory = List<Map<String, dynamic>>.from(results[9] as List? ?? []);
+          _unsyncedCount = results[10] as int? ?? 0;
+          
+          // Pull dashboard stats for additional context
+          final dashStats = results[11] is Map ? Map<String, dynamic>.from(results[11] as Map) : <String, dynamic>{};
+          _behavioralMetrics['addiction_score'] = _behavioralMetrics['addiction_score'] ?? dashStats['addiction_score'] ?? 0;
+          
           _isLoading = false;
         });
       }
     } catch (e) {
+      debugPrint('Brain Mirror data load error: $e');
       if (mounted) setState(() => _isLoading = false);
+    } finally {
+      _isRefreshing = false;
     }
+  }
+
+  /// Filter out system/launcher packages from recommendations
+  List<Map<String, dynamic>> _filterRecommendations(List<Map<String, dynamic>> recs) {
+    final systemPrefixes = ['com.android', 'com.sec.android', 'com.samsung', 'com.google.android.inputmethod'];
+    final launcherKeywords = ['launcher', 'home', 'systemui', 'setupwizard'];
+    return recs.where((rec) {
+      final pkg = (rec['packageName'] ?? '').toString().toLowerCase();
+      if (launcherKeywords.any((kw) => pkg.contains(kw))) return false;
+      if (systemPrefixes.any((prefix) => pkg.startsWith(prefix) && !pkg.contains('youtube') && !pkg.contains('chrome'))) return false;
+      return true;
+    }).toList();
+  }
+
+  /// Get human-readable app name from package name
+  String _humanReadableName(String packageName) {
+    // Common package to name mapping
+    final knownApps = {
+      'com.instagram.android': 'Instagram',
+      'com.zhiliaoapp.musically': 'TikTok',
+      'com.snapchat.android': 'Snapchat',
+      'com.twitter.android': 'X (Twitter)',
+      'com.facebook.katana': 'Facebook',
+      'com.facebook.orca': 'Messenger',
+      'com.whatsapp': 'WhatsApp',
+      'com.google.android.youtube': 'YouTube',
+      'com.reddit.frontpage': 'Reddit',
+      'com.discord': 'Discord',
+      'com.spotify.music': 'Spotify',
+      'com.netflix.mediaclient': 'Netflix',
+      'com.google.android.gm': 'Gmail',
+      'com.google.android.apps.maps': 'Maps',
+      'com.android.chrome': 'Chrome',
+    };
+    if (knownApps.containsKey(packageName)) return knownApps[packageName]!;
+    // Fallback: take last segment, capitalize it
+    final lastSegment = packageName.split('.').last;
+    return lastSegment[0].toUpperCase() + lastSegment.substring(1);
   }
 
   @override
@@ -108,7 +164,18 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text("Brain Mirror™", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.psychology_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Text("Brain Mirror™", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
         actions: [
           _buildSyncIndicator(),
           const SizedBox(width: 16),
@@ -129,12 +196,10 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             const SizedBox(height: 24),
             _buildLifetimeStats(),
             const SizedBox(height: 24),
-            if (_recommendations.isNotEmpty) ...[
-              _buildSectionHeader("Smart Advice", "AI-powered focus recommendations"),
-              const SizedBox(height: 16),
-              _buildRecommendations(),
-              const SizedBox(height: 24),
-            ],
+            _buildSectionHeader("Smart Advice", "AI-powered focus recommendations"),
+            const SizedBox(height: 16),
+            _buildRecommendations(),
+            const SizedBox(height: 24),
             _buildSectionHeader("Memory Streams", "Historical digital footprints"),
             const SizedBox(height: 16),
             _buildInteractiveLog(),
@@ -268,31 +333,59 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
   }
 
   Widget _buildRecommendations() {
-    return Column(
-      children: _recommendations.map((rec) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
+    if (_recommendations.isEmpty) {
+      return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.blueAccent.withOpacity(0.05),
+          color: Colors.greenAccent.withOpacity(0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.blueAccent.withOpacity(0.2)),
+          border: Border.all(color: Colors.greenAccent.withOpacity(0.15)),
         ),
-        child: Row(
+        child: const Row(
           children: [
-            const Icon(Icons.lightbulb_outline_rounded, color: Colors.blueAccent),
-            const SizedBox(width: 16),
+            Icon(Icons.check_circle_outline_rounded, color: Colors.greenAccent),
+            SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(rec['packageName']?.split('.').last ?? "App", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text(rec['reason'] ?? "", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text("All Clear", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  Text("No excessive usage patterns detected. Keep it up!", style: TextStyle(color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
           ],
         ),
-      )).toList(),
+      );
+    }
+    return Column(
+      children: _recommendations.map((rec) {
+        final appName = _humanReadableName(rec['packageName'] ?? '');
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.blueAccent.withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.lightbulb_outline_rounded, color: Colors.blueAccent),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(appName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    Text(rec['reason'] ?? "", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -390,7 +483,6 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
   }
 
   Widget _buildInteractiveLog() {
-    // Combine and sort all logs by timestamp
     final List<Map<String, dynamic>> allLogs = [
       ..._reflections.map((e) => {...e, 'type': 'reflection'}),
       ..._interventions.map((e) => {...e, 'type': 'intervention'}),
@@ -462,29 +554,12 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
     IconData icon;
     Color color;
     switch (type) {
-      case 'reflection':
-        icon = Icons.psychology_outlined;
-        color = Colors.purpleAccent;
-        break;
-      case 'intervention':
-        icon = Icons.shield_outlined;
-        color = Colors.orangeAccent;
-        break;
-      case 'intent':
-        icon = Icons.flag_outlined;
-        color = Colors.greenAccent;
-        break;
-      case 'drift':
-        icon = Icons.analytics_outlined;
-        color = Colors.cyanAccent;
-        break;
-      case 'focus':
-        icon = Icons.timer_outlined;
-        color = Colors.blueAccent;
-        break;
-      default:
-        icon = Icons.history;
-        color = Colors.white24;
+      case 'reflection': icon = Icons.psychology_outlined; color = Colors.purpleAccent; break;
+      case 'intervention': icon = Icons.shield_outlined; color = Colors.orangeAccent; break;
+      case 'intent': icon = Icons.flag_outlined; color = Colors.greenAccent; break;
+      case 'drift': icon = Icons.analytics_outlined; color = Colors.cyanAccent; break;
+      case 'focus': icon = Icons.timer_outlined; color = Colors.blueAccent; break;
+      default: icon = Icons.history; color = Colors.white24;
     }
     return Container(
       padding: const EdgeInsets.all(8),
@@ -506,18 +581,12 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
 
   String _getLogContent(String type, Map<String, dynamic> log) {
     switch (type) {
-      case 'reflection': 
-        return "Prompt: ${log['promptType']}\nResponse: ${log['response']}";
-      case 'intervention':
-        return "Applied ${log['frictionType']} on ${log['packageName']?.split('.').last ?? "App"}";
-      case 'intent':
-        return "App: ${log['packageName']?.split('.').last ?? "App"}\nChoice: ${log['intentChoice']}";
-      case 'drift':
-        return "App: ${log['appPackage']?.split('.').last ?? "App"}\nIndex: ${log['fragmentationIndex']} | Re-opens: ${log['reopenCount']}";
-      case 'focus':
-        return "Category: ${log['category']}\nDuration: ${(log['durationSeconds'] as int) ~/ 60} minutes";
-      default:
-        return "Behavioral event logged.";
+      case 'reflection': return "Prompt: ${log['promptType']}\nResponse: ${log['response']}";
+      case 'intervention': return "Applied ${log['frictionType']} on ${log['packageName']?.split('.').last ?? "App"}";
+      case 'intent': return "App: ${log['packageName']?.split('.').last ?? "App"}\nChoice: ${log['intentChoice']}";
+      case 'drift': return "App: ${log['appPackage']?.split('.').last ?? "App"}\nIndex: ${log['fragmentationIndex']} | Re-opens: ${log['reopenCount']}";
+      case 'focus': return "Category: ${log['category']}\nDuration: ${(log['durationSeconds'] as int) ~/ 60} minutes";
+      default: return "Behavioral event logged.";
     }
   }
 
@@ -526,7 +595,6 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
     Color color = Colors.greenAccent;
     if (s > 0.7) color = Colors.redAccent;
     else if (s > 0.4) color = Colors.orangeAccent;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
@@ -536,9 +604,11 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       ),
     );
   }
+
   (String, Color) _getDriftStatus(int score) {
     if (score < 30) return ("HEALTHY", Colors.greenAccent);
     if (score < 60) return ("MODERATE", Colors.orangeAccent);
     return ("CRITICAL", Colors.redAccent);
   }
 }
+

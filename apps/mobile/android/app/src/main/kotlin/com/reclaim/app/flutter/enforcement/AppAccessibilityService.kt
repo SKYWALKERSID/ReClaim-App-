@@ -28,6 +28,7 @@ import kotlinx.coroutines.*
 class AppAccessibilityService : AccessibilityService() {
     private var lastPackageName: String? = null
     private var lastEventAtElapsedMs: Long = 0L
+    private var lastScrollAtElapsedMs: Long = 0L
     private var eventReceiver: com.reclaim.app.backend.receivers.EventReceiver? = null
     private val handler = CoroutineExceptionHandler { _, exception ->
         Log.e("AppAccessibilityService", "Unhandled coroutine exception: ${exception.message}", exception)
@@ -101,15 +102,24 @@ class AppAccessibilityService : AccessibilityService() {
         }
 
         val className = event.className?.toString()
+        val eventType = event.eventType
+        
+        // Instant self-bypass to prevent any lag or blocking inside the ReClaim app itself
+        if (pkg == this.packageName.lowercase()) return
+        
+        // ONLY process window switches and scrolls. Ignore content changes, clicks, etc.
+        // This is CRITICAL for performance to avoid ANR.
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && 
+            eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            return
+        }
 
         // 1. Internal/Self-Package Bypass
         if (pkg == this.packageName.lowercase() || EnforcementManager.isInternalPackage(packageName)) {
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                // If it's the ReClaim app itself, only hide if we are in MainActivity (avoids overlay loop)
+                // If it's the ReClaim app itself, always hide the overlay to prevent self-blocking
                 if (pkg == this.packageName.lowercase()) {
-                    if (className?.contains("MainActivity") == true) {
-                        BlockingOverlayService.hide(this)
-                    }
+                    BlockingOverlayService.hide(this)
                 } else {
                     // For all other internal packages (Settings, Launcher, etc.), hide immediately
                     BlockingOverlayService.hide(this)
@@ -120,9 +130,17 @@ class AppAccessibilityService : AccessibilityService() {
         
         // Feed events to engines in background
         serviceScope.launch(Dispatchers.Default) {
-            CognitiveDriftEngine.onAccessibilityEvent(this@AppAccessibilityService, packageName, event.eventType)
+            // Throttle scroll events to 500ms to avoid overloading the engine
+            if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+                val lastScroll = lastScrollAtElapsedMs
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastScroll < 500) return@launch
+                lastScrollAtElapsedMs = now
+            }
+            
+            CognitiveDriftEngine.onAccessibilityEvent(this@AppAccessibilityService, packageName, eventType)
 
-            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 if (packageName == lastPackageName && SystemClock.elapsedRealtime() - lastEventAtElapsedMs < 200) return@launch
                 
                 lastPackageName = packageName
@@ -138,7 +156,13 @@ class AppAccessibilityService : AccessibilityService() {
                     FrictionOrchestrator.logFriction(this@AppAccessibilityService, packageName, frictionType, false)
 
                     if (frictionType == FrictionOrchestrator.FrictionType.HARD_BLOCK) {
-                        val reason = if (EnforcementManager.isLocked) "Daily limit reached." else if (EnforcementManager.isFocusModeActive) "Focus mode active." else "Passive hard-block due to high cognitive drift."
+                        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                        val reason = when {
+                            EnforcementManager.isLocked -> "Daily limit reached."
+                            EnforcementManager.isFocusModeActive -> "Focus mode active."
+                            hour >= 23 || hour <= 5 -> "Late night focus active. Your brain needs rest!"
+                            else -> "Passive hard-block due to high cognitive drift."
+                        }
                         BlockingOverlayService.show(this@AppAccessibilityService, packageName, reason, "hard")
                     } else {
                         if (EnforcementManager.isWhitelisted(packageName)) {
@@ -148,7 +172,7 @@ class AppAccessibilityService : AccessibilityService() {
                         if (frictionType != FrictionOrchestrator.FrictionType.NONE) {
                             FrictionOverlayService.start(this@AppAccessibilityService, packageName, frictionType)
                         } else {
-                            val decision = EnforcementManager.blockDecision(packageName)
+                            val decision = EnforcementManager.blockDecision(packageName, className)
                             if (decision.shouldBlock) {
                                 BlockingOverlayService.show(this@AppAccessibilityService, packageName, decision.reason, decision.mode)
                             }

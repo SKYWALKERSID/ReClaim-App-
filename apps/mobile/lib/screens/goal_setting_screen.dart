@@ -205,7 +205,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? Colors.white10 : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,7 +225,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
               "Once you exceed this limit, your 'Distracting' apps will be strictly blocked.",
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
-            const Spacer(),
+            const SizedBox(height: 40),
             ElevatedButton(
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
@@ -244,3 +244,4 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
     );
   }
 }
+

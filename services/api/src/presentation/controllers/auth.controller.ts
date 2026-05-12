@@ -140,7 +140,7 @@ export class AuthController {
     }
   }
   async sendOTP(req: Request, res: Response) {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.body.userId;
     const { email: bodyEmail } = req.body;
 
     try {
@@ -189,7 +189,7 @@ export class AuthController {
   }
 
   async verifyOTP(req: Request, res: Response) {
-    const userId = req.user?.userId;
+    const userId = req.user?.userId || req.body.userId;
     const { otp, email } = req.body;
 
     try {

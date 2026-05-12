@@ -95,10 +95,10 @@ class BottomNavState extends State<BottomNav> {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: AlertDialog(
-          backgroundColor: Colors.black.withValues(alpha: 0.8),
+          backgroundColor: Colors.black.withOpacity(0.8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+            side: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
           title: const Text("Configure Protection", 
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -138,10 +138,10 @@ class BottomNavState extends State<BottomNav> {
         builder: (context, setDialogState) => BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            backgroundColor: Colors.black.withOpacity(0.8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             title: const Text("Set Daily Goal", 
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -158,7 +158,7 @@ class BottomNavState extends State<BottomNav> {
                   style: const TextStyle(color: AppColors.primary, fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 Slider(
-                  value: selectedSeconds.toDouble().clamp(1800, 36000), // 30m to 10h
+                  value: selectedSeconds.toDouble().clamp(1800.0, 36000.0), // 30m to 10h
                   min: 1800,
                   max: 36000,
                   divisions: 19, // 30m increments
@@ -207,10 +207,10 @@ class BottomNavState extends State<BottomNav> {
         builder: (context, setDialogState) => BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            backgroundColor: Colors.black.withOpacity(0.8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              side: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             title: const Text("Welcome to ReClaim", 
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -227,9 +227,9 @@ class BottomNavState extends State<BottomNav> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Enter your name",
-                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      fillColor: Colors.white.withOpacity(0.05),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -246,9 +246,9 @@ class BottomNavState extends State<BottomNav> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "Enter your age",
-                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      fillColor: Colors.white.withOpacity(0.05),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -262,7 +262,7 @@ class BottomNavState extends State<BottomNav> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -376,37 +376,33 @@ class BottomNavState extends State<BottomNav> {
           child: screens[index],
         ),
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  width: 0.5,
-                ),
-              ),
-              child: NavigationBar(
-                selectedIndex: index,
-                onDestinationSelected: (i) => setState(() => index = i),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                indicatorColor: AppColors.primary.withValues(alpha: 0.15),
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                height: 65,
-                destinations: [
-                  _navItem(Icons.home_outlined, Icons.home, "Home"),
-                  _navItem(Icons.bar_chart_outlined, Icons.bar_chart, "Insights"),
-                  _navItem(Icons.psychology_outlined, Icons.psychology, "Brain"),
-                  _navItem(Icons.shield_outlined, Icons.shield, "Block"),
-                  _navItem(Icons.person_outline, Icons.person, "Me"),
-                ],
-              ),
+      bottomNavigationBar: _buildBottomNavBar(),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 68,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D0D14).withOpacity(0.85),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _navItem(0, Icons.home_outlined, Icons.home_rounded, "Home"),
+                _navItem(1, Icons.bar_chart_outlined, Icons.bar_chart_rounded, "Insights"),
+                _buildCenterBrainTab(),
+                _navItem(3, Icons.shield_outlined, Icons.shield_rounded, "Block"),
+                _navItem(4, Icons.person_outline_rounded, Icons.person_rounded, "Me"),
+              ],
             ),
           ),
         ),
@@ -414,11 +410,108 @@ class BottomNavState extends State<BottomNav> {
     );
   }
 
-  NavigationDestination _navItem(IconData icon, IconData activeIcon, String label) {
-    return NavigationDestination(
-      icon: Icon(icon, color: AppColors.textSecondary),
-      selectedIcon: Icon(activeIcon, color: AppColors.primary),
-      label: label,
+  Widget _navItem(int i, IconData icon, IconData activeIcon, String label) {
+    final isActive = index == i;
+    return GestureDetector(
+      onTap: () => setState(() => index = i),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 56,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                decoration: isActive
+                    ? BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.35),
+                            blurRadius: 12,
+                            spreadRadius: -2,
+                          ),
+                        ],
+                      )
+                    : null,
+                child: Icon(
+                  isActive ? activeIcon : icon,
+                  color: isActive ? AppColors.primary : Colors.white.withOpacity(0.4),
+                  size: isActive ? 24 : 22,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? AppColors.primary : Colors.white.withOpacity(0.3),
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterBrainTab() {
+    final isActive = index == 2;
+    return GestureDetector(
+      onTap: () => setState(() => index = 2),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 56,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              width: isActive ? 28 : 24,
+              height: isActive ? 28 : 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: isActive
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.45),
+                          blurRadius: 14,
+                          spreadRadius: 0,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Opacity(
+                  opacity: isActive ? 1.0 : 0.45,
+                  child: Image.asset('assets/images/logo.png'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Brain",
+              style: TextStyle(
+                color: isActive ? AppColors.primary : Colors.white.withOpacity(0.3),
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
+

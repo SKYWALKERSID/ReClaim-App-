@@ -34,7 +34,37 @@ object CognitiveDriftEngine {
     private var totalDriftScore = 0
     private var driftScoreCount = 0
 
+    private fun getPrefs(context: Context) = context.getSharedPreferences("reclaim_drift_metrics", Context.MODE_PRIVATE)
+
+    private fun loadDailyMetrics(context: Context) {
+        val prefs = getPrefs(context)
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+        val lastSavedDay = prefs.getInt("last_saved_day", -1)
+        
+        if (today != lastSavedDay) {
+            // New day, reset
+            prefs.edit().clear().putInt("last_saved_day", today).apply()
+            dailyReopens.set(0)
+            dailyFailedExits.set(0)
+            dailyFeedExposureMs = 0L
+        } else {
+            dailyReopens.set(prefs.getInt("daily_reopens", 0))
+            dailyFailedExits.set(prefs.getInt("daily_failed_exits", 0))
+            dailyFeedExposureMs = prefs.getLong("daily_feed_exposure", 0L)
+        }
+    }
+
+    private fun saveDailyMetrics(context: Context) {
+        getPrefs(context).edit().apply {
+            putInt("daily_reopens", dailyReopens.get())
+            putInt("daily_failed_exits", dailyFailedExits.get())
+            putLong("daily_feed_exposure", dailyFeedExposureMs)
+            apply()
+        }
+    }
+
     fun onAccessibilityEvent(context: Context, packageName: String, eventType: Int) {
+        if (dailyReopens.get() == 0 && dailyFeedExposureMs == 0L) loadDailyMetrics(context)
         val now = System.currentTimeMillis()
         
         when (eventType) {
@@ -75,6 +105,7 @@ object CognitiveDriftEngine {
         
         // 3. Update scores
         calculateCurrentDrift(context)
+        saveDailyMetrics(context)
     }
 
     private fun handleScroll(context: Context, packageName: String, now: Long) {
@@ -87,6 +118,7 @@ object CognitiveDriftEngine {
             lastScrollTime = now
             // Recalculate drift on scroll for real-time responsiveness
             calculateCurrentDrift(context)
+            saveDailyMetrics(context)
         }
     }
 
@@ -138,7 +170,8 @@ object CognitiveDriftEngine {
         val switchDensity = appSwitches.size
         val feedMins = (feedExposureMs / 60000.0)
         
-        var score = (reopenLoopsVal * 12) +
+        // Baseline for active session + metrics
+        var score = 8 + (reopenLoopsVal * 12) +
                     (failedExitsVal * 15) +
                     (switchDensity * 18) +
                     (feedMins * 4).toInt()

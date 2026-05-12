@@ -210,7 +210,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
                             itemCount: _apps.length,
                             separatorBuilder: (_, __) => Divider(
                               height: 1,
-                              color: Colors.white.withValues(alpha: 0.06),
+                              color: Colors.white.withOpacity(0.06),
                             ),
                             itemBuilder: (context, index) {
                               final app = _apps[index];
@@ -369,9 +369,9 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.1),
+        color: AppColors.warning.withOpacity(0.1),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
+        border: Border.all(color: AppColors.warning.withOpacity(0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,7 +452,7 @@ class _AppBlockRow extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: icon),
@@ -480,7 +480,7 @@ class _AppBlockRow extends StatelessWidget {
             value: isBlocked,
             onChanged: (_) => onChanged(),
             activeThumbColor: const Color(0xFFFF7A7A),
-            activeTrackColor: const Color(0xFFFF7A7A).withValues(alpha: 0.35),
+            activeTrackColor: const Color(0xFFFF7A7A).withOpacity(0.35),
           ),
         ],
       ),
@@ -502,7 +502,7 @@ class _PermissionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
@@ -513,3 +513,4 @@ class _PermissionChip extends StatelessWidget {
     );
   }
 }
+

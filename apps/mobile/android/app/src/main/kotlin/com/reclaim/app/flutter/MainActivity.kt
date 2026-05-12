@@ -26,11 +26,14 @@ open class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         // Ensure enforcement state is warm before Flutter starts querying
-        try {
-            EnforcementManager.initialize(this)
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "EnforcementManager init failed", e)
-        }
+        // Delay initialization slightly to ensure Flutter framework can boot without lag
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try {
+                EnforcementManager.initialize(this)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "EnforcementManager init failed", e)
+            }
+        }, 1000)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler(MethodChannelHandler(this))

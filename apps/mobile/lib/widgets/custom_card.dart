@@ -32,7 +32,7 @@ class CustomCard extends StatelessWidget {
         color: color ?? (useGlass ? AppColors.glassBase : AppColors.surface),
         borderRadius: BorderRadius.circular(borderRadius ?? 24),
         border: Border.all(
-          color: borderColor ?? (useGlass ? AppColors.glassBorder : Colors.white.withValues(alpha: 0.05)),
+          color: borderColor ?? (useGlass ? AppColors.glassBorder : Colors.white.withOpacity(0.05)),
         ),
       ),
       child: child,
@@ -57,3 +57,4 @@ class CustomCard extends StatelessWidget {
     );
   }
 }
+

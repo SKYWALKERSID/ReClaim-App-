@@ -153,7 +153,7 @@ class BlockingOverlayService : Service() {
 
     private fun buildOverlayView(): View {
         val root = InterceptingFrameLayout(this).apply {
-            setBackgroundColor(Color.parseColor("#E60A0A0A"))
+            setBackgroundColor(Color.TRANSPARENT)
             isClickable = true
             isFocusable = true
             isFocusableInTouchMode = true
@@ -183,12 +183,14 @@ class BlockingOverlayService : Service() {
             layoutParams = params
         }
 
-        val icon = TextView(this).apply {
-            text = "󰌾" // Lock icon placeholder or similar
-            textSize = 48f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 32)
+        val icon = android.widget.ImageView(this).apply {
+            setImageResource(com.reclaim.app.R.drawable.reclaim_logo)
+            val iconSize = (64 * resources.displayMetrics.density).toInt()
+            layoutParams = LinearLayout.LayoutParams(iconSize, iconSize).apply {
+                gravity = Gravity.CENTER
+                setMargins(0, 0, 0, 32)
+            }
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
         }
 
         val title = TextView(this).apply {
@@ -293,22 +295,59 @@ class BlockingOverlayService : Service() {
     }
 
     private fun showSafeCodeDialog() {
-        val input = android.widget.EditText(this).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "Enter SafeCode"
-        }
+        val isUninstall = currentReason.contains("uninstall", ignoreCase = true)
         
-        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
-            .setTitle("SafeCode Bypass")
-            .setMessage("Enter your emergency passcode to disable enforcement.")
-            .setView(input)
-            .setPositiveButton("Bypass") { _, _ ->
-                val code = input.text.toString()
-                if (EnforcementManager.verifySafeCode(code)) {
-                    Toast.makeText(this, "Enforcement disabled for today.", Toast.LENGTH_LONG).show()
-                    hideOverlay()
+        if (isUninstall) {
+            showUninstallOTPDialog()
+        } else {
+            showSafeCodeInput()
+        }
+    }
+
+    private fun showUninstallOTPDialog() {
+        val builder = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+        builder.setTitle("Uninstall Protection")
+        builder.setMessage("To uninstall ReClaim, you must verify your identity. We will send a 6-digit code to your registered Gmail.")
+        
+        builder.setPositiveButton("Send Code") { _, _ ->
+            EnforcementManager.requestUninstallOTP(this) { success ->
+                if (success) {
+                    showOTPVerificationDialog()
                 } else {
-                    Toast.makeText(this, "Invalid SafeCode.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Failed to send code. Please check your internet.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        builder.setNegativeButton("Cancel", null)
+        
+        val dialog = builder.create()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
+    }
+
+    private fun showOTPVerificationDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "6-digit OTP"
+            gravity = Gravity.CENTER
+            textSize = 24f
+        }
+
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("Verify Gmail Code")
+            .setMessage("Enter the 6-digit code sent to your email.")
+            .setView(input)
+            .setPositiveButton("Verify & Unlock") { _, _ ->
+                val code = input.text.toString()
+                EnforcementManager.verifyUninstallOTP(this, code) { success ->
+                    if (success) {
+                        Toast.makeText(this, "Verified! Protection disabled for today.", Toast.LENGTH_LONG).show()
+                        hideOverlay()
+                    } else {
+                        Toast.makeText(this, "Invalid or expired code.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -320,12 +359,61 @@ class BlockingOverlayService : Service() {
         dialog.show()
     }
 
+    private fun showSafeCodeInput() {
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(60, 40, 60, 20)
+            setBackgroundColor(android.graphics.Color.parseColor("#1F1F23"))
+        }
+
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "••••"
+            gravity = Gravity.CENTER
+            textSize = 28f
+            setTextColor(android.graphics.Color.WHITE)
+            setHintTextColor(android.graphics.Color.parseColor("#444444"))
+            background = null // Remove default underline
+            filters = arrayOf(android.text.InputFilter.LengthFilter(4))
+        }
+        
+        container.addView(input)
+
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("Emergency Bypass")
+            .setMessage("Enter your 4-digit SafeCode.")
+            .setView(container)
+            .setPositiveButton("UNLOCK") { _, _ ->
+                val code = input.text.toString()
+                if (EnforcementManager.verifySafeCode(code)) {
+                    Toast.makeText(this, "Enforcement disabled.", Toast.LENGTH_LONG).show()
+                    hideOverlay()
+                } else {
+                    Toast.makeText(this, "Invalid SafeCode.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNeutralButton("FORGOT?") { _, _ ->
+                showUninstallOTPDialog()
+            }
+            .setNegativeButton("CANCEL", null)
+            .create()
+
+        dialog.window?.let { window ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+            }
+            // Set dark background for the dialog itself
+            window.setBackgroundDrawableResource(android.R.drawable.screen_background_dark)
+        }
+        dialog.show()
+    }
+
     private fun beginCountdown() {
         countdownTimer?.cancel()
         unlockButton?.isEnabled = false
 
         val durationMs = if (currentMode == "soft") 8_000L else 15_000L
-        val label = if (currentMode == "soft") "Continue" else "Unlock"
+        val label = if (currentMode == "soft") "Continue" else "Override"
 
         // Always assign to countdownTimer so hideOverlay() can cancel it reliably.
         countdownTimer = object : CountDownTimer(durationMs, 1_000L) {
@@ -335,7 +423,7 @@ class BlockingOverlayService : Service() {
             }
 
             override fun onFinish() {
-                unlockButton?.text = if (currentMode == "soft") "Continue mindfully" else "Use emergency override"
+                unlockButton?.text = if (currentMode == "soft") "Continue mindfully" else "Request Emergency Override"
                 unlockButton?.isEnabled = true
             }
         }.also { it.start() }
@@ -343,40 +431,74 @@ class BlockingOverlayService : Service() {
 
     private fun showConfirmationDialog() {
         confirmationDialog?.dismiss()
+        
+        if (currentMode == "soft") {
+            // Soft block bypasses directly
+            FocusPolicyStore.enqueueEvent(this, "soft_bypass", currentPackageName)
+            hideOverlay()
+            launchBlockedApp()
+            return
+        }
+
         confirmationDialog = AlertDialog.Builder(
             ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert)
         )
-            .setTitle("Use emergency override?")
-            .setMessage("This unlocks the app for 5 minutes and consumes one of today's remaining overrides.")
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Confirm") { _, _ ->
-                if (!EnforcementManager.requestTemporaryUnlock(this, currentPackageName)) {
-                    Toast.makeText(this, "No overrides remaining today.", Toast.LENGTH_SHORT).show()
-                    remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.remainingOverrides}"
-                    return@setPositiveButton
+            .setTitle("Emergency Override")
+            .setMessage("This consumes one override. To prevent impulsive use, a Gmail verification code is required.")
+            .setPositiveButton("Send Code to Gmail") { _, _ ->
+                EnforcementManager.requestUninstallOTP(this) { success ->
+                    if (success) {
+                        showOverrideOTPVerificationDialog()
+                    } else {
+                        Toast.makeText(this, "Failed to send code.", Toast.LENGTH_SHORT).show()
+                    }
                 }
-
-                FocusPolicyStore.enqueueEvent(
-                    context = this,
-                    eventType = "override",
-                    packageName = currentPackageName,
-                    metadata = mapOf("graceMinutes" to 5)
-                )
-
-                remainingText?.text = "Emergency unlocks left today: ${EnforcementManager.remainingOverrides}"
-                hideOverlay()
-                launchBlockedApp()
             }
+            .setNegativeButton("Cancel", null)
             .create()
 
-        confirmationDialog?.window?.let { window ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            confirmationDialog?.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        confirmationDialog?.show()
+    }
+
+    private fun showOverrideOTPVerificationDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "6-digit OTP"
+            gravity = Gravity.CENTER
+            textSize = 24f
         }
 
-        confirmationDialog?.setCanceledOnTouchOutside(false)
-        confirmationDialog?.show()
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("Verify Override")
+            .setMessage("Enter the code sent to your Gmail to unlock this app for 5 minutes.")
+            .setView(input)
+            .setPositiveButton("Verify & Unlock") { _, _ ->
+                val code = input.text.toString()
+                EnforcementManager.verifyUninstallOTP(this, code) { success ->
+                    if (success) {
+                        // After OTP verification, perform the actual override consumption
+                        if (EnforcementManager.requestTemporaryUnlock(this, currentPackageName, 5L)) {
+                            Toast.makeText(this, "Override successful. App unlocked for 5 mins.", Toast.LENGTH_LONG).show()
+                            hideOverlay()
+                            launchBlockedApp()
+                        } else {
+                            Toast.makeText(this, "No overrides remaining for today.", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(this, "Invalid code.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
     }
 
     private fun launchBlockedApp() {

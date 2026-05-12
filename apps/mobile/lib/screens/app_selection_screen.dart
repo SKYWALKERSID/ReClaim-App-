@@ -16,10 +16,16 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
   final PermissionService _permission = PermissionService();
   
   List<Map<String, dynamic>> _apps = [];
+  List<Map<String, dynamic>> _filteredApps = [];
+  Map<String, List<Map<String, dynamic>>> _groupedApps = {};
+  List<String> _sortedCategories = [];
   Set<String> _whitelist = {};
   Set<String> _blacklist = {};
   bool _isLoading = true;
   bool _isAccessibilityEnabled = false;
+  String _searchQuery = "";
+  final Map<String, Uint8List> _iconCache = {};
+  final Set<String> _fetchingIcons = {};
 
   @override
   void initState() {
@@ -46,13 +52,35 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
     final selections = await _backend.getAppSelections();
     final accessibilityEnabled = await _permission.isAccessibilityEnabled();
     
-    setState(() {
-      _apps = List<Map<String, dynamic>>.from(appsData['apps'] ?? []);
-      _isAccessibilityEnabled = accessibilityEnabled;
-      _whitelist = Set<String>.from(selections['whitelist'] ?? []);
-      _blacklist = Set<String>.from(selections['blacklist'] ?? []);
-      _isLoading = false;
-    });
+    _apps = List<Map<String, dynamic>>.from(appsData['apps'] ?? []);
+    _isAccessibilityEnabled = accessibilityEnabled;
+    _whitelist = Set<String>.from(selections['whitelist'] ?? []);
+    _blacklist = Set<String>.from(selections['blacklist'] ?? []);
+    _processApps();
+    
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _processApps() {
+    _filteredApps = _apps.where((app) => 
+      (app['display_name'] ?? "").toString().toLowerCase().contains(_searchQuery.toLowerCase())
+    ).toList();
+
+    _groupedApps = {};
+    for (var app in _filteredApps) {
+      final cat = app['category']?.toString() ?? "Utility";
+      _groupedApps.putIfAbsent(cat, () => []).add(app);
+    }
+
+    _sortedCategories = _groupedApps.keys.toList()..sort();
+    for (var cat in _sortedCategories) {
+      _groupedApps[cat]!.sort((a, b) => (a['display_name'] ?? "").toString().toLowerCase()
+          .compareTo((b['display_name'] ?? "").toString().toLowerCase()));
+    }
   }
 
   Future<void> _toggle(String pkg, bool isWhite, bool isBlack, String appName) async {
@@ -80,14 +108,15 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
     );
   }
 
-  String _searchQuery = "";
+  void _onSearchChanged(String val) {
+    setState(() {
+      _searchQuery = val;
+      _processApps();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredApps = _apps.where((app) => 
-      (app['display_name'] ?? "").toString().toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -103,13 +132,13 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-              : filteredApps.isEmpty
+              : _filteredApps.isEmpty
                 ? const Center(child: Text("No matching apps found.", style: TextStyle(color: Colors.white38)))
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
                       // 1. Frequently Used Section (only when not searching)
-                      if (_searchQuery.isEmpty && filteredApps.any((a) => (a['session_count'] ?? 0) > 0)) ...[
+                      if (_searchQuery.isEmpty && _filteredApps.any((a) => (a['session_count'] ?? 0) > 0)) ...[
                         const Padding(
                           padding: EdgeInsets.only(left: 8, bottom: 16, top: 8),
                           child: Text(
@@ -118,7 +147,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                           ),
                         ),
                         ...(() {
-                          final list = filteredApps
+                          final list = _filteredApps
                             .where((a) => (a['session_count'] ?? 0) > 0)
                             .toList();
                           list.sort((a, b) => (b['session_count'] ?? 0).compareTo(a['session_count'] ?? 0));
@@ -128,41 +157,28 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                       ],
 
                       // 2. Categorized Sections
-                      ...(() {
-                        final Map<String, List<Map<String, dynamic>>> grouped = {};
-                        for (var app in filteredApps) {
-                          final cat = app['category']?.toString() ?? "Utility";
-                          grouped.putIfAbsent(cat, () => []).add(app);
-                        }
-
-                        final sortedCats = grouped.keys.toList()..sort();
-                        
-                        return sortedCats.map((cat) {
-                          final appsInCat = grouped[cat]!;
-                          appsInCat.sort((a, b) => (a['display_name'] ?? "").toString().toLowerCase()
-                              .compareTo((b['display_name'] ?? "").toString().toLowerCase()));
-                          
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8, bottom: 12, top: 8),
-                                child: Text(
-                                  cat.toUpperCase(),
-                                  style: TextStyle(
-                                    color: _getCategoryColor(cat),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.5,
-                                  ),
+                      ..._sortedCategories.map((cat) {
+                        final appsInCat = _groupedApps[cat]!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, bottom: 12, top: 8),
+                              child: Text(
+                                cat.toUpperCase(),
+                                style: TextStyle(
+                                  color: _getCategoryColor(cat),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.5,
                                 ),
                               ),
-                              ...appsInCat.map((app) => _buildAppTile(app)),
-                              const SizedBox(height: 20),
-                            ],
-                          );
-                        }).toList();
-                      })(),
+                            ),
+                            ...appsInCat.map((app) => _buildAppTile(app)),
+                            const SizedBox(height: 20),
+                          ],
+                        );
+                      }).toList(),
                     ],
                   ),
           ),
@@ -175,7 +191,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: TextField(
-        onChanged: (val) => setState(() => _searchQuery = val),
+        onChanged: _onSearchChanged,
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: "Search apps...",
@@ -208,7 +224,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       decoration: BoxDecoration(
         color: AppColors.darkSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Row(
         children: [
@@ -219,12 +235,23 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
               color: Colors.black26,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: app['icon_bytes'] != null 
+            child: _iconCache.containsKey(pkg)
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.memory(Uint8List.fromList(app['icon_bytes'].cast<int>()), fit: BoxFit.cover),
+                  child: Image.memory(_iconCache[pkg]!, fit: BoxFit.cover),
                 )
-              : const Icon(Icons.android, color: Colors.white24),
+              : FutureBuilder<Uint8List?>(
+                  future: _getAndCacheIcon(pkg),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.memory(snapshot.data!, fit: BoxFit.cover),
+                      );
+                    }
+                    return const Icon(Icons.android, color: Colors.white24);
+                  },
+                ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -245,9 +272,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
+                          color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -397,9 +424,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.1),
+        color: AppColors.warning.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,6 +466,22 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       default: return Colors.white38;
     }
   }
+
+  Future<Uint8List?> _getAndCacheIcon(String pkg) async {
+    if (_iconCache.containsKey(pkg)) return _iconCache[pkg];
+    if (_fetchingIcons.contains(pkg)) return null;
+
+    _fetchingIcons.add(pkg);
+    final icon = await _backend.getAppIcon(pkg);
+    _fetchingIcons.remove(pkg);
+
+    if (icon != null && mounted) {
+      setState(() {
+        _iconCache[pkg] = icon;
+      });
+    }
+    return icon;
+  }
 }
 
 
@@ -455,7 +498,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withOpacity(0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: color, size: 22),
@@ -463,4 +506,5 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+
 

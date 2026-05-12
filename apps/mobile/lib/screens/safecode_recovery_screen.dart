@@ -22,6 +22,13 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   bool _isLoading = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState() ;
+    // Force hide any residual overlays when entering recovery to prevent blocking
+    _backend.hideBlockingOverlay();
+  }
+
   Future<void> _sendOTP() async {
     setState(() {
       _isLoading = true;
@@ -77,7 +84,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
 
     try {
       final pin = _newPinController.text.trim();
-      if (pin.length != 4) throw "PIN must be 4 digits";
+      if (pin.length < 4) throw "SafeCode must be at least 4 characters";
       
       // Save new PIN to backend
       final success = await _backend.saveUserSettings(
@@ -107,6 +114,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF030307),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -116,25 +124,94 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         ),
         title: const Text(
           "RECOVER SAFECODE",
-          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 2),
+          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 2),
         ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(28.0),
-        child: Column(
-          children: [
-            _buildProgressIndicator(),
-            const SizedBox(height: 60),
-            if (_step == 0) _buildEmailStep(),
-            if (_step == 1) _buildOTPStep(),
-            if (_step == 2) _buildPINStep(),
-            if (_error != null) ...[
-              const SizedBox(height: 20),
-              Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
-            ],
-          ],
-        ),
+      body: Stack(
+        children: [
+          // Background Glows
+          Positioned(
+            top: -100,
+            right: -50,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.1),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary.withOpacity(0.1),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.2),
+                            blurRadius: 15,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.lock_reset_rounded,
+                        color: AppColors.primary,
+                        size: 32,
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _buildProgressIndicator(),
+                  const SizedBox(height: 60),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: _step == 0 
+                      ? _buildEmailStep() 
+                      : _step == 1 
+                        ? _buildOTPStep() 
+                        : _buildPINStep(),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _error!, 
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -148,7 +225,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
             height: 4,
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+              color: isActive ? AppColors.primary : Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -170,10 +247,11 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         Text(
           "We'll send a recovery code to your registered Gmail address.",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
         ),
         const SizedBox(height: 40),
-        _buildTextField(_emailController, "Email Address", Icons.email_outlined),
+        _buildTextField(_emailController, "Email Address", Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress),
         const SizedBox(height: 40),
         _buildActionButton("SEND RECOVERY CODE", _sendOTP),
       ],
@@ -193,10 +271,11 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         Text(
           "Check your inbox at ${_emailController.text}",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
         ),
         const SizedBox(height: 40),
-        _buildTextField(_otpController, "000000", Icons.password_rounded, maxLength: 6),
+        _buildTextField(_otpController, "000000", Icons.password_rounded, maxLength: 6,
+            keyboardType: TextInputType.number),
         const SizedBox(height: 40),
         _buildActionButton("VERIFY OTP", _verifyOTP),
       ],
@@ -216,57 +295,98 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         Text(
           "Set a new 4-digit emergency code.",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
         ),
         const SizedBox(height: 40),
-        _buildTextField(_newPinController, "••••", Icons.lock_outline_rounded, maxLength: 4, obscure: true),
+        _buildTextField(_newPinController, "Enter new SafeCode", Icons.lock_outline_rounded,
+            maxLength: 4, obscure: true, keyboardType: TextInputType.number),
         const SizedBox(height: 40),
         _buildActionButton("RECOVER ACCESS", _resetPIN),
       ],
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, IconData icon, {int? maxLength, bool obscure = false}) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    IconData icon, {
+    int? maxLength,
+    bool obscure = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
       child: TextField(
         controller: controller,
         maxLength: maxLength,
         obscureText: obscure,
-        keyboardType: TextInputType.number,
-        style: const TextStyle(color: Colors.white, fontSize: 18, letterSpacing: 2),
+        keyboardType: keyboardType,
+        style: TextStyle(
+          color: Colors.white, 
+          fontSize: 18, 
+          letterSpacing: (keyboardType == TextInputType.number || keyboardType == TextInputType.phone) ? 4 : 0.5, 
+          fontWeight: FontWeight.w600
+        ),
         decoration: InputDecoration(
           counterText: "",
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
-          prefixIcon: Icon(icon, color: Colors.white38, size: 20),
+          hintStyle: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 16, letterSpacing: 1),
+          prefixIcon: Icon(icon, color: Colors.white24, size: 22),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         ),
       ),
     );
   }
 
   Widget _buildActionButton(String label, VoidCallback onPressed) {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 56,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.25),
+            blurRadius: 20,
+            spreadRadius: -5,
+          )
+        ],
+      ),
       child: ElevatedButton(
         onPressed: _isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 0,
+          padding: EdgeInsets.zero,
         ),
-        child: _isLoading 
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : Text(label, style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, Color(0xFF6366F1)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Container(
+            alignment: Alignment.center,
+            child: _isLoading 
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+              : Text(
+                  label, 
+                  style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 14),
+                ),
+          ),
+        ),
       ),
     );
   }
 }
+

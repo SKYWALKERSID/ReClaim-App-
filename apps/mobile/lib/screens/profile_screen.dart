@@ -251,7 +251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -284,7 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -312,9 +312,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 12,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isAvailable ? AppColors.accent : Colors.white.withValues(alpha: 0.05),
+                  color: isAvailable ? AppColors.accent : Colors.white.withOpacity(0.05),
                   boxShadow: isAvailable ? [
-                    BoxShadow(color: AppColors.accent.withValues(alpha: 0.4), blurRadius: 6)
+                    BoxShadow(color: AppColors.accent.withOpacity(0.4), blurRadius: 6)
                   ] : null,
                 ),
               );
@@ -335,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSet ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+            color: isSet ? AppColors.primary.withOpacity(0.15) : Colors.white.withOpacity(0.05),
           ),
         ),
         child: Row(
@@ -343,7 +343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (isSet ? AppColors.primary : Colors.white38).withValues(alpha: 0.1),
+                color: (isSet ? AppColors.primary : Colors.white38).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -372,7 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
@@ -401,14 +401,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withValues(alpha: 0.1),
+                color: Colors.cyanAccent.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.devices_rounded, color: Colors.cyanAccent, size: 20),
@@ -449,14 +449,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent.withValues(alpha: 0.1),
+                color: Colors.deepPurpleAccent.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.explore_rounded, color: Colors.deepPurpleAccent, size: 20),
@@ -570,7 +570,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.15)),
+        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -580,11 +580,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [const Color(0xFFF59E0B).withValues(alpha: 0.2), Colors.transparent],
+                colors: [const Color(0xFFF59E0B).withOpacity(0.2), Colors.transparent],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+              border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
             ),
             child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 26),
           ),
@@ -717,10 +717,10 @@ class _AnimatedSettingsButtonState extends State<_AnimatedSettingsButton> with S
           decoration: BoxDecoration(
             color: AppColors.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.15),
+                color: AppColors.primary.withOpacity(0.15),
                 blurRadius: 12,
                 spreadRadius: 0,
               ),
@@ -816,10 +816,10 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
       decoration: BoxDecoration(
         color: const Color(0xFF161620),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: AppColors.primary.withOpacity(0.08),
             blurRadius: 40,
             offset: const Offset(0, -10),
           ),
@@ -839,7 +839,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -850,8 +850,8 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        color: AppColors.primary.withOpacity(0.1),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                       ),
                       child: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
                     ),
@@ -955,10 +955,10 @@ class _PermissionRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: Colors.white.withOpacity(0.03),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isEnabled ? accentColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.04),
+          color: isEnabled ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.04),
         ),
       ),
       child: Row(
@@ -996,9 +996,9 @@ class _PermissionRow extends StatelessWidget {
             value: isEnabled,
             onChanged: onChanged,
             activeThumbColor: accentColor,
-            activeTrackColor: accentColor.withValues(alpha: 0.3),
+            activeTrackColor: accentColor.withOpacity(0.3),
             inactiveThumbColor: Colors.white24,
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.05),
+            inactiveTrackColor: Colors.white.withOpacity(0.05),
           ),
         ],
       ),
@@ -1030,7 +1030,7 @@ class _CompactRewardTile extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isUnlocked ? color.withValues(alpha: 0.3) : color.withValues(alpha: 0.1),
+          color: isUnlocked ? color.withOpacity(0.3) : color.withOpacity(0.1),
         ),
       ),
       child: Column(
@@ -1039,7 +1039,7 @@ class _CompactRewardTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isUnlocked ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+              color: isUnlocked ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -1084,9 +1084,9 @@ class _BadgeItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
+        color: AppColors.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1123,9 +1123,9 @@ class _ExportButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1146,6 +1146,7 @@ class _ExportButton extends StatelessWidget {
     );
   }
 }
+
 
 
 

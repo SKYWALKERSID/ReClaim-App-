@@ -108,14 +108,14 @@ class _DevicesScreenState extends State<DevicesScreen> {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: Colors.white.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isCurrent ? Colors.cyanAccent.withValues(alpha: 0.3) : Colors.white10,
+                        color: isCurrent ? Colors.cyanAccent.withOpacity(0.3) : Colors.white10,
                       ),
                       boxShadow: isCurrent ? [
                         BoxShadow(
-                          color: Colors.cyanAccent.withValues(alpha: 0.05),
+                          color: Colors.cyanAccent.withOpacity(0.05),
                           blurRadius: 10,
                           spreadRadius: 1,
                         )
@@ -163,4 +163,5 @@ class _DevicesScreenState extends State<DevicesScreen> {
     );
   }
 }
+
 
