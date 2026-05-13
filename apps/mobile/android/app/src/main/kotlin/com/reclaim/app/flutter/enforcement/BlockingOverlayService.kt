@@ -27,6 +27,8 @@ import android.util.Log
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.app.NotificationCompat
 import com.reclaim.app.flutter.MainActivity
+import kotlinx.coroutines.*
+
 
 class BlockingOverlayService : Service() {
     private lateinit var windowManager: WindowManager
@@ -245,7 +247,10 @@ class BlockingOverlayService : Service() {
                     hideOverlay()
                     launchBlockedApp()
                 } else {
-                    showConfirmationDialog()
+                    // HARD BLOCK: Always require SafeCode.
+                    // This fulfills "verify otp is just for resetting the forgotten pin"
+                    // and ensures the Big Blue Button is also gated by SafeCode.
+                    showSafeCodeInput()
                 }
             }
         }
@@ -307,12 +312,12 @@ class BlockingOverlayService : Service() {
     private fun showUninstallOTPDialog() {
         val builder = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
         builder.setTitle("Uninstall Protection")
-        builder.setMessage("To uninstall ReClaim, you must verify your identity. We will send a 6-digit code to your registered Gmail.")
+        builder.setMessage("To modify security settings or uninstall ReClaim, we must verify your identity via Gmail OTP.")
         
-        builder.setPositiveButton("Send Code") { _, _ ->
+        builder.setPositiveButton("Send Verification Code") { _, _ ->
             EnforcementManager.requestUninstallOTP(this) { success ->
                 if (success) {
-                    showOTPVerificationDialog()
+                    showUninstallVerifyOTPDialog()
                 } else {
                     Toast.makeText(this, "Failed to send code. Please check your internet.", Toast.LENGTH_LONG).show()
                 }
@@ -327,23 +332,25 @@ class BlockingOverlayService : Service() {
         dialog.show()
     }
 
-    private fun showOTPVerificationDialog() {
+    private fun showUninstallVerifyOTPDialog() {
         val input = android.widget.EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
             hint = "6-digit OTP"
             gravity = Gravity.CENTER
             textSize = 24f
+            setTextColor(Color.WHITE)
         }
 
         val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
-            .setTitle("Verify Gmail Code")
-            .setMessage("Enter the 6-digit code sent to your email.")
+            .setTitle("Verify Uninstall Code")
+            .setMessage("Enter the 6-digit code sent to your email to unlock security settings.")
             .setView(input)
             .setPositiveButton("Verify & Unlock") { _, _ ->
                 val code = input.text.toString()
                 EnforcementManager.verifyUninstallOTP(this, code) { success ->
                     if (success) {
-                        Toast.makeText(this, "Verified! Protection disabled for today.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, "Security settings unlocked.", Toast.LENGTH_LONG).show()
+                        EnforcementManager.disableEnforcementForToday()
                         hideOverlay()
                     } else {
                         Toast.makeText(this, "Invalid or expired code.", Toast.LENGTH_SHORT).show()
@@ -359,7 +366,117 @@ class BlockingOverlayService : Service() {
         dialog.show()
     }
 
+    private fun showRecoveryOTPDialog() {
+        val builder = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+        builder.setTitle("SafeCode Recovery")
+        builder.setMessage("To reset your forgotten PIN, we will send a 6-digit verification code to your registered Gmail.")
+        
+        builder.setPositiveButton("Send Code") { _, _ ->
+            EnforcementManager.requestUninstallOTP(this) { success ->
+                if (success) {
+                    showPINResetOTPDialog()
+                } else {
+                    Toast.makeText(this, "Failed to send code. Please check your internet.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        builder.setNegativeButton("Cancel", null)
+        
+        val dialog = builder.create()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
+    }
+
+    private fun showPINResetOTPDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "6-digit OTP"
+            gravity = Gravity.CENTER
+            textSize = 24f
+            setTextColor(Color.WHITE)
+        }
+
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("Verify Reset Code")
+            .setMessage("Enter the 6-digit code sent to your email.")
+            .setView(input)
+            .setPositiveButton("Verify") { _, _ ->
+                val code = input.text.toString()
+                EnforcementManager.verifyUninstallOTP(this, code) { success ->
+                    if (success) {
+                        showSetNewPINDialog()
+                    } else {
+                        Toast.makeText(this, "Invalid or expired code.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
+    }
+
+    private fun showSetNewPINDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "New 4-digit PIN"
+            gravity = Gravity.CENTER
+            textSize = 28f
+            setTextColor(Color.WHITE)
+            filters = arrayOf(android.text.InputFilter.LengthFilter(4))
+        }
+
+        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
+            .setTitle("Set New SafeCode")
+            .setMessage("Enter a new 4-digit PIN to secure your focus.")
+            .setView(input)
+            .setPositiveButton("Save PIN") { _, _ ->
+                val newPin = input.text.toString()
+                if (newPin.length == 4) {
+                    val userId = FocusPolicyStore.getAuthUserId(this)
+                    val jwt = FocusPolicyStore.getAuthJwt(this)
+                    if (userId != null) {
+                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                            try {
+                                val apiClient = com.reclaim.app.data.ApiClient()
+                                apiClient.saveUserSettings(userId, mapOf("safe_code" to newPin), jwt)
+                                
+                                // Reset attempts and sync local policy state
+                                EnforcementManager.resetSafeCodeAttempts()
+                                EnforcementManager.syncPolicy(this@BlockingOverlayService, mapOf("safeCode" to newPin))
+                                
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(this@BlockingOverlayService, "PIN Reset Successful!", Toast.LENGTH_LONG).show()
+                                }
+                            } catch (e: Exception) {
+                                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                    Toast.makeText(this@BlockingOverlayService, "Failed to save new PIN.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Toast.makeText(this, "PIN must be 4 digits.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        }
+        dialog.show()
+    }
+
     private fun showSafeCodeInput() {
+        val attempts = EnforcementManager.getSafeCodeAttempts()
+        val isLockedOut = attempts >= 3
+
         val container = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(60, 40, 60, 20)
@@ -373,27 +490,36 @@ class BlockingOverlayService : Service() {
             textSize = 28f
             setTextColor(android.graphics.Color.WHITE)
             setHintTextColor(android.graphics.Color.parseColor("#444444"))
-            background = null // Remove default underline
+            background = null 
             filters = arrayOf(android.text.InputFilter.LengthFilter(4))
+            isEnabled = !isLockedOut
         }
         
         container.addView(input)
 
+        val message = if (isLockedOut) 
+            "Too many failed attempts. You MUST reset your PIN using your Gmail." 
+            else "Enter your 4-digit SafeCode ($attempts/3 attempts used)."
+
         val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
             .setTitle("Emergency Bypass")
-            .setMessage("Enter your 4-digit SafeCode.")
+            .setMessage(message)
             .setView(container)
-            .setPositiveButton("UNLOCK") { _, _ ->
+            .setPositiveButton(if (isLockedOut) "LOCKED" else "UNLOCK") { _, _ ->
+                if (isLockedOut) return@setPositiveButton
                 val code = input.text.toString()
                 if (EnforcementManager.verifySafeCode(code)) {
                     Toast.makeText(this, "Enforcement disabled.", Toast.LENGTH_LONG).show()
                     hideOverlay()
                 } else {
-                    Toast.makeText(this, "Invalid SafeCode.", Toast.LENGTH_SHORT).show()
+                    val newAttempts = EnforcementManager.getSafeCodeAttempts()
+                    Toast.makeText(this, "Incorrect PIN. Attempt $newAttempts / 3", Toast.LENGTH_SHORT).show()
+                    // Re-show dialog to update attempt counter
+                    showSafeCodeInput()
                 }
             }
             .setNeutralButton("FORGOT?") { _, _ ->
-                showUninstallOTPDialog()
+                showRecoveryOTPDialog()
             }
             .setNegativeButton("CANCEL", null)
             .create()
@@ -402,7 +528,6 @@ class BlockingOverlayService : Service() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 window.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
             }
-            // Set dark background for the dialog itself
             window.setBackgroundDrawableResource(android.R.drawable.screen_background_dark)
         }
         dialog.show()
@@ -429,77 +554,8 @@ class BlockingOverlayService : Service() {
         }.also { it.start() }
     }
 
-    private fun showConfirmationDialog() {
-        confirmationDialog?.dismiss()
-        
-        if (currentMode == "soft") {
-            // Soft block bypasses directly
-            FocusPolicyStore.enqueueEvent(this, "soft_bypass", currentPackageName)
-            hideOverlay()
-            launchBlockedApp()
-            return
-        }
-
-        confirmationDialog = AlertDialog.Builder(
-            ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert)
-        )
-            .setTitle("Emergency Override")
-            .setMessage("This consumes one override. To prevent impulsive use, a Gmail verification code is required.")
-            .setPositiveButton("Send Code to Gmail") { _, _ ->
-                EnforcementManager.requestUninstallOTP(this) { success ->
-                    if (success) {
-                        showOverrideOTPVerificationDialog()
-                    } else {
-                        Toast.makeText(this, "Failed to send code.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            confirmationDialog?.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        }
-        confirmationDialog?.show()
-    }
-
-    private fun showOverrideOTPVerificationDialog() {
-        val input = android.widget.EditText(this).apply {
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            hint = "6-digit OTP"
-            gravity = Gravity.CENTER
-            textSize = 24f
-        }
-
-        val dialog = AlertDialog.Builder(ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Dialog_Alert))
-            .setTitle("Verify Override")
-            .setMessage("Enter the code sent to your Gmail to unlock this app for 5 minutes.")
-            .setView(input)
-            .setPositiveButton("Verify & Unlock") { _, _ ->
-                val code = input.text.toString()
-                EnforcementManager.verifyUninstallOTP(this, code) { success ->
-                    if (success) {
-                        // After OTP verification, perform the actual override consumption
-                        if (EnforcementManager.requestTemporaryUnlock(this, currentPackageName, 5L)) {
-                            Toast.makeText(this, "Override successful. App unlocked for 5 mins.", Toast.LENGTH_LONG).show()
-                            hideOverlay()
-                            launchBlockedApp()
-                        } else {
-                            Toast.makeText(this, "No overrides remaining for today.", Toast.LENGTH_LONG).show()
-                        }
-                    } else {
-                        Toast.makeText(this, "Invalid code.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .create()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            dialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
-        }
-        dialog.show()
-    }
+    // showConfirmationDialog and showOverrideOTPVerificationDialog have been REMOVED.
+    // The "Emergency Override" button now redirects to SafeCode input, which handles recovery.
 
     private fun launchBlockedApp() {
         val launchIntent = packageManager.getLaunchIntentForPackage(currentPackageName)

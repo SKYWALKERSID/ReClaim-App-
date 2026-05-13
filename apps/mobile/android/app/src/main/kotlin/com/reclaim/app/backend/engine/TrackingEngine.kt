@@ -210,6 +210,9 @@ object TrackingEngine {
             val pkg = currentEvent.packageName ?: continue
             
             if (pkg == context.packageName) continue
+            if (com.reclaim.app.flutter.enforcement.EnforcementManager.isInternalPackage(pkg)) continue
+            if (com.reclaim.app.flutter.enforcement.EnforcementManager.isLauncherPackage(pkg)) continue
+            
             if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
             
             when (currentEvent.eventType) {
@@ -297,6 +300,9 @@ object TrackingEngine {
             for (usageStat in stats) {
                 val pkg = usageStat.packageName
                 if (pkg == context.packageName) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isInternalPackage(pkg)) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isLauncherPackage(pkg)) continue
+                
                 if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
                 
                 val timeMs = usageStat.totalTimeInForeground
@@ -339,6 +345,9 @@ object TrackingEngine {
                 val pkg = currentEvent.packageName
                 
                 if (pkg == context.packageName) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isInternalPackage(pkg)) continue
+                if (com.reclaim.app.flutter.enforcement.EnforcementManager.isLauncherPackage(pkg)) continue
+                
                 if (targetCategory != null && getAppCategory(context, pkg) != targetCategory) continue
                 
                 val effectiveTime = time.coerceIn(rangeStart, rangeEnd)
@@ -436,6 +445,11 @@ object TrackingEngine {
         
         return usageMap.entries
             .filter { it.value > 0 && it.key != context.packageName }
+            .filter { entry -> 
+                val pkg = entry.key
+                !com.reclaim.app.flutter.enforcement.EnforcementManager.isInternalPackage(pkg) &&
+                !com.reclaim.app.flutter.enforcement.EnforcementManager.isLauncherPackage(pkg)
+            }
             .filter { entry -> targetCategory == null || getAppCategory(context, entry.key) == targetCategory }
             .sortedByDescending { it.value }
             .take(10)

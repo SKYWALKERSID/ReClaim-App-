@@ -9,7 +9,8 @@ class ApiService {
   static Function? onUnauthorized;
 
   final Dio dio = Dio(BaseOptions(
-    baseUrl: 'http://10.0.2.2:4000/v1',
+    // NOTE: Use localhost with 'adb reverse tcp:4000 tcp:4000' for physical devices
+    baseUrl: 'http://localhost:4000/v1',
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 20),
   ));
@@ -32,7 +33,8 @@ class ApiService {
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
-        if (e.response?.statusCode == 401 && e.requestOptions.path != '/auth/refresh') {
+        if (e.response?.statusCode == 401 &&
+            e.requestOptions.path != '/auth/refresh') {
           if (_isRefreshing) {
             // Queue the request
             _pendingRequests.add((String newToken) async {
@@ -63,7 +65,8 @@ class ApiService {
             _pendingRequests.clear();
 
             // Replay original request
-            e.requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
+            e.requestOptions.headers['Authorization'] =
+                'Bearer $newAccessToken';
             return handler.resolve(await dio.fetch(e.requestOptions));
           } catch (refreshError) {
             await clearTokens();
@@ -85,11 +88,11 @@ class ApiService {
 
   Future<String?> getAccessToken() => _storage.read(key: 'access_token');
   Future<String?> getRefreshToken() => _storage.read(key: 'refresh_token');
-  
+
   Future<void> clearTokens() async {
     await _storage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
-    // Only clear ReClaim specific prefs if we want to preserve other data, 
+    // Only clear ReClaim specific prefs if we want to preserve other data,
     // but usually logout clears everything.
     await prefs.clear();
   }

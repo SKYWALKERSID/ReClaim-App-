@@ -303,32 +303,21 @@ class BackendService {
     return ["Your usage looks healthy today. Keep it up!"];
   }
 
-  Future<bool> registerDevice({String? userId, String? fcmToken}) async {
+  Future<bool> updateNotificationToken({String? fcmToken}) async {
     try {
-      String? token = fcmToken;
-      if (token == null) {
-        try {
-          await Future.delayed(const Duration(seconds: 1));
-          token = await FirebaseMessaging.instance.getToken();
-        } catch (_) {
-          // FCM token not available; device registration will proceed without push capability.
-        }
-      }
+      final token = fcmToken ?? await FirebaseMessaging.instance.getToken();
+      if (token == null) return false;
 
-      final jwt = await _api.getAccessToken();
-      final uid = userId ?? "anonymous";
+      final deviceInfo = await getDeviceInfo();
+      final deviceId = deviceInfo['device_id'] ?? 'unknown';
 
-      await platform.invokeMethod('saveAuth', {
-        'jwt_token': jwt,
-        'user_id': uid,
+      final response = await _api.dio.post("/notifications/token", data: {
+        "fcmToken": token,
+        "deviceId": deviceId,
       });
-
-      return await platform.invokeMethod('registerDevice', {
-        'jwt_token': jwt,
-        'base_url': baseUrl,
-        'fcm_token': token,
-      });
+      return response.statusCode == 200;
     } catch (e) {
+      debugPrint("Notification token update failed: $e");
       return false;
     }
   }
@@ -383,33 +372,9 @@ class BackendService {
     }
   }
 
-  Future<List<dynamic>> getDevices() async {
-    try {
-      final response = await _api.dio.get("/devices");
-      return response.data;
-    } catch (e) {
-      return [];
-    }
-  }
 
-  Future<bool> unregisterDevice(String deviceId) async {
-    try {
-      final response = await _api.dio.delete("/devices/$deviceId");
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
 
-  Future<bool> sendNudge(String title, String body) async {
-    try {
-      // Backend route is POST /v1/nudge (not /analytics/nudge)
-      final response = await _api.dio.post("/nudge", data: {"title": title, "body": body});
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
+
 
   // --- Brain & Memory Features ---
 
@@ -524,13 +489,7 @@ class BackendService {
     }
   }
 
-  Future<bool> syncAllData() async {
-    try {
-      return await platform.invokeMethod('syncAllData');
-    } catch (e) {
-      return false;
-    }
-  }
+
 
   Future<bool> toggleNotifications(bool enabled) async {
     try {

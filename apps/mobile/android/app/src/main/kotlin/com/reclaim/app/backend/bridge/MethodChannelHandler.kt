@@ -157,6 +157,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                             "reopen_count" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getReopenCount(),
                             "failed_exits" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFailedExits(),
                             "feed_exposure_seconds" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getFeedExposureSeconds(),
+                            "scroll_count" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getDailyScrollCount(),
                             "addiction_score" to com.reclaim.app.backend.engine.CognitiveDriftEngine.getAddictionScore()
                         )
                         withContext(Dispatchers.Main) { result.success(metrics) }
@@ -423,7 +424,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                         withContext(Dispatchers.Main) { result.success(usage) }
                     }
                 }
-                "registerDevice" -> handleRegisterDevice(call, result)
+
                 "saveAuth" -> {
                     val jwt = call.argument<String>("jwt_token")
                     val userId = call.argument<String>("user_id")
@@ -439,40 +440,7 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
                     // Let's assume we store the latest window in a shared pref or singleton.
                     result.success(com.reclaim.app.backend.engine.FrictionOrchestrator.getActiveWindow())
                 }
-                "syncAllData" -> {
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            // 0. Force hard refresh of engine caches
-                            TrackingEngine.clearCaches()
-                            
-                            // 1. Sync Tracking Engine - just pull usage to force update
-                            TrackingEngine.getAllTodayUsage(context)
-                            
-                            // 2. Refresh local DB from remote if needed
-                            val auth = FocusPolicyStore.loadAuth(context)
-                            val userId = auth.first
-                            if (userId != null) {
-                                try {
-                                    apiClient.fetchPolicy(userId)
-                                } catch (e: Exception) {
-                                    Log.w("Sync", "Policy sync failed during hard refresh", e)
-                                }
-                            }
-                            
-                            // 3. Recalculate daily stats
-                            val date = DatabaseHelper.getCurrentDateString()
-                            dbHelper.getDailyAnalytics(date)
-                            
-                            withContext(Dispatchers.Main) {
-                                result.success(true)
-                            }
-                        } catch (e: Exception) {
-                            withContext(Dispatchers.Main) {
-                                result.success(false) 
-                            }
-                        }
-                    }
-                }
+
                 "toggleNotifications" -> {
                     val enabled = call.argument<Boolean>("enabled") ?: false
                     if (enabled) {
@@ -702,7 +670,9 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         val totalMs = usageMap.values.sum()
         val appsList = mutableListOf<Map<String, Any>>()
         usageMap.forEach { (pkg, timeMs) ->
-            if (timeMs > 0 && pkg != context.packageName) {
+            if (timeMs > 0 && pkg != context.packageName && 
+                !EnforcementManager.isInternalPackage(pkg) && 
+                !EnforcementManager.isLauncherPackage(pkg)) {
                 try {
                     if (pm.getLaunchIntentForPackage(pkg) == null) {
                         return@forEach
@@ -751,16 +721,50 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
 
         for (appInfo in installedApps) {
             val pkg = appInfo.packageName
+            // 1. Never show ReClaim itself
             if (pkg == context.packageName) continue
 
-            // Filter out apps that are not likely user-facing
-            // We want to exclude hidden system services but include things like "Settings"
+            // 2. Never show launchers (One UI Home, etc.)
+            if (EnforcementManager.isLauncherPackage(pkg)) continue
+
+            // 3. Filter out system internals and non-user-facing packages
             val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
             val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
             val hasLauncher = pm.getLaunchIntentForPackage(pkg) != null
 
-            // If it's a system app without a launcher, skip it (likely a service/provider)
-            if (isSystemApp && !isUpdatedSystemApp && !hasLauncher) continue
+            // If it has no launcher icon at all, it's definitely a background service
+            if (!hasLauncher) continue
+
+            // Heuristic for "Real App":
+            // - Has a launcher icon (checked above)
+            // - AND (Is NOT a system app OR was updated via store OR has a recognized store installer)
+            val installer = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    pm.getInstallSourceInfo(pkg).installingPackageName
+                } else {
+                    @Suppress("DEPRECATION")
+                    pm.getInstallerPackageName(pkg)
+                }
+            } catch (e: Exception) { null }
+
+            val isStoreApp = installer != null && (
+                installer.contains("vending") || 
+                installer.contains("samsungapps") || 
+                installer.contains("packageinstaller") ||
+                installer.contains("android.packageinstaller")
+            )
+
+            // If it's a system app, it MUST be either an updated system app (like YouTube)
+            // or have a valid store installer (Play Store/Galaxy Store).
+            // This filters out "Android System", "Bluetooth", "One UI Home", etc.
+            if (isSystemApp && !isUpdatedSystemApp && !isStoreApp) {
+                // Allow only a few critical recognizable system apps if they have launchers
+                val allowedSystemApps = setOf("com.android.settings", "com.android.chrome", "com.google.android.apps.maps")
+                if (!allowedSystemApps.contains(pkg)) continue
+            }
+            
+            // Final check: Never show launchers in the restriction list
+            if (EnforcementManager.isLauncherPackage(pkg) || EnforcementManager.isInternalPackage(pkg)) continue
 
             try {
                 val category = dbHelper.getAppCategory(pkg) ?: TrackingEngine.getAppCategory(context, pkg)
@@ -892,27 +896,6 @@ class MethodChannelHandler(private val context: Context) : MethodChannel.MethodC
         }
     }
 
-    private fun handleRegisterDevice(call: MethodCall, result: MethodChannel.Result) {
-        val fcmToken = call.argument<String>("fcm_token")
-        val jwtToken = call.argument<String>("jwt_token") 
-            ?: return result.error("BAD_ARGUMENT", "jwt_token required", null)
-        val baseUrl = call.argument<String>("base_url") 
-            ?: return result.error("BAD_ARGUMENT", "base_url required", null)
-        
-        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-        val model = android.os.Build.MODEL
-        val osVersion = android.os.Build.VERSION.RELEASE
-        
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        Thread {
-            try {
-                apiClient.registerDevice(baseUrl, jwtToken, deviceId, model, osVersion, fcmToken)
-                handler.post { result.success(true) }
-            } catch (e: Exception) {
-                handler.post { result.error("REG_FAILED", e.message ?: "Unknown error", null) }
-            }
-        }.start()
-    }
 
     private fun handleGetDeviceInfo(result: MethodChannel.Result) {
         val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)

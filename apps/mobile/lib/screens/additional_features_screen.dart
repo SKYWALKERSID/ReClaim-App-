@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/colors.dart';
-import 'devices_screen.dart';
 import 'insights_screen.dart';
 import 'brain_mirror_dashboard.dart';
 
@@ -92,20 +91,8 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSectionTitle('Connectivity & Sync'),
-          _buildNavigationTile(
-            title: 'Multi-device sync',
-            subtitle: 'Merge analytics across your devices',
-            icon: Icons.devices_rounded,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const DevicesScreen()),
-              );
-            },
-          ),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           _buildSectionTitle('Notifications & Reports'),
           _buildSwitchTile(
             title: 'Push notifications',

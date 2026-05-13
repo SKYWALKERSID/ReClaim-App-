@@ -48,9 +48,21 @@ object FrictionOrchestrator {
         val driftScore = CognitiveDriftEngine.getCurrentDriftScore()
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         
-        // Late night usage (23:00 - 05:00) with high drift or high screen time
-        if ((hour >= 23 || hour <= 5) && (driftScore > 50)) {
-            return FrictionType.HARD_BLOCK
+        // 1.5 CIRCADIAN PROTECTOR: Late night usage (23:00 - 05:00)
+        if (hour >= 23 || hour <= 5) {
+            // Highly sensitive to any drift at night
+            if (driftScore > 15) {
+                return FrictionType.HARD_BLOCK
+            }
+            // Even if drift is very low, if it's a blacklisted/distractive app, force a hard block or hold
+            if (EnforcementManager.isBlacklisted(pkg)) {
+                return FrictionType.HARD_BLOCK
+            }
+            
+            // For any non-whitelisted app at night, force HOLD_TO_OPEN if there's any activity
+            if (!EnforcementManager.isWhitelisted(pkg)) {
+                return FrictionType.HOLD_TO_OPEN
+            }
         }
 
         // Adaptive Escalation

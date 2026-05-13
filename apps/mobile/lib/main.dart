@@ -26,7 +26,7 @@ void main() async {
     try {
       await BackendService.initialize();
       final backend = BackendService();
-      await backend.registerDevice();
+      await backend.updateNotificationToken();
       
       // Initial session check
       await AuthService().refreshSession();

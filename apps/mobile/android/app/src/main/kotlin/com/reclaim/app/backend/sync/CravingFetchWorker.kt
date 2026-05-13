@@ -27,7 +27,7 @@ class CravingFetchWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     private fun fetchActiveWindow(userId: String, jwt: String): Map<String, Any>? {
-        val url = URL("http://10.0.2.2:4000/v1/analytics/craving/active")
+        val url = URL("http://localhost:4000/v1/analytics/craving/active")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "GET"
         conn.setRequestProperty("Authorization", "Bearer $jwt")

@@ -8,6 +8,7 @@ import com.reclaim.app.flutter.enforcement.EnforcementManager
 import kotlinx.coroutines.*
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 object CognitiveDriftEngine {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -18,13 +19,10 @@ object CognitiveDriftEngine {
     // Metrics for current session
     private val reopenLoops = AtomicInteger(0)
     private val failedExits = AtomicInteger(0)
+    private val scrollCount = AtomicInteger(0)
     private var feedExposureMs = 0L
     private var lastScrollTime = 0L
     
-    // Daily accumulators (reset at midnight or on boot)
-    private val dailyReopens = AtomicInteger(0)
-    private val dailyFailedExits = AtomicInteger(0)
-    private var dailyFeedExposureMs = 0L
     
     // Global metrics (short-term history)
     private val appSwitches = mutableListOf<Long>() // Timestamps of last switches
@@ -36,6 +34,20 @@ object CognitiveDriftEngine {
 
     private fun getPrefs(context: Context) = context.getSharedPreferences("reclaim_drift_metrics", Context.MODE_PRIVATE)
 
+    private val dailyReopens = AtomicInteger(0)
+    private val dailyFailedExits = AtomicInteger(0)
+    private val dailyScrollCount = AtomicInteger(0)
+    private val dailyFeedExposureMsVal = AtomicLong(0L)
+    
+    private var lastSaveTime = 0L
+    private val initialized = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    fun initialize(context: Context) {
+        if (initialized.getAndSet(true)) return
+        loadDailyMetrics(context)
+        Log.d("CognitiveDriftEngine", "Initialized with scroll count: ${dailyScrollCount.get()}")
+    }
+
     private fun loadDailyMetrics(context: Context) {
         val prefs = getPrefs(context)
         val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
@@ -46,25 +58,32 @@ object CognitiveDriftEngine {
             prefs.edit().clear().putInt("last_saved_day", today).apply()
             dailyReopens.set(0)
             dailyFailedExits.set(0)
-            dailyFeedExposureMs = 0L
+            dailyScrollCount.set(0)
+            dailyFeedExposureMsVal.set(0L)
         } else {
             dailyReopens.set(prefs.getInt("daily_reopens", 0))
             dailyFailedExits.set(prefs.getInt("daily_failed_exits", 0))
-            dailyFeedExposureMs = prefs.getLong("daily_feed_exposure", 0L)
+            dailyScrollCount.set(prefs.getInt("daily_scroll_count", 0))
+            dailyFeedExposureMsVal.set(prefs.getLong("daily_feed_exposure", 0L))
         }
     }
 
-    private fun saveDailyMetrics(context: Context) {
+    private fun saveDailyMetrics(context: Context, force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastSaveTime < 5000) return // Throttle to 5 seconds
+        
+        lastSaveTime = now
         getPrefs(context).edit().apply {
             putInt("daily_reopens", dailyReopens.get())
             putInt("daily_failed_exits", dailyFailedExits.get())
-            putLong("daily_feed_exposure", dailyFeedExposureMs)
+            putInt("daily_scroll_count", dailyScrollCount.get())
+            putLong("daily_feed_exposure", dailyFeedExposureMsVal.get())
             apply()
         }
     }
 
     fun onAccessibilityEvent(context: Context, packageName: String, eventType: Int) {
-        if (dailyReopens.get() == 0 && dailyFeedExposureMs == 0L) loadDailyMetrics(context)
+        if (!initialized.get()) initialize(context)
         val now = System.currentTimeMillis()
         
         when (eventType) {
@@ -109,17 +128,26 @@ object CognitiveDriftEngine {
     }
 
     private fun handleScroll(context: Context, packageName: String, now: Long) {
+        // Exclude internal packages (Settings, Launcher, etc.) from scroll metrics
+        if (EnforcementManager.isInternalPackage(packageName)) return
+
+        // Increment global daily count regardless of session
+        dailyScrollCount.incrementAndGet()
+
         if (packageName == currentPackage) {
+            scrollCount.incrementAndGet()
+            
             if (lastScrollTime > 0 && now - lastScrollTime < 2000) {
                 val delta = now - lastScrollTime
                 feedExposureMs += delta
-                dailyFeedExposureMs += delta
+                dailyFeedExposureMsVal.addAndGet(delta)
             }
             lastScrollTime = now
             // Recalculate drift on scroll for real-time responsiveness
             calculateCurrentDrift(context)
-            saveDailyMetrics(context)
         }
+        
+        saveDailyMetrics(context)
     }
 
     private fun startSession(context: Context, packageName: String, startTime: Long) {
@@ -128,6 +156,7 @@ object CognitiveDriftEngine {
         sessionStartTime = startTime
         reopenLoops.set(0)
         failedExits.set(0)
+        scrollCount.set(0)
         feedExposureMs = 0L
         lastScrollTime = 0L
         peakDriftScore = 0
@@ -202,13 +231,15 @@ object CognitiveDriftEngine {
     fun getFragmentationIndex(): Int = calculateFragmentationIndex()
     fun getReopenCount(): Int = dailyReopens.get()
     fun getFailedExits(): Int = dailyFailedExits.get()
-    fun getFeedExposureSeconds(): Int = (dailyFeedExposureMs / 1000).toInt()
+    fun getFeedExposureSeconds(): Int = (dailyFeedExposureMsVal.get() / 1000).toInt()
+    fun getDailyScrollCount(): Int = dailyScrollCount.get()
+    fun getSessionScrollCount(): Int = scrollCount.get()
     
     fun getAddictionScore(): Int {
         val fragmentation = calculateFragmentationIndex() // 0-100
         val reopens = (dailyReopens.get() * 5).coerceAtMost(100)
         val failedExits = (dailyFailedExits.get() * 8).coerceAtMost(100)
-        val feed = ((dailyFeedExposureMs / 60000) * 10).toInt().coerceAtMost(100)
+        val feed = ((dailyFeedExposureMsVal.get() / 60000) * 10).toInt().coerceAtMost(100)
         
         return (fragmentation * 0.3 + reopens * 0.25 + failedExits * 0.2 + feed * 0.25).toInt()
     }

@@ -34,7 +34,9 @@ data class EnforcementState(
     val isFocusActive: Boolean,
     val isLocked: Boolean,
     val remainingOverrides: Int,
-    val lastEvaluatedAt: Long
+    val lastEvaluatedAt: Long,
+    val isBypassed: Boolean = false,
+    val bypassExpiry: Long = 0L
 )
 
 data class NudgeState(
@@ -56,6 +58,7 @@ object FocusPolicyStore {
     private const val AUTH_USER_ID = "auth_user_id"
     private const val AUTH_JWT = "auth_jwt"
     private const val NUDGE_STATE = "nudge_state_json"
+    private const val BYPASS_STATE = "bypass_state_json"
 
     private fun getEncryptedPrefs(context: Context): SharedPreferences {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
@@ -405,6 +408,26 @@ object FocusPolicyStore {
                 array
             }
             else -> value
+        }
+    }
+
+    fun saveBypassState(context: Context, isBypassed: Boolean, expiry: Long) {
+        val editor = prefs(context).edit()
+        val json = JSONObject().apply {
+            put("isBypassed", isBypassed)
+            put("expiry", expiry)
+        }
+        editor.putString(BYPASS_STATE, json.toString())
+        editor.apply()
+    }
+
+    fun loadBypassState(context: Context): Pair<Boolean, Long> {
+        val jsonStr = prefs(context).getString(BYPASS_STATE, null) ?: return false to 0L
+        return try {
+            val json = JSONObject(jsonStr)
+            json.getBoolean("isBypassed") to json.getLong("expiry")
+        } catch (e: Exception) {
+            false to 0L
         }
     }
 }

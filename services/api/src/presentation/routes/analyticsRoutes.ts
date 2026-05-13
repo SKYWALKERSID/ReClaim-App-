@@ -20,60 +20,59 @@ export function buildAnalyticsRoutes(service: AnalyticsService): Router {
 
   /**
    * @openapi
-   * /analytics/events:
+   * /notifications/nudge:
    *   post:
-   *     summary: Ingest usage events
-   *     description: Uploads a batch of usage events, blocked attempts, or overrides.
-   *     security:
-   *       - ApiKeyAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               events:
-   *                 type: array
-   *                 items: { type: object }
+   *     summary: Send nudge notification
+   *     description: Sends a push notification to all devices of a user.
    *     responses:
-   *       202:
-   *         description: Accepted for processing
+   *       200:
+   *         description: Nudge sent
    */
-  router.post("/analytics/events", ingestionLimiter, async (request, response, next) => {
+  router.post("/notifications/nudge", async (request, response, next) => {
     try {
-      const { events } = eventsPayloadSchema.parse(request.body);
+      const { userId, title, body } = z.object({
+        userId: z.string().min(1),
+        title: z.string().min(1),
+        body: z.string().min(1)
+      }).parse({ ...request.body, userId: request.user!.role === 'admin' ? request.body.userId : request.user!.userId });
 
-      let toIngest: UsageEvent[];
-      if (request.user!.role === "service") {
-        const ids = new Set(
-          events.map((e: any) => e.userId).filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
-        );
-        if (ids.size !== 1) {
-          response.status(400).json({
-            error: "Bad Request",
-            code: "BAD_REQUEST",
-            message: "When using x-api-key, every event must include the same userId.",
-          });
-          return;
-        }
-        const uid = [...ids][0]!;
-        toIngest = events.map((e) => ({ ...e, userId: uid })) as UsageEvent[];
-      } else {
-        const uid = request.user!.userId;
-        toIngest = events.map((e: any) => ({ ...e, userId: uid })) as UsageEvent[];
-      }
-
-      const inserted = await service.ingestEvents(toIngest);
-      response.status(202).json({
-        status: "accepted",
-        received: events.length,
-        inserted,
-      });
+      await service.sendNudge(userId, title, body);
+      response.status(200).json({ status: "ok" });
     } catch (error) {
       next(error);
     }
   });
+
+  /**
+   * @openapi
+   * /notifications/token:
+   *   post:
+   *     summary: Update notification token
+   *     description: Registers or updates the FCM token for push notifications.
+   *     responses:
+   *       200:
+   *         description: Token updated
+   */
+  router.post("/notifications/token", async (request, response, next) => {
+    try {
+      if (request.user!.role === "service") {
+        response.status(403).json({ error: "Forbidden", message: "User JWT required." });
+        return;
+      }
+      const { fcmToken, deviceId } = z.object({
+        fcmToken: z.string().min(1),
+        deviceId: z.string().min(1)
+      }).parse(request.body);
+
+      const userId = request.user!.userId;
+      // Re-use registerDevice logic but only for the purpose of push notification tokens
+      await service.registerDevice(userId, deviceId, undefined, undefined, fcmToken);
+      response.status(200).json({ status: "ok" });
+    } catch (error) {
+      next(error);
+    }
+  });
+
 
   /**
    * @openapi
@@ -223,123 +222,9 @@ export function buildAnalyticsRoutes(service: AnalyticsService): Router {
     }
   });
 
-  /**
-   * @openapi
-   * /devices:
-   *   get:
-   *     summary: List registered devices
-   *     responses:
-   *       200:
-   *         description: List of devices
-   *   post:
-   *     summary: Register device
-   *     description: Links a device to a user account for push notifications and sync.
-   *     responses:
-   *       200:
-   *         description: Device registered
-   */
-  router.get("/devices", async (request, response, next) => {
-    try {
-      if (request.user!.role === "service") {
-        response.status(403).json({
-          error: "Forbidden",
-          code: "FORBIDDEN",
-          message: "Device registry requires a user JWT.",
-        });
-        return;
-      }
-      const userId = request.user!.userId;
-      const devices = await service.getDevices(userId);
-      response.json(devices);
-    } catch (error) {
-      next(error);
-    }
-  });
 
-  router.post("/devices", async (request, response, next) => {
-    try {
-      if (request.user!.role === "service") {
-        response.status(403).json({
-          error: "Forbidden",
-          code: "FORBIDDEN",
-          message: "Device registry requires a user JWT.",
-        });
-        return;
-      }
-      const body = deviceRegistrationSchema.parse(request.body);
-      const userId = request.user!.userId;
-      await service.registerDevice(userId, body.deviceId, body.model, body.osVersion, body.fcmToken);
-      response.status(201).json({ status: "registered" });
-    } catch (error) {
-      next(error);
-    }
-  });
 
-  /**
-   * @openapi
-   * /devices/{deviceId}:
-   *   delete:
-   *     summary: Unregister device
-   *     parameters:
-   *       - in: path
-   *         name: deviceId
-   *         required: true
-   *         schema: { type: string }
-   *     responses:
-   *       200:
-   *         description: Device unregistered
-   */
-  router.delete("/devices/:deviceId", async (request, response, next) => {
-    try {
-      if (request.user!.role === "service") {
-        response.status(403).json({
-          error: "Forbidden",
-          code: "FORBIDDEN",
-          message: "Device registry requires a user JWT.",
-        });
-        return;
-      }
-      const userId = request.user!.userId;
-      const { deviceId } = request.params;
-      await service.unregisterDevice(userId, deviceId);
-      response.status(200).json({ status: "unregistered" });
-    } catch (error) {
-      next(error);
-    }
-  });
 
-  /**
-   * @openapi
-   * /test-nudge:
-   *   post:
-   *     summary: Send test nudge
-   *     description: Triggers a test push notification to the user's devices.
-   *     responses:
-   *       200:
-   *         description: Nudge sent
-   */
-  router.post("/nudge", async (request, response, next) => {
-    try {
-      if (request.user!.role === "service") {
-        response.status(403).json({
-          error: "Forbidden",
-          code: "FORBIDDEN",
-          message: "Nudge requires a user JWT.",
-        });
-        return;
-      }
-      const { title, body } = z.object({
-        title: z.string().min(1),
-        body: z.string().min(1)
-      }).parse(request.body);
-
-      const userId = request.user!.userId;
-      await service.sendNudge(userId, title, body);
-      response.status(200).json({ status: "nudge_sent" });
-    } catch (error) {
-      next(error);
-    }
-  });
 
   return router;
 }

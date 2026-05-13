@@ -9,9 +9,11 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.time.LocalDate
+import android.util.Log
+
 
 class ApiClient(
-    private val baseUrl: String = "http://10.0.2.2:4000/v1",
+    private val baseUrl: String = "http://localhost:4000/v1",
     private val apiKey: String = "hackathon_demo_key_2026"
 ) {
     fun saveCommitment(commitment: Commitment) {
@@ -153,7 +155,7 @@ class ApiClient(
 
         executeWithRetry {
             postJson(
-                path = "/devices",
+                path = "/notifications/token",
                 payload = payload,
                 overrideBaseUrl = baseUrl,
                 bearerToken = jwtToken
@@ -168,7 +170,7 @@ class ApiClient(
         }
         executeWithRetry {
             postJson(
-                path = "/analytics/nudge",
+                path = "/notifications/nudge",
                 payload = payload,
                 bearerToken = jwtToken
             )
@@ -195,13 +197,16 @@ class ApiClient(
             put("otp", otp)
         }
         return try {
-            postJson(
+            val response = postJson(
                 path = "/auth/otp/verify",
                 payload = payload,
                 bearerToken = jwtToken
             )
-            true
+            val json = JSONObject(response)
+            // Check for common success fields in our backend response
+            json.optBoolean("success", false) || json.optBoolean("valid", false)
         } catch (e: Exception) {
+            Log.e("ApiClient", "OTP verification error", e)
             false
         }
     }
@@ -211,13 +216,27 @@ class ApiClient(
         payload: JSONObject,
         overrideBaseUrl: String? = null,
         bearerToken: String? = null
-    ) {
+    ): String {
         val connection = open(path, overrideBaseUrl, bearerToken)
         connection.requestMethod = "POST"
         connection.doOutput = true
         connection.setRequestProperty("Content-Type", "application/json")
         OutputStreamWriter(connection.outputStream).use { it.write(payload.toString()) }
-        readOrThrow(connection)
+        return readOrThrow(connection)
+    }
+
+    fun saveUserSettings(userId: String, settings: Map<String, Any?>, jwtToken: String? = null) {
+        val payload = JSONObject()
+        settings.forEach { (key, value) ->
+            if (value != null) payload.put(key, value)
+        }
+        executeWithRetry {
+            postJson(
+                path = "/users/${url(userId)}/settings",
+                payload = payload,
+                bearerToken = jwtToken
+            )
+        }
     }
 
     private fun getJson(path: String): JSONObject {

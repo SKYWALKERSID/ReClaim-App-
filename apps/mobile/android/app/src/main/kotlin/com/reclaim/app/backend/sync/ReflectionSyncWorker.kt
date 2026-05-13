@@ -52,7 +52,7 @@ class ReflectionSyncWorker(context: Context, params: WorkerParameters) : Corouti
     }
 
     private fun uploadBatch(userId: String, jwt: String, payload: JSONObject): Boolean {
-        val url = URL("http://10.0.2.2:4000/v1/analytics/reflection/sync")
+        val url = URL("http://localhost:4000/v1/analytics/reflection/sync")
         val conn = url.openConnection() as HttpURLConnection
         conn.requestMethod = "POST"
         conn.setRequestProperty("Content-Type", "application/json")

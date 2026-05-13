@@ -37,6 +37,21 @@ if ($null -eq $devices) {
 }
 
 # 3. Run Flutter App
+Write-Host "  Setting up port forwarding (adb reverse)..." -ForegroundColor Gray
+$adbCmd = "adb"
+if (!(Get-Command adb -ErrorAction SilentlyContinue)) {
+    $possibleAdb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+    if (Test-Path $possibleAdb) {
+        $adbCmd = $possibleAdb
+    }
+}
+
+try {
+    & $adbCmd reverse tcp:4000 tcp:4000
+} catch {
+    Write-Host "  [WARN] Could not run adb reverse. Please ensure Android SDK Platform-Tools are installed." -ForegroundColor Yellow
+}
+
 Write-Host "  Launching Flutter App..." -ForegroundColor Green
 Set-Location "apps/mobile"
 flutter run

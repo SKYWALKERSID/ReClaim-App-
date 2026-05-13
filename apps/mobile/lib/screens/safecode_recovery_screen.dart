@@ -43,11 +43,9 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
       final success = await _auth.sendRecoveryOTP(email);
       if (success) {
         setState(() => _step = 1);
-      } else {
-        throw "Failed to send OTP. Please try again.";
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = e.toString().replaceAll("Exception: ", ""));
     } finally {
       setState(() => _isLoading = false);
     }

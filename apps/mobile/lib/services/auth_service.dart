@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'api_service.dart';
 
 class AuthService extends ChangeNotifier {
@@ -189,9 +190,13 @@ class AuthService extends ChangeNotifier {
     try {
       await _api.dio.post('/auth/otp/send', data: {'email': email});
       return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data['error'] ?? e.message;
+      debugPrint('Failed to send OTP: $msg');
+      throw msg ?? "Failed to send OTP. Please try again.";
     } catch (e) {
       debugPrint('Failed to send OTP: ${e.toString()}');
-      return false;
+      throw "An unexpected error occurred.";
     }
   }
 

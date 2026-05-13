@@ -346,8 +346,8 @@ class BottomNavState extends State<BottomNav> {
 
 
     final screens = [
-      const DashboardScreen(),
       const InsightsScreen(),
+      const DashboardScreen(),
       const BrainMirrorDashboard(),
       AppSelectionScreen(),
       const ProfileScreen(),
@@ -355,26 +355,9 @@ class BottomNavState extends State<BottomNav> {
 
     return Scaffold(
       extendBody: true,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.0, 0.04),
-                end: Offset.zero,
-              ).animate(animation),
-              child: child,
-            ),
-          );
-        },
-        child: KeyedSubtree(
-          key: ValueKey<int>(index),
-          child: screens[index],
-        ),
+      body: IndexedStack(
+        index: index,
+        children: screens,
       ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
@@ -398,7 +381,7 @@ class BottomNavState extends State<BottomNav> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _navItem(0, Icons.home_outlined, Icons.home_rounded, "Home"),
-                _navItem(1, Icons.bar_chart_outlined, Icons.bar_chart_rounded, "Insights"),
+                _navItem(1, Icons.center_focus_strong_outlined, Icons.center_focus_strong_rounded, "Focus"),
                 _buildCenterBrainTab(),
                 _navItem(3, Icons.shield_outlined, Icons.shield_rounded, "Block"),
                 _navItem(4, Icons.person_outline_rounded, Icons.person_rounded, "Me"),

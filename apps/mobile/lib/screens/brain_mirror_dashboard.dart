@@ -70,7 +70,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
     try {
       // Fetch all data in parallel with a generous timeout.
       // Each result is individually guarded so one failure won't kill the page.
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         _backend.getReflectionHistory().catchError((_) => <Map<String, dynamic>>[]),
         _backend.getFrictionInterventions().catchError((_) => <Map<String, dynamic>>[]),
         _backend.getIntentHistory().catchError((_) => <Map<String, dynamic>>[]),
@@ -294,7 +294,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Lifetime Drift", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                const Text("Total Slips", style: TextStyle(color: Colors.white38, fontSize: 12)),
                 Text("$_lifetimeDriftCount", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
@@ -410,7 +410,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       child: Column(
         children: [
           const Text(
-            "Current Cognitive Drift",
+            "Current Focus Slip",
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 8),
@@ -422,7 +422,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildPulseStat(Icons.unfold_more_rounded, "${(feedSecs / 60).toStringAsFixed(1)}m", "Passive"),
+              _buildPulseStat(Icons.unfold_more_rounded, "${_behavioralMetrics['scroll_count'] ?? 0}", "Scrolls"),
               _buildPulseStat(Icons.bolt_rounded, "$failedExits", "Impulses"),
               _buildPulseStat(Icons.replay_rounded, "$reopens", "Re-entry"),
             ],
@@ -497,7 +497,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       return Container(
         height: 200,
         alignment: Alignment.center,
-        child: const Text("No behavioral data recorded yet.", style: TextStyle(color: Colors.white24)),
+        child: const Text("No habit data recorded yet.", style: TextStyle(color: Colors.white24)),
       );
     }
 
@@ -571,9 +571,9 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
   String _getLogTitle(String type, Map<String, dynamic> log) {
     switch (type) {
       case 'reflection': return "Self Reflection";
-      case 'intervention': return "Smart Friction";
+      case 'intervention': return "Focus Guard";
       case 'intent': return "Intent Declared";
-      case 'drift': return "Fragmentation Log";
+      case 'drift': return "App Switching Log";
       case 'focus': return "Focus Session";
       default: return "Activity";
     }
@@ -582,11 +582,17 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
   String _getLogContent(String type, Map<String, dynamic> log) {
     switch (type) {
       case 'reflection': return "Prompt: ${log['promptType']}\nResponse: ${log['response']}";
-      case 'intervention': return "Applied ${log['frictionType']} on ${log['packageName']?.split('.').last ?? "App"}";
+      case 'intervention': 
+        final type = log['frictionType']?.toString() ?? "";
+        final humanType = type == 'HARD_BLOCK' ? 'Full Lock' : 
+                          type == 'SOFT_DELAY' ? 'Short Wait' : 
+                          type == 'HOLD_TO_OPEN' ? 'Long Press' : 
+                          type == 'EXIT_REFLECTION' ? 'Quick Check' : type;
+        return "Applied $humanType on ${log['packageName']?.split('.').last ?? "App"}";
       case 'intent': return "App: ${log['packageName']?.split('.').last ?? "App"}\nChoice: ${log['intentChoice']}";
       case 'drift': return "App: ${log['appPackage']?.split('.').last ?? "App"}\nIndex: ${log['fragmentationIndex']} | Re-opens: ${log['reopenCount']}";
       case 'focus': return "Category: ${log['category']}\nDuration: ${(log['durationSeconds'] as int) ~/ 60} minutes";
-      default: return "Behavioral event logged.";
+      default: return "Activity logged.";
     }
   }
 
@@ -599,7 +605,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
       child: Text(
-        "Drift Score: ${(s * 100).toInt()}%",
+        "Focus Slip: ${s.toInt()}%",
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );

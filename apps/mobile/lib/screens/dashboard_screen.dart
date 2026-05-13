@@ -32,7 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   Timer? _countdownTimer;
   late AnimationController _backgroundPulseController;
   int _selectedDuration = 25; // Default focus duration
-  Map<String, dynamic> _permissionStatus = {};
+  Map<String, dynamic>? _permissionStatus;
+  bool _hasConfiguredApps = true; // Default to true to avoid flicker
   bool _isLoadingData = true;
   bool _isRefreshing = false;
   List<Map<String, dynamic>> _topApps = [];
@@ -113,6 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       final profile = await _backendService.getUserProfile();
       final usage = await _backendService.fetchAppUsage();
       final permissions = await _backendService.getPermissionStatus();
+      final selections = await _backendService.getAppSelections();
       
       if (mounted) {
         setState(() {
@@ -121,6 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           _activeCravingWindow = craving;
           _userProfile = profile;
           _permissionStatus = permissions;
+          _hasConfiguredApps = (selections['blacklist'] as List? ?? []).isNotEmpty;
           _secondsRemaining = stats['remaining_focus_seconds'] as int? ?? 0;
           isFocusModeOn = _secondsRemaining > 0;
           _topApps = List<Map<String, dynamic>>.from((usage['apps'] as List? ?? []).take(3));
@@ -316,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 const SizedBox(height: 12),
                 _buildHeader(),
                 const SizedBox(height: 24),
-                if (_topApps.isEmpty && !_isLoadingData) ...[
+                if (!_hasConfiguredApps && !_isLoadingData) ...[
                   _buildOnboardingCard(),
                   const SizedBox(height: 24),
                 ],
@@ -408,7 +411,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         AnimatedBuilder(
           animation: _backgroundPulseController,
           builder: (context, child) {
@@ -425,7 +428,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 children: [
                   const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
                   TextSpan(
-                    text: "intentional,", 
+                    text: "focused,", 
                     style: TextStyle(
                       color: const Color(0xFFD946EF),
                       shadows: [
@@ -440,9 +443,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       ],
                     ),
                   ),
-                  const TextSpan(text: "\nnot ", style: TextStyle(color: Colors.white)),
+                  const TextSpan(text: "\nachieve ", style: TextStyle(color: Colors.white)),
                   TextSpan(
-                    text: "distracted.", 
+                    text: "the goals.", 
                     style: TextStyle(
                       color: const Color(0xFF60A5FA),
                       shadows: [
@@ -498,7 +501,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 ),
                 SizedBox(height: 4),
                 Text(
-                  "Typically a drift-heavy time. Use intentionality.",
+                  "Usually a distracting time. Stay focused.",
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.white70,
@@ -517,7 +520,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     final screenTimeSec = _stats?['total_usage_seconds'] as int? ?? 0;
     final distractionScore = (_stats?['distraction_score'] as num?)?.toDouble() ?? 0.0;
     final changeVsYesterday = _stats?['percentage_change_vs_yesterday'] as int? ?? 0;
-    final focusTimeSec = _stats?['focus_time_seconds'] as int? ?? 0;
+    int focusTimeSec = _stats?['focus_time_seconds'] as int? ?? 0;
+    if (isFocusModeOn) {
+      // Add live session progress
+      focusTimeSec += (_selectedDuration * 60) - _secondsRemaining;
+    }
     
     return Column(
       children: [
@@ -540,7 +547,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 child: _StatsCard(
                   label: "DRIFT SCORE",
                   value: "",
-                  trend: (_driftStats?['drift_score'] as num? ?? 0) < 50 ? "Stable" : "High Drift",
+                  trend: (_driftStats?['drift_score'] as num? ?? 0) < 50 ? "Stable" : "High Slip",
                   isTrendPositive: (_driftStats?['drift_score'] as num? ?? 0) < 50,
                   icon: Icons.psychology_outlined,
                   onTap: _navigateToBrainMirror,
@@ -561,10 +568,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             children: [
               Expanded(
                 child: _StatsCard(
-                  label: "DISTRACTION",
-                  value: distractionScore.toStringAsFixed(1),
-                  trend: distractionScore < 30 ? "Healthy" : (distractionScore < 60 ? "Moderate" : "Critical"),
-                  isTrendPositive: distractionScore < 50,
+                  label: "FOCUS SCORE",
+                  value: (100 - distractionScore).toStringAsFixed(1),
+                  trend: (100 - distractionScore) > 70 ? "Strong" : ((100 - distractionScore) > 40 ? "Moderate" : "Low"),
+                  isTrendPositive: (100 - distractionScore) > 50,
                   icon: Icons.psychology_outlined,
                 ),
               ),
@@ -772,7 +779,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    "Deep behavioral intelligence & drift patterns.",
+                    "See how you spend your time and stay on track.",
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.white60,
@@ -881,10 +888,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   bool get _hasRequiredPermissions {
-    if (_permissionStatus.isEmpty) return true; // Avoid showing before data loads
-    return (_permissionStatus['usage_access'] as bool? ?? false) &&
-           (_permissionStatus['accessibility_access'] as bool? ?? false) &&
-           (_permissionStatus['overlay_access'] as bool? ?? false);
+    if (_permissionStatus == null || _permissionStatus!.isEmpty) return true; // Avoid showing before data loads
+    return (_permissionStatus!['usage_access'] as bool? ?? false) &&
+           (_permissionStatus!['accessibility_access'] as bool? ?? false) &&
+           (_permissionStatus!['overlay_access'] as bool? ?? false);
   }
 
   Widget _buildPermissionWarning() {

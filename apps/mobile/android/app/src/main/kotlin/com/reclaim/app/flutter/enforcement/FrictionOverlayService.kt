@@ -222,5 +222,9 @@ class FrictionOverlayService : Service() {
             }
             context.startService(intent)
         }
+
+        fun stop(context: Context) {
+            context.stopService(Intent(context, FrictionOverlayService::class.java))
+        }
     }
 }

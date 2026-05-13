@@ -41,6 +41,8 @@ object EnforcementManager {
     private var overrideUsage = OverrideUsage("", 0)
     @Volatile var isBypassedForToday: Boolean = false
         private set
+    @Volatile var bypassExpiryTime: Long = 0L
+        private set
     private var launcherPackage: String? = null
     private var lastForegroundPackage: String? = null
     private val systemPackages = mutableSetOf<String>()
@@ -56,6 +58,7 @@ object EnforcementManager {
 
     private var cachedUsageMinutes: Int = 0
     private var lastUsageQueryTime = 0L
+    private val safeCodeAttempts = java.util.concurrent.atomic.AtomicInteger(0)
 
     // -------------------------------------------------------------------------
 
@@ -81,6 +84,10 @@ object EnforcementManager {
                 isLocked = recoveredState.isLocked
                 isFocusModeActive = recoveredState.isFocusActive
                 remainingOverrides = recoveredState.remainingOverrides
+                
+                val (bypassed, expiry) = FocusPolicyStore.loadBypassState(appCtx)
+                isBypassedForToday = bypassed
+                bypassExpiryTime = expiry
                 
                 policy = FocusPolicyStore.loadPolicy(appCtx)
                 temporaryUnlockMap.clear()
@@ -171,8 +178,16 @@ object EnforcementManager {
         if (!initialized.get()) return BlockDecision(false, "Initializing...")
         val pkg = packageName.lowercase()
         
+        Log.d(TAG, "Evaluating block decision for: $pkg")
+        
         // 0. HARD BYPASS: Never block internal tools or user's explicit whitelist
-        if (isInternalPackage(pkg) || isWhitelisted(pkg)) {
+        if (isInternalPackage(pkg)) {
+            Log.d(TAG, "Decision: ALLOW (Internal app: $pkg)")
+            return BlockDecision(false, "Internal or Whitelisted")
+        }
+        
+        if (isWhitelisted(pkg)) {
+            Log.d(TAG, "Decision: ALLOW (Whitelisted app: $pkg)")
             return BlockDecision(false, "Internal or Whitelisted")
         }
 
@@ -222,7 +237,17 @@ object EnforcementManager {
         }
 
         // 6. AD-HOC BYPASSES
-        if (isBypassedForToday) return BlockDecision(false, "Bypassed via SafeCode")
+        if (isBypassedForToday) {
+            if (System.currentTimeMillis() < bypassExpiryTime) {
+                return BlockDecision(false, "Bypassed via SafeCode")
+            } else {
+                synchronized(monitor) {
+                    isBypassedForToday = false
+                    bypassExpiryTime = 0
+                    appContext?.let { FocusPolicyStore.saveBypassState(it, false, 0) }
+                }
+            }
+        }
         if (pkg == launcherPackage) return BlockDecision(false, "Launcher allowed")
         if (isTemporarilyUnlocked(pkg)) return BlockDecision(false, "Temporarily unlocked")
 
@@ -231,13 +256,38 @@ object EnforcementManager {
 
     fun verifySafeCode(input: String): Boolean {
         synchronized(monitor) {
-            val code = policy.safeCode ?: return false
-            if (input == code) {
+            val code = policy.safeCode 
+            
+            // SECURITY: If no safe code is set, or it's empty/invalid, do NOT allow bypass
+            if (code == null || code.isBlank() || code == "null") {
+                Log.e(TAG, "Attempted to verify SafeCode but none is validly set in policy.")
+                return false
+            }
+
+            if (safeCodeAttempts.get() >= 3) {
+                Log.w(TAG, "SafeCode verification blocked: Too many failed attempts (${safeCodeAttempts.get()})")
+                return false
+            }
+
+            val cleanedInput = input.trim()
+            if (cleanedInput == code.trim()) {
+                Log.i(TAG, "SafeCode verified successfully. Disabling enforcement for today.")
+                safeCodeAttempts.set(0)
                 disableEnforcementForToday()
                 return true
+            } else {
+                val attempts = safeCodeAttempts.incrementAndGet()
+                Log.w(TAG, "SafeCode verification failed. Attempt $attempts / 3")
+                return false
             }
-            return false
         }
+    }
+
+    fun getSafeCodeAttempts(): Int = safeCodeAttempts.get()
+
+    fun resetSafeCodeAttempts() {
+        Log.i(TAG, "Resetting SafeCode attempts counter.")
+        safeCodeAttempts.set(0)
     }
 
     fun requestUninstallOTP(context: Context, callback: (Boolean) -> Unit) {
@@ -259,14 +309,13 @@ object EnforcementManager {
     fun verifyUninstallOTP(context: Context, otp: String, callback: (Boolean) -> Unit) {
         val userId = FocusPolicyStore.getAuthUserId(context) ?: return callback(false)
         val jwt = FocusPolicyStore.getAuthJwt(context)
-
+        
         scope.launch(Dispatchers.IO) {
             try {
                 val apiClient = com.reclaim.app.data.ApiClient()
                 val success = apiClient.verifyOTP(userId, otp, jwt)
-                if (success) {
-                    disableEnforcementForToday()
-                }
+                // DECOUPLED: We no longer automatically disable enforcement here.
+                // The UI (BlockingOverlayService) will decide if this was for a reset or an override.
                 withContext(Dispatchers.Main) { callback(success) }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to verify OTP", e)
@@ -280,7 +329,11 @@ object EnforcementManager {
             isBypassedForToday = true
             isLocked = false
             isFocusModeActive = false
-            android.util.Log.i("EnforcementManager", "Enforcement disabled for today via SafeCode")
+            bypassExpiryTime = System.currentTimeMillis() + (12 * 60 * 60 * 1000L)
+            appContext?.let { 
+                FocusPolicyStore.saveBypassState(it, true, bypassExpiryTime)
+            }
+            android.util.Log.i("EnforcementManager", "Enforcement disabled for 12 hours via SafeCode")
         }
     }
 
@@ -401,12 +454,25 @@ object EnforcementManager {
                 ))
                 Log.i("EnforcementManager", "Enforcement state transition: locked=$isLocked, focus=$isFocusModeActive")
                 
-                // Fail-safe: If the current foreground app is internal, ensure overlay is HIDDEN
+                // Re-evaluate current foreground app immediately on state transition
                 lastForegroundPackage?.let { pkg ->
-                    if (isInternalPackage(pkg)) {
-                        Log.d("EnforcementManager", "Current app $pkg is internal. Dismissing any residual overlays.")
+                    if (isInternalPackage(pkg) || isWhitelisted(pkg)) {
+                        Log.d("EnforcementManager", "Current app $pkg is internal or whitelisted. Ensuring overlay is HIDDEN.")
                         BlockingOverlayService.hide(context)
+                    } else {
+                        val decision = blockDecision(pkg)
+                        if (decision.shouldBlock) {
+                            Log.d("EnforcementManager", "State changed and $pkg should be blocked. Showing overlay.")
+                            BlockingOverlayService.show(context, pkg, decision.reason, decision.mode)
+                        } else {
+                            BlockingOverlayService.hide(context)
+                        }
                     }
+                }
+                
+                // Force Accessibility Service to re-evaluate the real current window
+                mainHandler.post {
+                    AppAccessibilityService.getInstance()?.recheckCurrentApp()
                 }
                 
                 scheduleNextRefresh(context, allowAlarm)
@@ -691,10 +757,39 @@ object EnforcementManager {
         ) return true
         
         // 3. Input Methods (Keyboards)
-        if (pkg.contains("inputmethod") || pkg.contains("keyboard")) return true
+        if (pkg.contains("inputmethod") || 
+            pkg.contains("keyboard") || 
+            pkg.contains("honeyboard") || 
+            pkg.contains("swiftkey") ||
+            pkg.contains("latin") ||
+            pkg.contains("gboard")
+        ) return true
         
-        // 4. Launcher check
-        return isLauncherPackage(pkg)
+        // 4. System Junk / Non-Apps
+        val systemJunk = listOf(
+            "com.android.stk",
+            "com.android.providers",
+            "com.sec.android.app.samsungapps",
+            "com.android.certinstaller",
+            "com.samsung.android.incallui",
+            "com.samsung.android.messaging",
+            "com.android.server.telecom",
+            "com.sec.android.app.desktoplauncher",
+            "com.sec.android.app.launcher",
+            "com.samsung.android.app.launcher"
+        )
+        if (systemJunk.any { pkg == it || pkg.startsWith(it + ".") }) return true
+
+        // 5. System Packages (Auto-detected)
+        if (systemPackages.contains(pkg)) {
+            Log.v(TAG, "Package $pkg is in system auto-whitelist")
+            return true
+        }
+
+        // 6. Launcher check
+        val isLauncher = isLauncherPackage(pkg)
+        if (isLauncher) Log.v(TAG, "Package $pkg identified as launcher")
+        return isLauncher
     }
 
     fun isLauncherPackage(packageName: String): Boolean {
@@ -706,15 +801,25 @@ object EnforcementManager {
             "com.google.android.apps.nexuslauncher",
             "com.android.launcher3",
             "com.sec.android.app.launcher",
+            "com.samsung.android.app.launcher",
+            "com.sec.android.launcher",
             "com.huawei.android.launcher",
             "com.miui.home",
             "com.oppo.launcher",
             "com.vivo.launcher",
             "com.android.launcher",
-            "com.android.home"
+            "com.android.home",
+            "com.google.android.apps.trebuchet",
+            "com.teslacoilsw.launcher",
+            "com.niagara.launcher",
+            "com.smartlauncher.set.v2",
+            "com.microsoft.launcher"
         )
         if (pkg in commonLaunchers) return true
-        if (pkg.contains("launcher") && !pkg.contains("reclaim")) return true
+        
+        // Samsung One UI Home specific check and broader heuristic
+        if (pkg.contains("oneui") && pkg.contains("home")) return true
+        if (pkg.contains("launcher") && !pkg.contains("reclaim") && !pkg.contains("game")) return true
         
         return false
     }
@@ -771,7 +876,19 @@ object EnforcementManager {
                 "com.android.deskclock",
                 "com.google.android.deskclock"
             ),
-            blacklistPackages = emptySet(),
+            blacklistPackages = setOf(
+                "com.google.android.youtube",
+                "com.instagram.android",
+                "com.facebook.katana",
+                "com.facebook.orca",
+                "com.zhiliaoapp.musically", // TikTok
+                "com.twitter.android",
+                "com.snapchat.android",
+                "com.reddit.frontpage",
+                "com.netflix.mediaclient",
+                "com.disney.disneyplus",
+                "com.amazon.avod.thirdpartyclient" // Prime Video
+            ),
             focusWindows = emptyList(),
             maxOverridesPerDay = 5,
             policyStatus = "normal",
@@ -790,20 +907,33 @@ object EnforcementManager {
                 pm.getInstalledPackages(0)
             }
             
+            val startTime = System.currentTimeMillis()
+            Log.d(TAG, "Starting system package detection...")
+            
             synchronized(monitor) {
                 systemPackages.clear()
                 for (pkg in packages) {
-                    val appInfo = pkg.applicationInfo
-                    if (appInfo != null) {
-                        val isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
-                                       (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                        if (isSystem) {
-                            systemPackages.add(pkg.packageName.lowercase())
+                    val appInfo = pkg.applicationInfo ?: continue
+                    val isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                                   (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                    
+                    if (isSystem) {
+                        // Avoid expensive binder call if we already know it's a critical component
+                        val p = pkg.packageName.lowercase()
+                        if (p == "android" || p.contains("systemui")) {
+                            systemPackages.add(p)
+                            continue
+                        }
+
+                        // Only auto-whitelist if it's a deep system component without a launcher icon
+                        if (pm.getLaunchIntentForPackage(pkg.packageName) == null) {
+                            systemPackages.add(p)
                         }
                     }
                 }
-                Log.d(TAG, "Detected ${systemPackages.size} system packages for auto-whitelist.")
             }
+            val duration = System.currentTimeMillis() - startTime
+            Log.d(TAG, "System package detection finished in ${duration}ms. Found ${systemPackages.size} packages.")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to detect system packages", e)
         }

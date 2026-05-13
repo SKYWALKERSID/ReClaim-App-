@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:ui';
+import 'dart:math' as math;
 import '../constants/colors.dart';
 import '../services/backend_service.dart';
+import 'bottom_nav.dart';
 import '../widgets/usage_calendar.dart';
 import '../services/goal_recommendation_service.dart';
 import 'brain_mirror_dashboard.dart';
@@ -14,7 +17,7 @@ class InsightsScreen extends StatefulWidget {
   State<InsightsScreen> createState() => _InsightsScreenState();
 }
 
-class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObserver {
+class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObserver, TickerProviderStateMixin {
   final BackendService _backend = BackendService();
   final GoalRecommendationService _recommendationsService = GoalRecommendationService();
   String _activeTab = "Day";
@@ -22,11 +25,13 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   Map<String, dynamic>? _insightsData;
   Map<String, dynamic> _stats = {};
   Map<String, dynamic>? _driftStats;
+  Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
   bool _isRefreshing = false;
   bool _isScreenTimeExpanded = false;
   List<String> _recommendations = [];
   Timer? _refreshTimer;
+  late AnimationController _backgroundPulseController;
   List<int> _distractionTrend = List.filled(24, 0);
   final Map<String, ImageProvider> _iconCache = {};
 
@@ -38,6 +43,10 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted) _loadData(isSilent: true);
     });
+    _backgroundPulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
   }
 
   @override
@@ -51,6 +60,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
+    _backgroundPulseController.dispose();
     super.dispose();
   }
 
@@ -85,6 +95,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
         _backend.fetchDashboardStats(),
         _backend.fetchBehavioralMetrics(),
         _recommendationsService.getPersonalizedRecommendations(),
+        _backend.getUserProfile(),
         _backend.invokeMethod('getHourlyDistractionTrend'),
       ]).timeout(const Duration(seconds: 30));
 
@@ -92,7 +103,8 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       final stats = results[1] as Map<String, dynamic>;
       final behavioral = results[2] as Map<String, dynamic>;
       final recs = results[3] as List<String>;
-      final distractionTrend = results[4] as List?;
+      final profile = results[4] as Map<String, dynamic>;
+      final distractionTrend = results[5] as List?;
 
       // Prefetch icons in parallel - don't block UI
       if (insights['top_apps'] != null) {
@@ -116,6 +128,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           _stats = stats;
           _driftStats = behavioral;
           _recommendations = recs;
+          _userProfile = profile;
           _distractionTrend = distractionTrend?.cast<int>() ?? List.filled(24, 0);
           _isLoading = false;
         });
@@ -145,11 +158,18 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     setState(() => _isLoading = true);
     try {
       _iconCache.clear();
-      await _backend.invokeMethod('syncAllData'); 
       await _loadData(isSilent: false);
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _navigateToProfile() {
+    BottomNavState.of(context)?.switchToTab(4);
+  }
+
+  void _navigateToBlockApps() {
+    BottomNavState.of(context)?.switchToTab(3);
   }
 
   String _formatUsage(int seconds) {
@@ -403,67 +423,21 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.insights_rounded,
-                                color: AppColors.primary,
-                                size: 28,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                "Insights", 
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontSize: 32, 
-                                  fontWeight: FontWeight.w700, 
-                                  color: Colors.white,
-                                  letterSpacing: -0.5,
-                                )
-                              ),
-                            ],
-                          ),
-                          const Text(
-                            "Your cognitive performance",
-                            style: TextStyle(color: Colors.white38, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          _buildHeaderIcon(
-                            icon: Icons.refresh_rounded,
-                            onTap: _hardRefresh,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildHeaderIcon(
-                            icon: Icons.calendar_today_outlined,
-                            onTap: _showCalendar,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                      _buildTabSelector(),
+                children: [
+                  _buildMainHeader(),
+                  const SizedBox(height: 24),
+                  _buildTabSelector(),
                       const SizedBox(height: 24),
                       _buildCategoryFilter(),
                       const SizedBox(height: 32),
                       _buildExpandableScreenTimeCard(),
                       const SizedBox(height: 32),
                       _buildInsightsCard(
-                        title: "Distraction Score",
-                        value: (_stats['distraction_score'] as num? ?? 0.0).toInt().toString(),
+                        title: "Focus Score",
+                        value: (100 - (_stats['distraction_score'] as num? ?? 0.0)).toInt().toString(),
                         subValue: "/100",
-                        trend: (_stats['distraction_score'] as num? ?? 0.0) < 40 ? "Healthy State" : "High Drift",
-                        isPositiveTrend: (_stats['distraction_score'] as num? ?? 0.0) < 50,
+                        trend: (100 - (_stats['distraction_score'] as num? ?? 0.0)) > 60 ? "Strong Focus" : "High Slip",
+                        isPositiveTrend: (100 - (_stats['distraction_score'] as num? ?? 0.0)) >= 50,
                         periodLabel: _activeTab,
                         dataPoints: _distractionTrend, 
                       ),
@@ -739,7 +713,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Behavioral Health", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text("Daily Habits", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         IntrinsicHeight(
           child: Row(
@@ -748,8 +722,8 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               Expanded(
                 child: _buildHealthTile(
                   title: "Doom-Scroll Meter",
-                  value: "${(feedSecs / 60).toStringAsFixed(1)}m",
-                  description: "Passive feed exposure",
+                  value: "${_driftStats?['scroll_count'] ?? 0}",
+                  description: "Total scrolls detected",
                   icon: Icons.unfold_more_double,
                   color: Colors.orangeAccent,
                   useSpacer: true,
@@ -823,6 +797,108 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           if (useSpacer) const Spacer(),
         ],
       ),
+    );
+  }
+
+  Widget _buildMainHeader() {
+    final rawName = (_userProfile?['name'] ?? '').toString().trim();
+    final userName = rawName.isEmpty ? 'there' : rawName;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Hi, $userName",
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white.withOpacity(0.5),
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                _buildHeaderIcon(
+                  icon: Icons.refresh_rounded,
+                  onTap: _hardRefresh,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  icon: Icons.calendar_today_outlined,
+                  onTap: _showCalendar,
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        AnimatedBuilder(
+          animation: _backgroundPulseController,
+          builder: (context, child) {
+            final double glowIntensity = 6.0 + (math.sin(_backgroundPulseController.value * 2 * math.pi) + 1.0) * 6.0;
+            return RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.0,
+                  height: 1.1,
+                  fontFamily: 'Inter',
+                ),
+                children: [
+                  const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
+                  TextSpan(
+                    text: "on track,", 
+                    style: TextStyle(
+                      color: const Color(0xFFD946EF),
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFFD946EF).withOpacity(0.6),
+                          blurRadius: glowIntensity,
+                        ),
+                        Shadow(
+                          color: const Color(0xFFD946EF).withOpacity(0.3),
+                          blurRadius: glowIntensity * 1.5,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const TextSpan(text: "\navoid ", style: TextStyle(color: Colors.white)),
+                  TextSpan(
+                    text: "distractions.", 
+                    style: TextStyle(
+                      color: const Color(0xFF60A5FA),
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF60A5FA).withOpacity(0.6),
+                          blurRadius: glowIntensity,
+                        ),
+                        Shadow(
+                          color: const Color(0xFF60A5FA).withOpacity(0.3),
+                          blurRadius: glowIntensity * 1.5,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -970,3 +1046,30 @@ class _GlowingDataPainter extends CustomPainter {
 
 
 
+class _GlassIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _GlassIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(50),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.glassBase,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.glassBorder),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}

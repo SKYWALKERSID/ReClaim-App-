@@ -38,6 +38,10 @@ class AppAccessibilityService : AccessibilityService() {
     companion object {
         private const val CHANNEL_ID = "reclaim_accessibility_v1"
         private const val NOTIFICATION_ID = 888
+        
+        private var instance: AppAccessibilityService? = null
+        
+        fun getInstance(): AppAccessibilityService? = instance
 
         fun isEnabled(context: Context): Boolean {
             val enabledServices = Settings.Secure.getString(
@@ -60,6 +64,7 @@ class AppAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instance = this
         EnforcementManager.initialize(this)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -86,6 +91,7 @@ class AppAccessibilityService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        instance = null
         serviceScope.cancel()
         try {
             eventReceiver?.let { unregisterReceiver(it) }
@@ -117,9 +123,10 @@ class AppAccessibilityService : AccessibilityService() {
         // 1. Internal/Self-Package Bypass
         if (pkg == this.packageName.lowercase() || EnforcementManager.isInternalPackage(packageName)) {
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                // If it's the ReClaim app itself, always hide the overlay to prevent self-blocking
+                // If it's the ReClaim app itself, always hide all overlays to prevent self-blocking
                 if (pkg == this.packageName.lowercase()) {
                     BlockingOverlayService.hide(this)
+                    FrictionOverlayService.stop(this)
                 } else {
                     // For all other internal packages (Settings, Launcher, etc.), hide immediately
                     BlockingOverlayService.hide(this)
@@ -220,5 +227,16 @@ class AppAccessibilityService : AccessibilityService() {
                 Log.w("AppAccessibility", "Battery optimization is active. Service might be killed.")
             }
         }
+    }
+
+    fun recheckCurrentApp() {
+        val root = rootInActiveWindow ?: return
+        val pkg = root.packageName?.toString() ?: return
+        Log.d("AppAccessibility", "Manual recheck for package: $pkg")
+        
+        // Construct a fake event to reuse the logic
+        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED)
+        event.packageName = pkg
+        onAccessibilityEvent(event)
     }
 }

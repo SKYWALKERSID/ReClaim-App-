@@ -37,20 +37,20 @@ class FeatureShowcaseScreen extends StatelessWidget {
           SliverList(
             delegate: SliverChildListDelegate([
               _buildFeatureCard(
-                title: "Cognitive Drift Engine™",
-                description: "Our core intelligence layer that predicts behavioral drift and intervenes before you fall into a doom-scroll loop.",
+                title: "Focus Slip Engine™",
+                description: "Our core intelligence layer that predicts focus slips and intervenes before you fall into a doom-scroll loop.",
                 icon: Icons.psychology_rounded,
                 color: Colors.cyanAccent,
               ),
               _buildFeatureCard(
                 title: "Brain Mirror™ Dashboard",
-                description: "A real-time window into your cognitive health, showing distraction scores, fragmentation indices, and addiction metrics.",
+                description: "A real-time window into your focus health, showing focus scores, app switching logs, and usage patterns.",
                 icon: Icons.analytics_rounded,
                 color: Colors.purpleAccent,
               ),
               _buildFeatureCard(
-                title: "Smart Friction Layer",
-                description: "Psychological barriers like breathing exercises and intent-writing that break the habit loop during app launches.",
+                title: "Focus Guard",
+                description: "Helpful pauses like breathing exercises and intention-writing that break the habit loop and help you stay on track.",
                 icon: Icons.timer_outlined,
                 color: Colors.orangeAccent,
               ),
@@ -61,7 +61,7 @@ class FeatureShowcaseScreen extends StatelessWidget {
                 color: Colors.redAccent,
               ),
               _buildFeatureCard(
-                title: "Gamified Behavioral Rewards",
+                title: "Gamified Habit Rewards",
                 description: "Earn points, maintain streaks, and unlock unique badges as you reclaim your attention and time.",
                 icon: Icons.emoji_events_rounded,
                 color: Colors.amberAccent,
@@ -95,12 +95,6 @@ class FeatureShowcaseScreen extends StatelessWidget {
                 description: "Requires you to type a clear intention before opening distracting apps, turning impulsive habits into conscious choices.",
                 icon: Icons.edit_note_rounded,
                 color: Colors.lightBlueAccent,
-              ),
-              _buildFeatureCard(
-                title: "Multi-Device Sync",
-                description: "Seamlessly synchronize your cognitive analytics and enforcement policies across all your Android devices.",
-                icon: Icons.sync_rounded,
-                color: Colors.indigoAccent,
               ),
               const SizedBox(height: 100),
             ]),

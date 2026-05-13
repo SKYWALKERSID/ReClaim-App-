@@ -9,7 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'dart:convert';
-import 'devices_screen.dart';
 import 'additional_features_screen.dart';
 import 'safecode_recovery_screen.dart';
 import 'safecode_setup_screen.dart';
@@ -183,8 +182,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildEmergencyUnlockSection(),
                   const SizedBox(height: 20),
                   _buildSafeCodeTile(),
-                  const SizedBox(height: 20),
-                  _buildManageDevicesTile(),
                   const SizedBox(height: 20),
                   _buildAdditionalFeaturesTile(),
                   const SizedBox(height: 20),
@@ -388,53 +385,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildManageDevicesTile() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const DevicesScreen()),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.cyanAccent.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.devices_rounded, color: Colors.cyanAccent, size: 20),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Manage Devices",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
-                  ),
-                  Text(
-                    "Sync focus across all devices",
-                    style: TextStyle(fontSize: 12, color: Colors.white38),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildAdditionalFeaturesTile() {
     return GestureDetector(

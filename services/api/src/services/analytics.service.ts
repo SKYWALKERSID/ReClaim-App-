@@ -41,6 +41,10 @@ export class AnalyticsService {
     await this.repository.registerDevice(userId, deviceId, model, osVersion, fcmToken);
   }
 
+  async sendNudge(userId: string, title: string, body: string): Promise<void> {
+    await this.notificationService.sendToUser(userId, { title, body });
+  }
+
   async getDevices(userId: string): Promise<Awaited<ReturnType<AnalyticsRepository["getDevices"]>>> {
     return this.repository.getDevices(userId);
   }

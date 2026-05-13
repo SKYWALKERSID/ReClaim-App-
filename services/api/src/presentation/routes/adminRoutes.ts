@@ -37,7 +37,6 @@ export function buildAdminRoutes() {
         SELECT
           (SELECT COUNT(*)::int FROM users)          AS total_users,
           (SELECT COUNT(*)::int FROM usage_events)   AS total_events,
-          (SELECT COUNT(*)::int FROM devices)        AS total_devices,
           (SELECT COUNT(*)::int FROM challenges WHERE end_time > NOW()) AS active_challenges
       `);
       const stats = rows[0];
@@ -45,7 +44,6 @@ export function buildAdminRoutes() {
       res.json({
         totalUsers:       stats.total_users,
         totalEvents:      stats.total_events,
-        totalDevices:     stats.total_devices,
         activeChallenges: stats.active_challenges,
         systemStatus:     "healthy",
         lastPurge:        lastPurgeTime ? lastPurgeTime.toISOString() : "Never"
