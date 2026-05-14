@@ -47,17 +47,45 @@ Authentication is strictly managed via asymmetric signatures.
 
 ---
 
+## 🧬 Modularization & Evolution Strategy
+
+ReClaim utilizes a dual-module Android architecture to balance rapid R&D with production stability:
+
+1.  **Core Native R&D (`apps/android-native`)**: 
+    - A standalone Kotlin module used for mastering low-level system hooks (Accessibility, TEE, UsageStats).
+    - Serves as the "Reference Engine" for performance benchmarking without UI overhead.
+2.  **Flutter Production (`apps/mobile`)**: 
+    - Integrates the native engines with a high-fidelity **Presentation Plane**.
+    - Uses the **MethodChannel Bridge** to drive the dynamic "Brain Mirror™" interface.
+
+---
+
+## 📈 Behavioral Mathematics
+
+The system relies on three core algorithms to quantify the user's state:
+
+1.  **Fragmentation Index (FI)**:
+    $$FI = \frac{\sum (Weights_{app} \times Transitions)}{TotalSessionTime}$$
+    *Logic: High FI (>0.5) triggers Hard Friction.*
+2.  **Drift Score (DS)**: 
+    Real-time velocity and interaction depth measurement. 
+    *Logic: DS > 0.7 flags high-risk behavioral decay.*
+3.  **Discipline Quotient (DQ)**: 
+    $$DQ = (DailyPoints + FocusBonus) \times StreakMultiplier - NightPenalties$$
+
+---
+
 ## ⚙️ Tech Stack Summary
 
 | Layer | Technology |
 | --- | --- |
-| **Frontend** | Flutter 3.x, Riverpod, GoRouter |
-| **Native** | Kotlin, Android Accessibility API, TEE |
-| **Backend** | Node.js 20, TypeScript, Express |
+| **Frontend** | Flutter 3.x, Riverpod, MPAndroidChart |
+| **Native** | Kotlin, Room Persistence, Android TEE |
+| **Backend** | Node.js 20, TypeScript, Express, Zod |
 | **Database** | PostgreSQL 14 (Partitioned) |
 | **Auth** | Firebase Auth (Identity) + Custom RS256 JWT (Session) |
-| **DevOps** | GitHub Actions, Docker, Node-Cron |
+| **Security** | AES-256-GCM, FLAG_SECURE, RSA-256 |
 
 ---
-*Document Version: 2.0.0*
-*Last Verified: May 11, 2026*
+*Document Version: 2.1.0*
+*Last Verified: May 14, 2026 (Final Run)*

@@ -2,6 +2,8 @@
 
 ## Root Directory
 - `apps/`: Contains the primary user-facing applications.
+  - `mobile/`: **Production Plane**. Flutter + Kotlin integrated application.
+  - `android-native/`: **R&D Sandbox**. Pure Kotlin native implementation for system-level testing.
 - `services/`: Contains backend logic and API services.
 - `docs/`: Technical documentation and design specifications.
 - `Misc/`: Supplementary assets, scripts, and temporary resources.
@@ -13,12 +15,23 @@
 ## Mobile App (`/apps/mobile`)
 The core Flutter application that handles UI, behavioral tracking, and local-first data management.
 
-- `lib/screens/`: Main UI screens (e.g., Home, Focus, Mindset, Block).
+- `lib/screens/`: Main UI screens (e.g., Dashboard, Trends, Settings).
 - `lib/services/`: Local service layer and API connectors.
-- `lib/widgets/`: Reusable UI components (Glass cards, custom buttons).
+- `lib/widgets/`: Reusable UI components (Glassmorphic cards, custom charts).
 - `lib/models/`: Data structures for focus sessions and habit logs.
-- `android/`: Native Android implementation for enforcement (Blocking, Accessibility).
-  - `.../backend/engine/`: Core logic for **Focus Slip Engine™** and **Focus Guard**.
+- `android/`: Native Android implementation for enforcement.
+  - `.../backend/engine/`: Core logic for **Cognitive Drift Engine™** and **Friction Orchestrator**.
+  - `.../flutter/enforcement/`: Accessibility Service and Overlay management.
+
+---
+
+## Native R&D (`/apps/android-native`)
+A standalone native Kotlin version of ReClaim used for benchmarking system hooks and hardware security.
+
+- `app/src/main/kotlin/com/minimalism/focus/`:
+  - `data/`: UsageReader and Local Analytics storage.
+  - `enforcement/`: FocusAccessibilityService and FocusEnforcer.
+  - `ui/`: Native Dashboard and BlockActivity.
 
 ---
 
@@ -26,9 +39,9 @@ The core Flutter application that handles UI, behavioral tracking, and local-fir
 The Node.js/Express backend that provides global analytics, app categorization, and user synchronization.
 
 - `src/controllers/`: Logic for handling API requests (Metrics, Apps, Profile).
-- `src/models/`: Database schemas and data modeling.
-- `src/presentation/routes/`: API endpoint definitions.
-- `src/presentation/middleware/`: Security and authentication layers (RS256).
+- `src/domain/services/`: Core logic engines (**PatternEngine**, **RewardEngine**).
+- `src/presentation/routes/`: API endpoint definitions (RS256 secured).
+- `src/presentation/middleware/`: Security and validation layers (**Zod**, **Helmet**).
 
 ---
 

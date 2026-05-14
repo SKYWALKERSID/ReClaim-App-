@@ -75,16 +75,27 @@ ReClaim is built on a **Zero Trust** behavioral model:
 
 ## 🚀 Getting Started
 
-### Prerequisites
+### 📦 Prerequisites
 - **Docker & Docker Compose**
 - **Flutter SDK (v3.22+)**
 - **Android Studio** (Device running API 29+)
 
-### Quick Setup
-1. **Infrastructure**: `docker-compose up -d`
-2. **Environment**: Run `./reclaim-setup.ps1` to inject keys and run migrations.
-3. **Backend**: `cd services/api && npm install && npm start`
-4. **Mobile**: `cd apps/mobile && flutter run`
+### 🛠️ Quick Setup
+1.  **Infrastructure**: `docker-compose up -d`
+2.  **Environment**: Run `./reclaim-setup.ps1` to inject keys and run migrations.
+3.  **Backend**: `cd services/api && npm install && npm start`
+4.  **Mobile**: `cd apps/mobile && flutter run`
+
+---
+
+## 📂 Project Structure (For Judges)
+
+| Folder | Mission |
+| :--- | :--- |
+| **`apps/mobile`** | **Production Plane**: Flutter Dashboard + Kotlin Interception Engines. |
+| **`services/api`** | **Intelligence Plane**: Node.js Backend with RS256 Auth & Analytics. |
+| **`docs/`** | **Knowledge Plane**: PRD, TRD, Algorithms, and Security Specs. |
+| **`apps/android-native`** | **R&D Sandbox**: Standalone native core for system-level testing. |
 
 ---
 
@@ -92,4 +103,4 @@ ReClaim is built on a **Zero Trust** behavioral model:
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
-*ReClaim is a research-grade tool for behavioral autonomy. v2.0.0 (May 11, 2026)*
+*ReClaim — Reclaiming the human focus through engineering. v2.1.0 (May 14, 2026)*
