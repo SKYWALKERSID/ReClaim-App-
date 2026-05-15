@@ -164,7 +164,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _GlassIconButton(icon: Icons.arrow_back, onTap: () => Navigator.pop(context)),
-                      const Text("Focus Mode", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text("Focus Mode", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                       _GlassIconButton(icon: Icons.settings_outlined, onTap: () {}),
                     ],
                   ),
@@ -174,7 +174,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                       children: [
                         Text(
                           isFocusModeOn ? "Session Active" : "Ready to focus?",
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                         ),
                         const SizedBox(height: 24),
                         ScaleTransition(
@@ -183,14 +183,14 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                           ),
                           child: Text(
                             _formatTime(_secondsRemaining > 0 ? _secondsRemaining : _durationMinutes * 60),
-                            style: const TextStyle(fontSize: 72, fontWeight: FontWeight.w200, color: Colors.white, letterSpacing: 4),
+                            style: TextStyle(fontSize: 72, fontWeight: FontWeight.w200, color: AppColors.textPrimary, letterSpacing: 4),
                           ),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 64),
-                  const Text("Duration", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                  Text("Duration", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -201,7 +201,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                     )).toList(),
                   ),
                   const SizedBox(height: 32),
-                  const Text("Focus Type", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                  Text("Focus Type", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
                   const SizedBox(height: 16),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -217,12 +217,12 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 40),
-                  const Text("Active Whitelist", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                  Text("Active Whitelist", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
                   const SizedBox(height: 16),
                   SizedBox(
                     height: 60,
                     child: _whitelistApps.isEmpty 
-                      ? const Text("All apps will be restricted.", style: TextStyle(color: Colors.white24, fontSize: 12))
+                      ? Text("All apps will be restricted.", style: TextStyle(color: AppColors.textTertiary, fontSize: 12))
                       : ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: _whitelistApps.length,
@@ -234,16 +234,16 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                                 width: 50,
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: AppColors.glassBase,
+                                  color: AppColors.glassBase(context),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.glassBorder),
+                                  border: Border.all(color: AppColors.glassBorder(context)),
                                 ),
                                 child: app['icon_bytes'] != null 
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(12),
                                       child: Image.memory(Uint8List.fromList(app['icon_bytes'].cast<int>()))
                                     )
-                                  : const Icon(Icons.android, size: 24, color: Colors.white24),
+                                  : Icon(Icons.android, size: 24, color: AppColors.textPrimary.withOpacity(0.26)),
                               ),
                             );
                           },
@@ -275,7 +275,7 @@ class _FocusScreenState extends State<FocusScreen> with SingleTickerProviderStat
                       ),
                       child: Text(
                         isFocusModeOn ? "Stop Focus Session" : "Start Focus Session",
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       ),
                     ),
                   ),
@@ -306,9 +306,9 @@ class _DurationChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.glassBase,
+          color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.glassBase(context),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder),
+          border: Border.all(color: isSelected ? AppColors.primary : AppColors.glassBorder(context)),
         ),
         child: Text(
           label, 
@@ -334,13 +334,13 @@ class _GlassIconButton extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.glassBase,
+            color: AppColors.glassBase(context),
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: AppColors.glassBorder(context)),
           ),
           child: IconButton(
             onPressed: onTap,
-            icon: Icon(icon, color: Colors.white, size: 20),
+            icon: Icon(icon, color: AppColors.textPrimary, size: 20),
           ),
         ),
       ),

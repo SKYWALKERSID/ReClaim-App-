@@ -16,7 +16,7 @@ class FeatureShowcaseScreen extends StatelessWidget {
             pinned: true,
             backgroundColor: AppColors.background,
             flexibleSpace: FlexibleSpaceBar(
-              title: const Text("ReClaim™ Features", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+              title: Text("ReClaim™ Features", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -139,12 +139,12 @@ class FeatureShowcaseScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   description,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.4),
                 ),
               ],
             ),

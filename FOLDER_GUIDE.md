@@ -82,14 +82,16 @@ The Node.js/Express backend that provides global analytics, app categorization, 
 
 ---
 
-##  Documentation (`/docs` & root)
-- `ReClaim_Technical_Book_v2.0.docx`: The authoritative "Technical Bible" for judges and developers.
+## Documentation (`/docs` & root)
 - `CONTRIBUTING.md`: Guidelines for setting up the local dev environment.
 - `FOLDER_GUIDE.md`: This file.
+- `docs/ARCHITECTURE.md`: Deep dive into system design.
+- `docs/API.md`: API reference.
 
 ---
 
 ## Infrastructure & Utilities
-- `.github/workflows/`: CI/CD pipelines for automated testing and deployment.
-- `generate_complete_reference.js`: Script to compile the technical documentation.
-- `sensitive/`: Directory for local environment secrets and keys (never committed).
+- `.github/workflows/`: CI/CD pipelines.
+- `reclaim-setup.ps1`: Automated environment setup.
+- `reclaim-run.ps1`: Launch orchestration script.
+

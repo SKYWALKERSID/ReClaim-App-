@@ -52,4 +52,5 @@ export const env = {
   maxEventsPerBatch: Number(process.env.MAX_EVENTS_PER_BATCH ?? 500),
   corsOrigins: process.env.CORS_ORIGINS ?? "*",
   apiKeys: parsedApiKeys,
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 } as const;

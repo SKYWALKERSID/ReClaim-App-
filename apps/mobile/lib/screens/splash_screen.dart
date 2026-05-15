@@ -209,10 +209,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                         opacity: _textFade,
                         child: Transform.translate(
                           offset: Offset(0, 10 * (1 - _textFade.value)),
-                          child: const Text(
+                          child: Text(
                             'ReClaim',
                             style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 36,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 3.0,
@@ -232,7 +232,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                           child: Text(
                             'Take back your focus.',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
+                              color: AppColors.textTertiary,
                               fontSize: 15,
                               fontWeight: FontWeight.w400,
                               letterSpacing: 1.5,

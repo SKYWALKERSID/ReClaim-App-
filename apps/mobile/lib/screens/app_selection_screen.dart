@@ -120,10 +120,10 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("App Restrictions", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text("App Restrictions", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
       ),
       body: Column(
         children: [
@@ -133,7 +133,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
               : _filteredApps.isEmpty
-                ? const Center(child: Text("No matching apps found.", style: TextStyle(color: Colors.white38)))
+                ? Center(child: Text("No matching apps found.", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))))
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -143,7 +143,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                           padding: EdgeInsets.only(left: 8, bottom: 16, top: 8),
                           child: Text(
                             "Frequently Used",
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
                         ...(() {
@@ -192,11 +192,11 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: TextField(
         onChanged: _onSearchChanged,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: AppColors.textPrimary),
         decoration: InputDecoration(
           hintText: "Search apps...",
-          hintStyle: const TextStyle(color: Colors.white24),
-          prefixIcon: const Icon(Icons.search, color: Colors.white24),
+          hintStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.26)),
+          prefixIcon: Icon(Icons.search, color: AppColors.textPrimary.withOpacity(0.26)),
           filled: true,
           fillColor: AppColors.darkSurface,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -224,7 +224,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       decoration: BoxDecoration(
         color: AppColors.darkSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: Row(
         children: [
@@ -232,7 +232,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.black26,
+              color: AppColors.textPrimary.withOpacity(0.26),
               borderRadius: BorderRadius.circular(10),
             ),
             child: _iconCache.containsKey(pkg)
@@ -249,7 +249,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                         child: Image.memory(snapshot.data!, fit: BoxFit.cover),
                       );
                     }
-                    return const Icon(Icons.android, color: Colors.white24);
+                    return Icon(Icons.android, color: AppColors.textPrimary.withOpacity(0.26));
                   },
                 ),
           ),
@@ -260,7 +260,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
               children: [
                 Text(
                   app['display_name'] ?? "Unknown",
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -281,10 +281,10 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                           children: [
                             Text(
                               app['category']?.toString() ?? "Utility",
-                              style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(width: 4),
-                            const Icon(Icons.edit_outlined, size: 10, color: AppColors.primary),
+                            Icon(Icons.edit_outlined, size: 10, color: AppColors.primary),
                           ],
                         ),
                       ),
@@ -292,7 +292,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
                     const SizedBox(width: 8),
                     Text(
                       "Opened ${app['session_count'] ?? 0}x",
-                      style: const TextStyle(color: Colors.white38, fontSize: 10),
+                      style: TextStyle(color: AppColors.textTertiary, fontSize: 10),
                     ),
                   ],
                 ),
@@ -304,7 +304,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
             button: true,
             child: _ActionButton(
               icon: Icons.check_circle_rounded,
-              color: isWhite ? AppColors.accent : Colors.white10,
+              color: isWhite ? AppColors.accent : AppColors.textPrimary.withOpacity(0.12),
               onTap: () => _toggle(pkg, !isWhite, false, app['display_name']),
             ),
           ),
@@ -314,7 +314,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
             button: true,
             child: _ActionButton(
               icon: Icons.block_rounded,
-              color: isBlack ? AppColors.warning : Colors.white10,
+              color: isBlack ? AppColors.warning : AppColors.textPrimary.withOpacity(0.12),
               onTap: () => _toggle(pkg, false, !isBlack, app['display_name']),
             ),
           ),
@@ -336,19 +336,19 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Categorize $appName", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text("Categorize $appName", style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text("This helps us calculate your focus score accurately.", style: TextStyle(color: Colors.white54, fontSize: 14)),
+            Text("This helps us calculate your focus score accurately.", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             const SizedBox(height: 24),
             ...categories.map((cat) => ListTile(
               leading: Icon(
                 cat == "Social" ? Icons.people_outline : 
                 cat == "Entertainment" ? Icons.play_circle_outline :
                 cat == "Productivity" ? Icons.lightbulb_outline : Icons.category_outlined,
-                color: current == cat ? AppColors.primary : Colors.white38,
+                color: current == cat ? AppColors.primary : AppColors.textPrimary.withOpacity(0.38),
               ),
-              title: Text(cat, style: TextStyle(color: current == cat ? Colors.white : Colors.white70)),
-              trailing: current == cat ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
+              title: Text(cat, style: TextStyle(color: current == cat ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.87))),
+              trailing: current == cat ? Icon(Icons.check_circle, color: AppColors.primary) : null,
               onTap: () => Navigator.pop(context, cat),
             )),
           ],
@@ -389,17 +389,17 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
           children: [
             Icon(icon, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 20)),
+            Text(title, style: TextStyle(color: AppColors.textPrimary, fontSize: 20)),
           ],
         ),
         content: Text(
           description,
-          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -410,7 +410,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Agree & Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Agree & Continue', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -443,13 +443,13 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
             _isAccessibilityEnabled
                 ? "Accessibility is enabled. Blocked apps will be intercepted in real time."
                 : "For these restrictions to be forced, you must enable the 'ReClaim' service in Android Accessibility settings.",
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
           TextButton(
             onPressed: () => _handlePermissionTap('accessibility'),
             child: Text(
               _isAccessibilityEnabled ? "Manage Accessibility" : "Open Accessibility Settings",
-              style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -463,7 +463,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> with WidgetsBin
       case 'entertainment': return const Color(0xFFEC4899);
       case 'productivity': return const Color(0xFF10B981);
       case 'utility': return const Color(0xFF3B82F6);
-      default: return Colors.white38;
+      default: return AppColors.textPrimary.withOpacity(0.38);
     }
   }
 

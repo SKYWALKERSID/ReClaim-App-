@@ -62,7 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF161620),
+      backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -71,9 +71,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Text(
+            Text(
               "Set Daily Goal",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 data: const CupertinoThemeData(
                   brightness: Brightness.dark,
                   textTheme: CupertinoTextThemeData(
-                    pickerTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+                    pickerTextStyle: TextStyle(color: AppColors.textPrimary, fontSize: 20),
                   ),
                 ),
                 child: CupertinoTimerPicker(
@@ -104,11 +104,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.textPrimary,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text("Save Limit"),
+              child: Text("Save Limit"),
             ),
           ],
         ),
@@ -210,19 +210,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Profile",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
+          Text(
+            "Profile",
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+              letterSpacing: -1.2,
             ),
+          ),
             if (name.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 "$name${age > 0 ? ', $age' : ''}${gender.isNotEmpty ? ' • $gender' : ''}",
-                style: const TextStyle(color: Colors.white54, fontSize: 14),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
             ],
           ],
@@ -236,9 +237,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Daily Screen Limit",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white70),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary.withOpacity(0.87)),
         ),
         const SizedBox(height: 16),
         GestureDetector(
@@ -247,25 +248,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: AppColors.softShadow,
+              border: Border.all(color: Colors.black.withOpacity(0.02)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.timer_outlined, color: AppColors.primary),
+                    Icon(Icons.timer_rounded, color: AppColors.primary),
                     SizedBox(width: 12),
                     Text(
                       "Set Goal",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                     ),
                   ],
                 ),
                 Text(
                   "${_dailyLimit.floor()}h ${((_dailyLimit - _dailyLimit.floor()) * 60).round()}m",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary),
                 ),
               ],
             ),
@@ -280,23 +282,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppColors.softShadow,
+        border: Border.all(color: Colors.black.withOpacity(0.02)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "Emergency Unlocks",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               ),
-              SizedBox(height: 4),
+              const SizedBox(height: 4),
               Text(
                 "Use wisely, max 5 per day",
-                style: TextStyle(fontSize: 12, color: Colors.white38),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -305,13 +308,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final bool isAvailable = index < _emergencyUnlocksLeft;
               return Container(
                 margin: const EdgeInsets.only(left: 6),
-                width: 12,
-                height: 12,
+                width: 14,
+                height: 14,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isAvailable ? AppColors.accent : Colors.white.withOpacity(0.05),
+                  color: isAvailable ? AppColors.primary : AppColors.background,
                   boxShadow: isAvailable ? [
-                    BoxShadow(color: AppColors.accent.withOpacity(0.4), blurRadius: 6)
+                    BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8)
                   ] : null,
                 ),
               );
@@ -332,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isSet ? AppColors.primary.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+            color: isSet ? AppColors.primary.withOpacity(0.15) : AppColors.primary.withOpacity(0.05),
           ),
         ),
         child: Row(
@@ -340,12 +343,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (isSet ? AppColors.primary : Colors.white38).withOpacity(0.1),
+                color: (isSet ? AppColors.primary : AppColors.textPrimary.withOpacity(0.38)).withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isSet ? Icons.lock_reset_rounded : Icons.lock_outline_rounded, 
-                color: isSet ? AppColors.primary : Colors.white38, 
+                color: isSet ? AppColors.primary : AppColors.textPrimary.withOpacity(0.38), 
                 size: 20
               ),
             ),
@@ -354,13 +357,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Emergency SafeCode",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   ),
                   Text(
                     isSet ? "Passcode is active" : "Set emergency bypass code",
-                    style: TextStyle(fontSize: 12, color: isSet ? AppColors.primary.withOpacity(0.7) : Colors.white38),
+                    style: TextStyle(fontSize: 12, color: isSet ? AppColors.primary.withOpacity(0.7) : AppColors.textPrimary.withOpacity(0.38)),
                   ),
                 ],
               ),
@@ -372,13 +375,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   "SET",
                   style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               )
             else
-              const Icon(Icons.check_circle_outline_rounded, color: AppColors.primary, size: 20),
+              Icon(Icons.check_circle_outline_rounded, color: AppColors.primary, size: 20),
           ],
         ),
       ),
@@ -399,35 +402,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: AppColors.primary.withOpacity(0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.deepPurpleAccent.withOpacity(0.1),
+                color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.explore_rounded, color: Colors.deepPurpleAccent, size: 20),
+              child: const Icon(Icons.explore_rounded, color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "Additional Features",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   ),
                   Text(
                     "Insights, Widgets, Alerts & Admin",
-                    style: TextStyle(fontSize: 12, color: Colors.white38),
+                    style: TextStyle(fontSize: 12, color: AppColors.textPrimary.withOpacity(0.38)),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary.withOpacity(0.26)),
           ],
         ),
       ),
@@ -438,9 +441,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Data Portability",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary.withOpacity(0.87)),
         ),
         const SizedBox(height: 12),
         Row(
@@ -450,7 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: "Export CSV",
                 icon: Icons.table_chart_rounded,
                 onTap: () => _exportData("csv"),
-                color: const Color(0xFF10B981),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(width: 12),
@@ -459,7 +462,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: "Export JSON",
                 icon: Icons.code_rounded,
                 onTap: () => _exportData("json"),
-                color: const Color(0xFF3B82F6),
+                color: AppColors.secondary,
               ),
             ),
           ],
@@ -536,7 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
             ),
-            child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 26),
+            child: Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 26),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -545,12 +548,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   "$streak Day Streak",
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   "Top 5% this week!",
-                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary.withOpacity(0.54)),
                 ),
               ],
             ),
@@ -566,13 +569,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Unlocked Badges",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
         ),
         const SizedBox(height: 16),
         if (badges.isEmpty)
-          const Text("No badges earned yet", style: TextStyle(color: Colors.white38)),
+          Text("No badges earned yet", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -587,9 +590,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Unlocked Rewards",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white70),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary.withOpacity(0.87)),
         ),
         const SizedBox(height: 12),
         const Row(
@@ -599,16 +602,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 title: "Focus Sounds",
                 icon: Icons.library_music_rounded,
                 isUnlocked: false,
-                color: Color(0xFF8B5CF6),
+                color: AppColors.primary,
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: _CompactRewardTile(
                 title: "App Themes",
                 icon: Icons.palette_rounded,
                 isUnlocked: false,
-                color: Color(0xFFEC4899),
+                color: AppColors.secondary,
               ),
             ),
           ],
@@ -663,20 +666,14 @@ class _AnimatedSettingsButtonState extends State<_AnimatedSettingsButton> with S
           );
         },
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.surface,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withOpacity(0.15),
-                blurRadius: 12,
-                spreadRadius: 0,
-              ),
-            ],
+            boxShadow: AppColors.softShadow,
+            border: Border.all(color: Colors.black.withOpacity(0.02)),
           ),
-          child: const Icon(Icons.settings_outlined, color: Colors.white70, size: 22),
+          child: const Icon(Icons.settings_rounded, color: AppColors.textPrimary, size: 24),
         ),
       ),
     );
@@ -764,9 +761,9 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 32),
       decoration: BoxDecoration(
-        color: const Color(0xFF161620),
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.06)),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withOpacity(0.08),
@@ -789,7 +786,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: AppColors.textPrimary.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -803,10 +800,10 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                         color: AppColors.primary.withOpacity(0.1),
                         border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                       ),
-                      child: const Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
+                      child: Icon(Icons.security_rounded, color: AppColors.primary, size: 22),
                     ),
                     const SizedBox(width: 14),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
@@ -814,13 +811,13 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         SizedBox(height: 2),
                         Text(
                           "Toggle to open system settings",
-                          style: TextStyle(fontSize: 12, color: Colors.white38),
+                          style: TextStyle(fontSize: 12, color: AppColors.textPrimary.withOpacity(0.38)),
                         ),
                       ],
                     ),
@@ -833,7 +830,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   subtitle: "Track screen time & app usage",
                   isEnabled: _usageAccess,
                   onChanged: (v) => _handleToggle('usage', v),
-                  accentColor: const Color(0xFF8B5CF6),
+                  accentColor: AppColors.primary,
                 ),
                 const SizedBox(height: 12),
                 _PermissionRow(
@@ -842,7 +839,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   subtitle: "Enforce app blocking in real time",
                   isEnabled: _accessibilityAccess,
                   onChanged: (v) => _handleToggle('accessibility', v),
-                  accentColor: const Color(0xFF14B8A6),
+                  accentColor: AppColors.secondary,
                 ),
                 const SizedBox(height: 12),
                 _PermissionRow(
@@ -851,7 +848,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   subtitle: "Show focus overlays",
                   isEnabled: _overlayPermission,
                   onChanged: (v) => _handleToggle('overlay', v),
-                  accentColor: const Color(0xFF3B82F6),
+                  accentColor: AppColors.accent,
                 ),
                 const SizedBox(height: 12),
                 _PermissionRow(
@@ -860,7 +857,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   subtitle: "Send focus reminders",
                   isEnabled: _notificationPermission,
                   onChanged: (v) => _handleToggle('notification', v),
-                  accentColor: const Color(0xFFEC4899),
+                  accentColor: AppColors.primary,
                 ),
                 const SizedBox(height: 12),
                 _PermissionRow(
@@ -869,7 +866,7 @@ class _PermissionsSheetState extends State<_PermissionsSheet> {
                   subtitle: "Keep tracking in background",
                   isEnabled: _batteryOptimization,
                   onChanged: (v) => _handleToggle('battery', v),
-                  accentColor: const Color(0xFFF59E0B),
+                  accentColor: AppColors.secondary,
                 ),
               ],
             ),
@@ -905,10 +902,10 @@ class _PermissionRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: AppColors.primary.withOpacity(0.03),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isEnabled ? accentColor.withOpacity(0.2) : Colors.white.withOpacity(0.04),
+          color: isEnabled ? accentColor.withOpacity(0.2) : AppColors.textPrimary.withOpacity(0.04),
         ),
       ),
       child: Row(
@@ -919,7 +916,7 @@ class _PermissionRow extends StatelessWidget {
               color: accentColor.withValues(alpha: isEnabled ? 0.12 : 0.05),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: isEnabled ? accentColor : Colors.white30, size: 20),
+            child: Icon(icon, color: isEnabled ? accentColor : AppColors.textPrimary.withOpacity(0.26), size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -931,13 +928,13 @@ class _PermissionRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isEnabled ? Colors.white : Colors.white60,
+                    color: isEnabled ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.54),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 11, color: Colors.white30),
+                  style: TextStyle(fontSize: 11, color: AppColors.textPrimary.withOpacity(0.26)),
                 ),
               ],
             ),
@@ -947,8 +944,8 @@ class _PermissionRow extends StatelessWidget {
             onChanged: onChanged,
             activeThumbColor: accentColor,
             activeTrackColor: accentColor.withOpacity(0.3),
-            inactiveThumbColor: Colors.white24,
-            inactiveTrackColor: Colors.white.withOpacity(0.05),
+            inactiveThumbColor: AppColors.textPrimary.withOpacity(0.26),
+            inactiveTrackColor: AppColors.primary.withOpacity(0.05),
           ),
         ],
       ),
@@ -989,12 +986,12 @@ class _CompactRewardTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: isUnlocked ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
+              color: isUnlocked ? color.withOpacity(0.2) : AppColors.primary.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
               isUnlocked ? Icons.check_circle_rounded : icon,
-              color: isUnlocked ? color : Colors.white30,
+              color: isUnlocked ? color : AppColors.textPrimary.withOpacity(0.26),
               size: 20,
             ),
           ),
@@ -1002,7 +999,7 @@ class _CompactRewardTile extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              color: isUnlocked ? Colors.white : Colors.white60,
+              color: isUnlocked ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.54),
               fontSize: 12,
               fontWeight: isUnlocked ? FontWeight.bold : FontWeight.w600,
             ),
@@ -1014,7 +1011,7 @@ class _CompactRewardTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               letterSpacing: 0.5,
-              color: isUnlocked ? color : Colors.white24,
+              color: isUnlocked ? color : AppColors.textPrimary.withOpacity(0.26),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1041,11 +1038,11 @@ class _BadgeItem extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.stars_rounded, color: AppColors.primary, size: 14),
+          Icon(Icons.stars_rounded, color: AppColors.primary, size: 14),
           const SizedBox(width: 6),
           Text(
             name,
-            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),

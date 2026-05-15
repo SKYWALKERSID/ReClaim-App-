@@ -169,14 +169,14 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Block Apps',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: Colors.white),
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
                 'Today: ${_formatSeconds(_totalDailySeconds)} screen time',
-                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 20),
               if (!_hasRequiredPermissions) _buildPermissionWarning(),
@@ -201,7 +201,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
                               (_permissionStatus['usage_access'] as bool? ?? false)
                                   ? 'No usage data recorded for today yet.'
                                   : 'No app usage found. Grant Usage Access to see your stats.',
-                              style: const TextStyle(color: Colors.white38),
+                              style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38)),
                               textAlign: TextAlign.center,
                             ),
                           )
@@ -210,7 +210,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
                             itemCount: _apps.length,
                             separatorBuilder: (_, __) => Divider(
                               height: 1,
-                              color: Colors.white.withOpacity(0.06),
+                              color: AppColors.textPrimary.withOpacity(0.06),
                             ),
                             itemBuilder: (context, index) {
                               final app = _apps[index];
@@ -229,7 +229,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
                                         height: 32,
                                         fit: BoxFit.cover,
                                       )
-                                    : const Icon(Icons.android, size: 24, color: Colors.white38),
+                                    : Icon(Icons.android, size: 24, color: AppColors.textPrimary.withOpacity(0.38)),
                                 isBlocked: isBlocked,
                                 onChanged: () => _toggleBlocked(app, !isBlocked),
                               );
@@ -258,14 +258,14 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Blocked',
-                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary.withOpacity(0.54)),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$blockedCount apps',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                 ),
               ],
             ),
@@ -280,21 +280,21 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Top Today',
-                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                  style: TextStyle(fontSize: 12, color: AppColors.textPrimary.withOpacity(0.54)),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   topApp?['display_name'] as String? ?? 'None',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _formatSeconds(topApp?['usage_seconds'] as int? ?? 0),
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -336,17 +336,17 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
           children: [
             Icon(icon, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 20)),
+            Text(title, style: TextStyle(color: AppColors.textPrimary, fontSize: 20)),
           ],
         ),
         content: Text(
           description,
-          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))),
           ),
           ElevatedButton(
             onPressed: () {
@@ -357,7 +357,7 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Agree & Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: Text('Agree & Continue', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -376,14 +376,14 @@ class _AppUsageScreenState extends State<AppUsageScreen> with WidgetsBindingObse
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Finish Permissions',
             style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.warning),
           ),
           const SizedBox(height: 8),
           Text(
             _buildPermissionMessage(),
-            style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.4),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -452,7 +452,7 @@ class _AppBlockRow extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.05),
+              color: AppColors.primary.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(child: icon),
@@ -464,14 +464,14 @@ class _AppBlockRow extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   usage,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -502,12 +502,12 @@ class _PermissionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: AppColors.primary.withOpacity(0.06),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.white),
+          style: TextStyle(fontSize: 12, color: AppColors.textPrimary),
         ),
       ),
     );

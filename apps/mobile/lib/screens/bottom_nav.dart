@@ -12,6 +12,7 @@ import 'brain_mirror_dashboard.dart';
 import 'permission_onboarding_screen.dart';
 import 'safecode_setup_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/widget_sync_service.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -37,6 +38,13 @@ class BottomNavState extends State<BottomNav> {
     if (!_needsPermissionSetup) {
       // Hard sync on launch to ensure native engine matches DB (especially for defaults)
       await BackendService().getAppSelections();
+      
+      // Sync widget data so the home screen widget shows content
+      try {
+        await WidgetSyncService().syncWidgetData();
+      } catch (e) {
+        debugPrint('Widget sync failed: $e');
+      }
       
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await _runSequentialOnboarding();
@@ -95,21 +103,21 @@ class BottomNavState extends State<BottomNav> {
       builder: (context) => BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: AlertDialog(
-          backgroundColor: Colors.black.withOpacity(0.8),
+          backgroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: Colors.white.withOpacity(0.1)),
+            side: BorderSide(color: AppColors.primary.withOpacity(0.1)),
           ),
           title: const Text("Configure Protection", 
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: const Text(
+            style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+          content: Text(
             "ReClaim works best when you categorize your apps. \n\nChoose which apps are for 'Deep Focus' and which are distracting.",
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppColors.textSecondary),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Later", style: TextStyle(color: Colors.white38)),
+              child: Text("Later", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))),
             ),
             ElevatedButton(
               onPressed: () {
@@ -120,7 +128,7 @@ class BottomNavState extends State<BottomNav> {
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text("Configure Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text("Configure Now", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -138,24 +146,24 @@ class BottomNavState extends State<BottomNav> {
         builder: (context, setDialogState) => BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: Colors.black.withOpacity(0.8),
+            backgroundColor: AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              side: BorderSide(color: AppColors.primary.withOpacity(0.1)),
             ),
             title: const Text("Set Daily Goal", 
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "How many hours of screen time do you want to allow yourself each day?",
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   "${(selectedSeconds / 3600).floor()}h ${((selectedSeconds % 3600) / 60).floor()}m",
-                  style: const TextStyle(color: AppColors.primary, fontSize: 32, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.primary, fontSize: 32, fontWeight: FontWeight.bold),
                 ),
                 Slider(
                   value: selectedSeconds.toDouble().clamp(1800.0, 36000.0), // 30m to 10h
@@ -163,13 +171,14 @@ class BottomNavState extends State<BottomNav> {
                   max: 36000,
                   divisions: 19, // 30m increments
                   activeColor: AppColors.primary,
+                  inactiveColor: AppColors.primary.withOpacity(0.2),
                   onChanged: (val) {
                     setDialogState(() => selectedSeconds = val.toInt());
                   },
                 ),
-                const Text(
+                Text(
                   "Once you hit this limit, distracting apps will be blocked.",
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -186,7 +195,7 @@ class BottomNavState extends State<BottomNav> {
                   );
                   if (context.mounted) Navigator.pop(context);
                 },
-                child: const Text("Save & Continue", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: Text("Save & Continue", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -207,29 +216,29 @@ class BottomNavState extends State<BottomNav> {
         builder: (context, setDialogState) => BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            backgroundColor: Colors.black.withOpacity(0.8),
+            backgroundColor: AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(24),
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              side: BorderSide(color: AppColors.primary.withOpacity(0.1)),
             ),
             title: const Text("Welcome to ReClaim", 
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("What should we call you?", 
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text("What should we call you?", 
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: nameController,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: "Enter your name",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      hintStyle: const TextStyle(color: AppColors.textTertiary),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.05),
+                      fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -237,18 +246,18 @@ class BottomNavState extends State<BottomNav> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text("How old are you?", 
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text("How old are you?", 
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: ageController,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: "Enter your age",
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      hintStyle: const TextStyle(color: AppColors.textTertiary),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.05),
+                      fillColor: AppColors.background,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -256,25 +265,25 @@ class BottomNavState extends State<BottomNav> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text("Gender", 
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text("Gender", 
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: selectedGender,
-                        dropdownColor: Colors.grey[900],
+                        dropdownColor: AppColors.surface,
                         isExpanded: true,
-                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white54),
+                        icon: Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
                         items: ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']
                             .map((g) => DropdownMenuItem(
                                   value: g,
-                                  child: Text(g, style: const TextStyle(color: Colors.white)),
+                                  child: Text(g, style: const TextStyle(color: AppColors.textPrimary)),
                                 ))
                             .toList(),
                         onChanged: (val) {
@@ -303,7 +312,7 @@ class BottomNavState extends State<BottomNav> {
                     if (context.mounted) Navigator.pop(context);
                   }
                 },
-                child: const Text("Get Started", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: Text("Get Started", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -365,29 +374,30 @@ class BottomNavState extends State<BottomNav> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: 68,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D0D14).withOpacity(0.85),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Container(
+        height: 76,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(38),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _navItem(0, Icons.home_outlined, Icons.home_rounded, "Home"),
-                _navItem(1, Icons.center_focus_strong_outlined, Icons.center_focus_strong_rounded, "Focus"),
-                _buildCenterBrainTab(),
-                _navItem(3, Icons.shield_outlined, Icons.shield_rounded, "Block"),
-                _navItem(4, Icons.person_outline_rounded, Icons.person_rounded, "Me"),
-              ],
-            ),
-          ),
+          ],
+          border: Border.all(color: Colors.black.withOpacity(0.02)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(0, Icons.insights_rounded, Icons.insights_rounded, "Insights"),
+            _navItem(1, Icons.center_focus_strong_rounded, Icons.center_focus_strong_rounded, "Focus"),
+            _buildCenterBrainTab(),
+            _navItem(3, Icons.shield_rounded, Icons.shield_rounded, "Block"),
+            _navItem(4, Icons.person_rounded, Icons.person_rounded, "Me"),
+          ],
         ),
       ),
     );
@@ -423,7 +433,7 @@ class BottomNavState extends State<BottomNav> {
                     : null,
                 child: Icon(
                   isActive ? activeIcon : icon,
-                  color: isActive ? AppColors.primary : Colors.white.withOpacity(0.4),
+                  color: isActive ? AppColors.primary : AppColors.textTertiary,
                   size: isActive ? 24 : 22,
                 ),
               ),
@@ -431,7 +441,7 @@ class BottomNavState extends State<BottomNav> {
               Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? AppColors.primary : Colors.white.withOpacity(0.3),
+                  color: isActive ? AppColors.primary : AppColors.textTertiary,
                   fontSize: 10,
                   fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                   letterSpacing: 0.3,
@@ -484,7 +494,7 @@ class BottomNavState extends State<BottomNav> {
             Text(
               "Brain",
               style: TextStyle(
-                color: isActive ? AppColors.primary : Colors.white.withOpacity(0.3),
+                color: isActive ? AppColors.primary : AppColors.textTertiary,
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                 letterSpacing: 0.3,

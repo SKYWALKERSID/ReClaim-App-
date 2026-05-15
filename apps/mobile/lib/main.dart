@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'screens/bottom_nav.dart';
 import 'constants/theme.dart';
 import 'constants/theme_manager.dart';
@@ -19,7 +20,7 @@ void main() async {
     debugPrint("Firebase init failed: $e");
   }
   
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 
   // Initialize auth and negotiate JWT asynchronously
   Future.microtask(() async {

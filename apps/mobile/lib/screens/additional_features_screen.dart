@@ -67,12 +67,12 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text(content, style: const TextStyle(color: Colors.white70)),
+        title: Text(title, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+        content: Text(content, style: TextStyle(color: AppColors.textPrimary.withOpacity(0.87))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('GOT IT', style: TextStyle(color: AppColors.primary)),
+            child: Text('GOT IT', style: TextStyle(color: AppColors.primary)),
           ),
         ],
       ),
@@ -84,7 +84,7 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Additional Features", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text("Additional Features", style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -184,7 +184,7 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       padding: const EdgeInsets.only(left: 8, bottom: 8, top: 8),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.primary,
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -206,11 +206,11 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: SwitchListTile(
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        title: Text(title, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         secondary: Icon(icon, color: Colors.cyanAccent),
         activeThumbColor: AppColors.primary,
         value: value,
@@ -231,13 +231,13 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: ListTile(
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        title: Text(title, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         leading: Icon(icon, color: Colors.cyanAccent),
-        trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+        trailing: Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary.withOpacity(0.26)),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -255,13 +255,13 @@ class _AdditionalFeaturesScreenState extends State<AdditionalFeaturesScreen> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: ListTile(
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        title: Text(title, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
         leading: Icon(icon, color: Colors.cyanAccent),
-        trailing: const Icon(Icons.info_outline_rounded, color: Colors.white24),
+        trailing: Icon(Icons.info_outline_rounded, color: AppColors.textPrimary.withOpacity(0.26)),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

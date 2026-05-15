@@ -1,3 +1,4 @@
+import '../constants/colors.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
@@ -73,7 +74,7 @@ class _DriftScoreRingState extends State<DriftScoreRing> with SingleTickerProvid
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white.withOpacity(0.5),
+                      color: AppColors.textSecondary,
                       letterSpacing: 1.5,
                     ),
                   ),
@@ -81,10 +82,10 @@ class _DriftScoreRingState extends State<DriftScoreRing> with SingleTickerProvid
                 ],
                 Text(
                   (widget.score * _animation.value).toInt().toString(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     letterSpacing: -1,
                   ),
                 ),
@@ -126,7 +127,7 @@ class _DriftRingPainter extends CustomPainter {
 
     // Background track
     final trackPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = AppColors.primary.withOpacity(0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;

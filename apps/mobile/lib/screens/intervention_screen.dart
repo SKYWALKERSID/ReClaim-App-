@@ -65,9 +65,9 @@ class _InterventionScreenState extends State<InterventionScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: AppColors.glassBase,
+                      color: AppColors.glassBase(context),
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: AppColors.glassBorder),
+                      border: Border.all(color: AppColors.glassBorder(context)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -80,7 +80,7 @@ class _InterventionScreenState extends State<InterventionScreen> {
                         const SizedBox(height: 48),
                         _buildActionButtons(context),
                         const SizedBox(height: 24),
-                        const Text(
+                        Text(
                           "Pause. Reflect. Choose.",
                           style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                         ),
@@ -114,15 +114,15 @@ class _InterventionScreenState extends State<InterventionScreen> {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: AppColors.textPrimary,
           height: 1.3,
         ),
         children: [
           const TextSpan(text: "Do you really want\nto open "),
-          TextSpan(text: widget.appName, style: const TextStyle(color: AppColors.primary)),
+          TextSpan(text: widget.appName, style: TextStyle(color: AppColors.primary)),
           const TextSpan(text: "?"),
         ],
       ),
@@ -133,7 +133,7 @@ class _InterventionScreenState extends State<InterventionScreen> {
     return Text(
       "You've used it ${widget.usageTime} today.\nTake a deep breath.",
       textAlign: TextAlign.center,
-      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+      style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
     );
   }
 
@@ -147,12 +147,12 @@ class _InterventionScreenState extends State<InterventionScreen> {
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.textPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            child: const Text("Stay Focused"),
+            child: Text("Stay Focused"),
           ),
         ),
         const SizedBox(height: 12),
@@ -162,10 +162,10 @@ class _InterventionScreenState extends State<InterventionScreen> {
           child: OutlinedButton(
             onPressed: _secondsRemaining > 0 ? null : () => Navigator.pop(context),
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+              side: BorderSide(color: AppColors.primary.withOpacity(0.08)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              disabledForegroundColor: Colors.white.withOpacity(0.2),
-              foregroundColor: Colors.white70,
+              disabledForegroundColor: AppColors.primary.withOpacity(0.15),
+              foregroundColor: AppColors.textPrimary.withOpacity(0.87),
             ),
             child: Text(
               _secondsRemaining > 0 

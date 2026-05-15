@@ -67,20 +67,20 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 "Finalize Setup",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 "To protect your focus and block distractions, we need these core engines active.",
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.white60,
+                  color: AppColors.textSecondary,
                   height: 1.5,
                 ),
               ),
@@ -132,7 +132,7 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                       child: Text(
                         "GET STARTED",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
                         ),
@@ -144,7 +144,7 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                 Center(
                   child: Text(
                     "Enable all permissions to continue",
-                    style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
                   ),
                 ),
             ],
@@ -164,12 +164,12 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isGranted ? Colors.green.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+              color: isGranted ? Colors.green.withOpacity(0.1) : AppColors.primary.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
               isGranted ? Icons.check_circle_rounded : icon,
-              color: isGranted ? Colors.green : Colors.white54,
+              color: isGranted ? Colors.green : AppColors.textPrimary.withOpacity(0.54),
               size: 24,
             ),
           ),
@@ -183,13 +183,13 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isGranted ? Colors.white : Colors.white70,
+                    color: isGranted ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.87),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   desc,
-                  style: const TextStyle(fontSize: 11, color: Colors.white38),
+                  style: TextStyle(fontSize: 11, color: AppColors.textPrimary.withOpacity(0.38)),
                 ),
               ],
             ),
@@ -203,7 +203,7 @@ class _PermissionOnboardingScreenState extends State<PermissionOnboardingScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text(
+              child: Text(
                 "ENABLE",
                 style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold),
               ),

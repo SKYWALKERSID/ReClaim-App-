@@ -5,10 +5,8 @@
   "scripts": {
     "setup": "powershell -ExecutionPolicy Bypass -File ./reclaim-setup.ps1",
     "start": "powershell -ExecutionPolicy Bypass -File ./reclaim-run.ps1",
-    "dev": "cd services/api && npm run dev",
-    "generate:bible": "node sensitive/scripts/generate_reclaim_doc.js"
+    "dev": "cd services/api && npm run dev"
   },
-  "dependencies": {
-    "docx": "^9.6.1"
-  }
+  "dependencies": {}
 }
+

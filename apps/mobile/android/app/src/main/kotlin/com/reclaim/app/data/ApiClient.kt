@@ -14,8 +14,9 @@ import android.util.Log
 
 class ApiClient(
     private val baseUrl: String = "http://localhost:4000/v1",
-    private val apiKey: String = "hackathon_demo_key_2026"
+    private val apiKey: String = com.reclaim.app.BuildConfig.API_KEY
 ) {
+
     fun saveCommitment(commitment: Commitment) {
         executeWithRetry { postJson("/commitments", commitment.toJson()) }
     }

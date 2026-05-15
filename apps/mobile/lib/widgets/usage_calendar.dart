@@ -106,7 +106,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -117,7 +117,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 24),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppColors.textTertiary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -126,15 +126,15 @@ class _UsageCalendarState extends State<UsageCalendar> {
               children: [
                 Text(
                   DateFormat('MMMM yyyy').format(now),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.white54),
+                  icon: Icon(Icons.close, color: AppColors.textPrimary.withOpacity(0.54)),
                 ),
               ],
             ),
@@ -146,7 +146,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d) => Text(
                   d,
-                  style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 12, fontWeight: FontWeight.bold),
                 )).toList(),
               ),
               const SizedBox(height: 12),
@@ -185,7 +185,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
   }
 
   Widget _buildDayCell(int day, int usageSeconds, bool isToday, bool isSelected) {
-    Color color = Colors.white.withOpacity(0.05);
+    Color color = AppColors.primary.withOpacity(0.05);
     
     if (usageSeconds > 0) {
       if (usageSeconds > widget.goalSeconds * 1.2) {
@@ -203,13 +203,13 @@ class _UsageCalendarState extends State<UsageCalendar> {
         borderRadius: BorderRadius.circular(12),
         border: isSelected 
           ? Border.all(color: AppColors.primary, width: 2) 
-          : (isToday ? Border.all(color: Colors.white24, width: 1) : null),
+          : (isToday ? Border.all(color: AppColors.textTertiary, width: 1) : null),
       ),
       alignment: Alignment.center,
       child: Text(
         day.toString(),
         style: TextStyle(
-          color: (usageSeconds > 0 || isSelected) ? Colors.white : Colors.white38,
+          color: (usageSeconds > 0 || isSelected) ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.38),
           fontSize: 14,
           fontWeight: (isToday || isSelected) ? FontWeight.bold : FontWeight.normal,
         ),
@@ -225,9 +225,9 @@ class _UsageCalendarState extends State<UsageCalendar> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: AppColors.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +240,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
                 children: [
                   Text(
                     DateFormat('EEEE, MMM d').format(_selectedDate!),
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -254,7 +254,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
               ),
               IconButton(
                 onPressed: () => setState(() => _selectedDate = null),
-                icon: const Icon(Icons.close, size: 18, color: Colors.white38),
+                icon: Icon(Icons.close, size: 18, color: AppColors.textPrimary.withOpacity(0.38)),
                 constraints: const BoxConstraints(),
                 padding: EdgeInsets.zero,
               ),
@@ -269,7 +269,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             ))
           else if (_selectedDayApps.isEmpty)
-            const Center(child: Text("No apps recorded", style: TextStyle(color: Colors.white24, fontSize: 12)))
+            const Center(child: Text("No apps recorded", style: TextStyle(color: AppColors.textTertiary, fontSize: 12)))
           else
             Column(
               children: _selectedDayApps.take(5).map((app) {
@@ -283,19 +283,19 @@ class _UsageCalendarState extends State<UsageCalendar> {
                         borderRadius: BorderRadius.circular(4),
                         child: _iconCache[pkg] != null
                           ? Image(image: _iconCache[pkg]!, width: 20, height: 20)
-                          : const Icon(Icons.android, size: 20, color: Colors.white24),
+                          : Icon(Icons.android, size: 20, color: AppColors.textPrimary.withOpacity(0.26)),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           app['label'] ?? pkg,
-                          style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
                         _formatUsage(usage),
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                        style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
                       ),
                     ],
                   ),
@@ -314,7 +314,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
 
     if (totalUsage == 0) {
       message = "No activity recorded for this day.";
-      color = Colors.white38;
+      color = AppColors.textPrimary.withOpacity(0.38);
       icon = Icons.info_outline;
     } else if (totalUsage < widget.goalSeconds * 0.7) {
       message = "Fantastic discipline! You stayed well under your goal.";
@@ -371,7 +371,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
         const SizedBox(height: 16),
         Text(
           "Daily Goal: ${widget.goalSeconds ~/ 3600}h ${(widget.goalSeconds % 3600) ~/ 60}m",
-          style: const TextStyle(color: Colors.white24, fontSize: 11),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 11),
         ),
       ],
     );
@@ -390,7 +390,7 @@ class _UsageCalendarState extends State<UsageCalendar> {
           ),
         ),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
       ],
     );
   }

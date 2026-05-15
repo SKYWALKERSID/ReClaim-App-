@@ -58,14 +58,14 @@ class _SocialScreenState extends State<SocialScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Social Accountability",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   "Focus better with your community",
-                  style: TextStyle(color: Colors.white60, fontSize: 14),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                 ),
                 const SizedBox(height: 32),
                 _buildSectionHeader("Focus Buddies", Icons.people_outline_rounded),
@@ -90,7 +90,7 @@ class _SocialScreenState extends State<SocialScreen> {
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
         ),
       ],
     );
@@ -119,11 +119,11 @@ class _SocialScreenState extends State<SocialScreen> {
       width: 70,
       margin: const EdgeInsets.only(right: 16),
       decoration: BoxDecoration(
-        color: AppColors.glassBase,
+        color: AppColors.glassBase(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: AppColors.glassBorder(context)),
       ),
-      child: const Icon(Icons.add, color: Colors.white54),
+      child: Icon(Icons.add, color: AppColors.textPrimary.withOpacity(0.54)),
     );
   }
 
@@ -139,8 +139,8 @@ class _SocialScreenState extends State<SocialScreen> {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: AppColors.glassBase,
-                child: Text(name.isNotEmpty ? name[0] : '?', style: const TextStyle(color: Colors.white)),
+                backgroundColor: AppColors.glassBase(context),
+                child: Text(name.isNotEmpty ? name[0] : '?', style: TextStyle(color: AppColors.textPrimary)),
               ),
               if (isFocusing)
                 Positioned(
@@ -148,8 +148,8 @@ class _SocialScreenState extends State<SocialScreen> {
                   bottom: 0,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
-                    child: const Icon(Icons.timer_outlined, size: 12, color: Colors.white),
+                    decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+                    child: Icon(Icons.timer_outlined, size: 12, color: AppColors.textPrimary),
                   ),
                 ),
             ],
@@ -157,7 +157,7 @@ class _SocialScreenState extends State<SocialScreen> {
           const SizedBox(height: 8),
           Text(
             name,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -175,9 +175,9 @@ class _SocialScreenState extends State<SocialScreen> {
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.glassBase,
+            color: AppColors.glassBase(context),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: AppColors.glassBorder(context)),
           ),
           child: Row(
             children: [
@@ -187,7 +187,7 @@ class _SocialScreenState extends State<SocialScreen> {
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.bolt_rounded, color: AppColors.primary),
+                child: Icon(Icons.bolt_rounded, color: AppColors.primary),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -196,12 +196,12 @@ class _SocialScreenState extends State<SocialScreen> {
                   children: [
                     Text(
                       challenge['title']?.toString() ?? 'Challenge',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "${challenge['participantsCount'] ?? 0} focusing • ends ${challenge['endTime'] ?? 'soon'}",
-                      style: const TextStyle(color: Colors.white38, fontSize: 12),
+                      style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
                     ),
                   ],
                 ),
@@ -217,7 +217,7 @@ class _SocialScreenState extends State<SocialScreen> {
                     );
                   }
                 },
-                child: const Text("Join", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: Text("Join", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

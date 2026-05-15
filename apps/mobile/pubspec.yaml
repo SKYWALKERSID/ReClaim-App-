@@ -25,6 +25,9 @@ dependencies:
   google_sign_in: ^6.2.1
   flutter_secure_storage: any
   dio: ^5.7.0
+  flutter_markdown: ^0.7.7+1
+  flutter_riverpod: ^2.5.1
+  home_widget: ^0.7.0
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +38,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo.png
+    - assets/docs/

@@ -50,7 +50,7 @@ class ProgressRing extends StatelessWidget {
           children: [
             Text(
               subLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 2.0,
@@ -60,7 +60,7 @@ class ProgressRing extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               mainLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -77,7 +77,7 @@ class ProgressRing extends StatelessWidget {
                 ),
                 child: Text(
                   trendLabel!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,

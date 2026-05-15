@@ -27,6 +27,7 @@ import driftRoutes from "./presentation/routes/drift.routes.js";
 import frictionRoutes from "./presentation/routes/friction.routes.js";
 import reflectionRoutes from "./presentation/routes/reflection.routes.js";
 import cravingRoutes from "./presentation/routes/craving.routes.js";
+import habitCoachRoutes from "./presentation/routes/habitCoach.routes.js";
 
 export function buildApp() {
   const repository = new AnalyticsRepository();
@@ -118,6 +119,7 @@ export function buildApp() {
   app.use("/v1/analytics/friction", frictionRoutes);
   app.use("/v1/analytics/reflection", reflectionRoutes);
   app.use("/v1/analytics/craving", cravingRoutes);
+  app.use("/v1/coach", habitCoachRoutes);
 
   // Global error handler (must be last)
   app.use(errorHandler);

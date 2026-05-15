@@ -530,4 +530,26 @@ class BackendService {
       return MapEntry(stringKey, value);
     }).cast<String, dynamic>();
   }
+
+  // ─── Widget Sync Stubs ───
+  Future<List<Map<String, dynamic>>> getHabits() async {
+    try {
+      final res = await _api.dio.get('/habits');
+      return List<Map<String, dynamic>>.from(res.data ?? []);
+    } catch (e) {
+      debugPrint("getHabits error: $e");
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getWidgetNudge() async {
+    try {
+      final res = await _api.dio.get('/widget-nudge');
+      return Map<String, dynamic>.from(res.data ?? {});
+    } catch (e) {
+      debugPrint("getWidgetNudge error: $e");
+      return {'nudge': "Ready for today's win?"};
+    }
+  }
 }
+

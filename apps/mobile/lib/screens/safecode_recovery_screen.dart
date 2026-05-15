@@ -117,12 +117,12 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "RECOVER SAFECODE",
-          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 2),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 2),
         ),
         centerTitle: true,
       ),
@@ -165,7 +165,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.lock_reset_rounded,
                         color: AppColors.primary,
                         size: 32,
@@ -193,12 +193,12 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
+                          Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 18),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               _error!, 
-                              style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                              style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ],
@@ -223,7 +223,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
             height: 4,
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : Colors.white.withOpacity(0.1),
+              color: isActive ? AppColors.primary : AppColors.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -235,17 +235,17 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   Widget _buildEmailStep() {
     return Column(
       children: [
-        const Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 64),
+        Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 64),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           "Identity Verification",
-          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Text(
           "We'll send a recovery code to your registered Gmail address.",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 15),
         ),
         const SizedBox(height: 40),
         _buildTextField(_emailController, "Email Address", Icons.email_outlined,
@@ -259,17 +259,17 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   Widget _buildOTPStep() {
     return Column(
       children: [
-        const Icon(Icons.security_rounded, color: Color(0xFF10B981), size: 64),
+        Icon(Icons.security_rounded, color: Color(0xFF10B981), size: 64),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           "Verify OTP",
-          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Text(
           "Check your inbox at ${_emailController.text}",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 15),
         ),
         const SizedBox(height: 40),
         _buildTextField(_otpController, "000000", Icons.password_rounded, maxLength: 6,
@@ -283,17 +283,17 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   Widget _buildPINStep() {
     return Column(
       children: [
-        const Icon(Icons.lock_reset_rounded, color: Color(0xFFF59E0B), size: 64),
+        Icon(Icons.lock_reset_rounded, color: Color(0xFFF59E0B), size: 64),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           "New SafeCode",
-          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         Text(
           "Set a new 4-digit emergency code.",
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 15),
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 15),
         ),
         const SizedBox(height: 40),
         _buildTextField(_newPinController, "Enter new SafeCode", Icons.lock_outline_rounded,
@@ -314,9 +314,9 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: AppColors.primary.withOpacity(0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.06)),
       ),
       child: TextField(
         controller: controller,
@@ -324,7 +324,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         obscureText: obscure,
         keyboardType: keyboardType,
         style: TextStyle(
-          color: Colors.white, 
+          color: AppColors.textPrimary, 
           fontSize: 18, 
           letterSpacing: (keyboardType == TextInputType.number || keyboardType == TextInputType.phone) ? 4 : 0.5, 
           fontWeight: FontWeight.w600
@@ -332,8 +332,8 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         decoration: InputDecoration(
           counterText: "",
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withOpacity(0.15), fontSize: 16, letterSpacing: 1),
-          prefixIcon: Icon(icon, color: Colors.white24, size: 22),
+          hintStyle: TextStyle(color: AppColors.textPrimary.withOpacity(0.15), fontSize: 16, letterSpacing: 1),
+          prefixIcon: Icon(icon, color: AppColors.textTertiary, size: 22),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         ),
@@ -359,7 +359,7 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
         onPressed: _isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.textPrimary,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 0,
           padding: EdgeInsets.zero,
@@ -376,10 +376,10 @@ class _SafeCodeRecoveryScreenState extends State<SafeCodeRecoveryScreen> {
           child: Container(
             alignment: Alignment.center,
             child: _isLoading 
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.textPrimary))
               : Text(
                   label, 
-                  style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 14),
+                  style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 14),
                 ),
           ),
         ),

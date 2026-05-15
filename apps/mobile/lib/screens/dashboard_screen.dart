@@ -231,17 +231,17 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: AppColors.textTertiary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 "SET FOCUS DURATION",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white54,
+                  color: AppColors.textSecondary,
                   letterSpacing: 1.5,
                 ),
               ),
@@ -252,7 +252,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     brightness: Brightness.dark,
                     textTheme: CupertinoTextThemeData(
                       pickerTextStyle: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 22,
                         fontFamily: 'Inter',
                       ),
@@ -277,7 +277,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+                      colors: [AppColors.primary, AppColors.secondary],
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -285,7 +285,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     child: Text(
                       "CONFIRM",
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
                       ),
@@ -384,11 +384,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 children: [
                   Text(
                     "Hi, $userName",
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white.withOpacity(0.5),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.2,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -399,71 +399,41 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             Row(
               children: [
                 _GlassIconButton(
-                  icon: Icons.shield_outlined,
+                  icon: Icons.shield_rounded,
                   onTap: _navigateToBlockApps,
                 ),
                 const SizedBox(width: 12),
                 _GlassIconButton(
-                  icon: Icons.edit_outlined,
+                  icon: Icons.settings_rounded,
                   onTap: _navigateToProfile,
                 ),
               ],
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        AnimatedBuilder(
-          animation: _backgroundPulseController,
-          builder: (context, child) {
-            final double glowIntensity = 6.0 + (math.sin(_backgroundPulseController.value * 2 * math.pi) + 1.0) * 6.0;
-            return RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.0,
-                  height: 1.1,
-                  fontFamily: 'Inter',
-                ),
-                children: [
-                  const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
-                  TextSpan(
-                    text: "focused,", 
-                    style: TextStyle(
-                      color: const Color(0xFFD946EF),
-                      shadows: [
-                        Shadow(
-                          color: const Color(0xFFD946EF).withOpacity(0.6),
-                          blurRadius: glowIntensity,
-                        ),
-                        Shadow(
-                          color: const Color(0xFFD946EF).withOpacity(0.3),
-                          blurRadius: glowIntensity * 1.5,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const TextSpan(text: "\nachieve ", style: TextStyle(color: Colors.white)),
-                  TextSpan(
-                    text: "the goals.", 
-                    style: TextStyle(
-                      color: const Color(0xFF60A5FA),
-                      shadows: [
-                        Shadow(
-                          color: const Color(0xFF60A5FA).withOpacity(0.6),
-                          blurRadius: glowIntensity,
-                        ),
-                        Shadow(
-                          color: const Color(0xFF60A5FA).withOpacity(0.3),
-                          blurRadius: glowIntensity * 1.5,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+        const SizedBox(height: 8),
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.2,
+              height: 1.1,
+              fontFamily: 'Inter',
+            ),
+            children: [
+              TextSpan(text: "Stay ", style: TextStyle(color: AppColors.textPrimary)),
+              TextSpan(
+                text: "intentional,", 
+                style: TextStyle(color: AppColors.primary),
               ),
-            );
-          },
+              TextSpan(text: "\nreclaim ", style: TextStyle(color: AppColors.textPrimary)),
+              TextSpan(
+                text: "your time.", 
+                style: TextStyle(color: AppColors.secondary),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -483,7 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               color: Colors.orangeAccent.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+            child: Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
           ),
           const SizedBox(width: 16),
           const Expanded(
@@ -504,7 +474,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   "Usually a distracting time. Stay focused.",
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white70,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -596,13 +566,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     return CustomCard(
       useGlass: true,
       padding: EdgeInsets.zero,
-      borderRadius: 40,
+      borderRadius: 48,
       child: Container(
         height: 380,
         width: double.infinity,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(48),
+          boxShadow: AppColors.softShadow,
         ),
         child: Stack(
           children: [
@@ -621,7 +592,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
             Positioned.fill(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
                 child: Column(
                   children: [
                     Row(
@@ -630,15 +601,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         const Text(
                           "FOCUS TIMER",
                           style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white60,
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 2.0,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         if (!isFocusModeOn)
                           _GlassIconButton(
-                            icon: Icons.timer_outlined,
+                            icon: Icons.timer_rounded,
                             onTap: _showDurationPicker,
                           ),
                       ],
@@ -647,18 +618,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     Text(
                       _formatTimer(_secondsRemaining > 0 ? _secondsRemaining : _selectedDuration * 60),
                       style: const TextStyle(
-                        fontSize: 64,
+                        fontSize: 72,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -2,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -3,
                       ),
                     ),
                     Text(
                       isFocusModeOn ? "SESSION ACTIVE" : "READY TO FOCUS",
                       style: TextStyle(
-                        fontSize: 12,
-                        color: isFocusModeOn ? const Color(0xFFD946EF) : Colors.white38,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isFocusModeOn ? AppColors.primary : AppColors.textTertiary,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 2,
                       ),
                     ),
@@ -676,54 +647,52 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Widget _buildIntegratedButton() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          width: 180,
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF8B5CF6).withOpacity(0.6),
-                const Color(0xFFEC4899).withOpacity(0.6),
-              ],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
+    return Container(
+      width: 180,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          child: ElevatedButton(
-            onPressed: _toggleFocus,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              padding: EdgeInsets.zero,
+        ],
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.secondary,
+          ],
+        ),
+      ),
+      child: ElevatedButton(
+        onPressed: _toggleFocus,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          padding: EdgeInsets.zero,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isFocusModeOn ? Icons.stop_rounded : Icons.play_arrow_rounded, 
+              color: Colors.white, 
+              size: 24
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isFocusModeOn ? Icons.stop_rounded : Icons.play_arrow_rounded, 
-                  color: Colors.white, 
-                  size: 20
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isFocusModeOn ? "STOP" : "START",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Text(
+              isFocusModeOn ? "STOP" : "START",
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 1.2,
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -742,21 +711,21 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primary, const Color(0xFFD946EF)],
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
+                    color: AppColors.primary.withOpacity(0.2),
                     blurRadius: 15,
                     spreadRadius: 1,
                   ),
                 ],
               ),
-              child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 28),
+              child: const Icon(Icons.psychology_rounded, color: AppColors.textPrimary, size: 28),
             ),
             const SizedBox(width: 20),
             Expanded(
@@ -766,23 +735,23 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         "Brain Mirror™",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withOpacity(0.3), size: 14),
+                      Icon(Icons.arrow_forward_ios_rounded, color: AppColors.textTertiary, size: 14),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     "See how you spend your time and stay on track.",
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white60,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -806,12 +775,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 "Weekly Pulse",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                 ),
               ),
               Container(
@@ -820,7 +789,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
+                child: Text(
                   "Last 7 Days",
                   style: TextStyle(
                     fontSize: 12,
@@ -857,7 +826,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.textPrimary,
             ),
           ),
         ),
@@ -875,7 +844,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               return UsageBar(
                 icon: _iconCache.containsKey(pkg) 
                     ? Image(image: _iconCache[pkg]!, width: 24, height: 24)
-                    : const Icon(Icons.apps_rounded, color: Colors.white, size: 20),
+                    : Icon(Icons.apps_rounded, color: AppColors.textPrimary, size: 20),
                 title: name,
                 duration: _formatSeconds(seconds),
                 progress: (seconds / maxSeconds).clamp(0.0, 1.0),
@@ -909,26 +878,26 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 color: const Color(0xFFFF4B4B).withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF4B4B), size: 20),
+              child: Icon(Icons.warning_amber_rounded, color: Color(0xFFFF4B4B), size: 20),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Action Required",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     "Finish setup to enable focus protection.",
-                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.5)),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white24),
+            Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary.withOpacity(0.26)),
           ],
         ),
       ),
@@ -956,7 +925,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                     color: AppColors.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 24),
+                  child: Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 24),
                 ),
                 const SizedBox(width: 16),
                 const Expanded(
@@ -977,7 +946,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         "Choose your safe vs. distracting apps to enable blocking.",
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -997,7 +966,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               child: const Center(
                 child: Text(
                   "CONFIGURE NOW",
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, letterSpacing: 1),
                 ),
               ),
             ),
@@ -1087,17 +1056,17 @@ class _StatsCardState extends State<_StatsCard> with SingleTickerProviderStateMi
                   Expanded(
                     child: Text(
                       widget.label,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white54,
+                        color: AppColors.textSecondary,
                         letterSpacing: 0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ),
-                  Icon(widget.icon, size: 16, color: Colors.white54),
+                  Icon(widget.icon, size: 16, color: AppColors.textPrimary.withOpacity(0.54)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1106,7 +1075,7 @@ class _StatsCardState extends State<_StatsCard> with SingleTickerProviderStateMi
                   fit: BoxFit.scaleDown,
                   child: Text(
                     widget.value,
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: Colors.white),
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                   ),
                 ),
               ),
@@ -1141,20 +1110,14 @@ class _GlassIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(50),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.glassBase,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.glassBorder),
-            ),
-            child: Icon(icon, size: 22, color: AppColors.textPrimary),
-          ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          shape: BoxShape.circle,
+          boxShadow: AppColors.softShadow,
         ),
+        child: Icon(icon, size: 22, color: AppColors.textPrimary),
       ),
     );
   }
@@ -1206,38 +1169,38 @@ class _ParticleWavePainter extends CustomPainter {
     
     for (int i = 0; i < 2; i++) {
       final layerOffset = (smoothPulse + (i * 0.5)) % 1.0;
-      final opacity = (1.0 - layerOffset) * (isActive ? 0.25 : 0.1);
+      final opacity = (1.0 - layerOffset) * (isActive ? 0.2 : 0.08);
       final radiusScale = 0.8 + (layerOffset * 0.6);
       
       final glowPaint = Paint()
         ..shader = RadialGradient(
           colors: [
-            (i == 0 ? const Color(0xFFD946EF) : const Color(0xFF8B5CF6)).withValues(alpha: opacity),
-            const Color(0xFF60A5FA).withOpacity(0),
+            (i == 0 ? AppColors.primary : AppColors.secondary).withOpacity(opacity),
+            AppColors.background.withOpacity(0),
           ],
         ).createShader(Rect.fromCircle(
           center: Offset(centerX, centerY),
-          radius: 180 * radiusScale * (isActive ? 1.1 : 1.0),
+          radius: 180 * radiusScale,
         ))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 60);
 
-      canvas.drawCircle(Offset(centerX, centerY), 220, glowPaint);
+      canvas.drawCircle(Offset(centerX, centerY), 240, glowPaint);
     }
 
     final wavePaint = Paint()
       ..shader = LinearGradient(
         colors: [
-          const Color(0xFFD946EF).withValues(alpha: isActive ? 0.5 : 0.2),
-          const Color(0xFF8B5CF6).withValues(alpha: isActive ? 0.7 : 0.3),
-          const Color(0xFF60A5FA).withValues(alpha: isActive ? 0.5 : 0.2),
+          AppColors.primary.withOpacity(isActive ? 0.4 : 0.1),
+          AppColors.secondary.withOpacity(isActive ? 0.6 : 0.2),
+          AppColors.primary.withOpacity(isActive ? 0.4 : 0.1),
         ],
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
-      ).createShader(Rect.fromLTWH(0, centerY - 40, size.width, 80))
+      ).createShader(Rect.fromLTWH(0, centerY - 60, size.width, 120))
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
+      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0);
 
     final path = Path();
     const segments = 40;

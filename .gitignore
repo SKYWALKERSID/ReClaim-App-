@@ -1,24 +1,4 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# Secrets
+# Secrets & Sensitive
 sensitive/
 .env
 *.env
@@ -27,57 +7,67 @@ public.pem
 *.pem
 google-services.json
 GoogleService-Info.plist
-*.json
-!package.json
-!composer.json
-!pubspec.json
-!tsconfig.json
-!pubspec.lock
-!package-lock.json
-!*.dart
-!*.kt
-!*.xml
-!*.gradle
-!*.ts
-!*.js
-!*.md
-!*.sql
-!*.dockerignore
-!Dockerfile
-!docker-compose.yml
-
-# Android signing keystores (NEVER commit these — rotate if previously committed)
+firebase-debug.log
 *.keystore
 *.jks
 
-# Generated Word/Office documents
+# Hackathon Cleanup (Research & Temp)
+Misc/
+info word docs/
+analysis_results.txt
+generate_complete_reference.js
+widget.zip
+**/scratch/
+docs/generated/
+apps/mobile/*.py
+apps/mobile/analysis_output*.txt
+
+# Documents
 *.docx
 *.doc
 *.pptx
+*.pdf
+*.xlsx
+*.csv
 
-# Web/Node
+# IntelliJ / VS Code
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Web / Node
 node_modules/
 **/node_modules/
 dist/
 **/dist/
+.npm
+.eslintcache
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart
 .dart_tool/
 **/.dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 **/build/
 /coverage/
+
+# Android / iOS
 **/.gradle/
 **/local.properties
 .gradle-home/
-apps/mobile/analysis_output*.txt
-
-# Android Studio will place build artifacts here
+captures/
+**/ios/Flutter/.last_build_id
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# OS generated
+.DS_Store
+Thumbs.db
+*.swp
+*.log

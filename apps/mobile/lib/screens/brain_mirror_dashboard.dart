@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import 'dart:async';
 import 'dashboard_screen.dart';
+import 'habit_coach_page.dart';
 
 class BrainMirrorDashboard extends StatefulWidget {
   const BrainMirrorDashboard({super.key});
@@ -173,7 +174,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
               size: 24,
             ),
             const SizedBox(width: 8),
-            const Text("Brain Mirror™", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text("Brain Mirror™", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         actions: [
@@ -204,6 +205,21 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             const SizedBox(height: 16),
             _buildInteractiveLog(),
           ],
+        ),
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => HabitCoachPage()),
+            );
+          },
+          backgroundColor: AppColors.primary,
+          elevation: 8,
+          icon: Icon(Icons.auto_awesome_rounded, color: Colors.white),
+          label: Text("AI Habit Coach", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
         ),
       ),
     );
@@ -253,16 +269,16 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+          Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Craving Window Active", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text("Craving Window Active", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                 Text(
                   "Risk window: ${_cravingStatus['windowName']}. Willpower fatigue likely.",
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 if (_cravingStatus.containsKey('confidence')) ...[
                   const SizedBox(height: 4),
@@ -289,13 +305,13 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: AppColors.primary.withOpacity(0.05)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Total Slips", style: TextStyle(color: Colors.white38, fontSize: 12)),
-                Text("$_lifetimeDriftCount", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text("Total Slips", style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                Text("$_lifetimeDriftCount", style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -307,15 +323,15 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: AppColors.primary.withOpacity(0.05)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Addiction Score", style: TextStyle(color: Colors.white38, fontSize: 12)),
+                Text("Addiction Score", style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
                 Row(
                   children: [
-                    Text("${(addictionScore).toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text("${(addictionScore).toInt()}%", style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 8),
                     Icon(
                       Icons.warning_amber_rounded,
@@ -349,8 +365,8 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("All Clear", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text("No excessive usage patterns detected. Keep it up!", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text("All Clear", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                  Text("No excessive usage patterns detected. Keep it up!", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
@@ -371,14 +387,14 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
           ),
           child: Row(
             children: [
-              const Icon(Icons.lightbulb_outline_rounded, color: Colors.blueAccent),
+              Icon(Icons.lightbulb_outline_rounded, color: Colors.blueAccent),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(appName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    Text(rec['reason'] ?? "", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(appName, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                    Text(rec['reason'] ?? "", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -409,9 +425,9 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       ),
       child: Column(
         children: [
-          const Text(
+          Text(
             "Current Focus Slip",
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 8),
           Text(
@@ -435,10 +451,10 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
   Widget _buildPulseStat(IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white38, size: 20),
+        Icon(icon, color: AppColors.textTertiary, size: 20),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+        Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: AppColors.textTertiary, fontSize: 10)),
       ],
     );
   }
@@ -459,10 +475,10 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Late Night Penalty", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text("Late Night Penalty", style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
                 Text(
                   "High usage detected between 23:00 - 04:00. Cognitive recovery inhibited.",
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -476,8 +492,8 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-        Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 13)),
+        Text(title, style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(subtitle, style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
       ],
     );
   }
@@ -497,7 +513,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       return Container(
         height: 200,
         alignment: Alignment.center,
-        child: const Text("No habit data recorded yet.", style: TextStyle(color: Colors.white24)),
+        child: Text("No habit data recorded yet.", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.26))),
       );
     }
 
@@ -516,7 +532,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(color: AppColors.primary.withOpacity(0.05)),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,12 +546,12 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(_getLogTitle(type, log), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text(DateFormat('HH:mm').format(date), style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                        Text(_getLogTitle(type, log), style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text(DateFormat('HH:mm').format(date), style: TextStyle(color: AppColors.textTertiary, fontSize: 10)),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(_getLogContent(type, log), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(_getLogContent(type, log), style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     if (log.containsKey('driftScore') || log.containsKey('avgDriftScore')) ...[
                       const SizedBox(height: 8),
                       _buildDriftBadge(log['driftScore'] ?? log['avgDriftScore'] as num),
@@ -559,7 +575,7 @@ class _BrainMirrorDashboardState extends State<BrainMirrorDashboard> with Widget
       case 'intent': icon = Icons.flag_outlined; color = Colors.greenAccent; break;
       case 'drift': icon = Icons.analytics_outlined; color = Colors.cyanAccent; break;
       case 'focus': icon = Icons.timer_outlined; color = Colors.blueAccent; break;
-      default: icon = Icons.history; color = Colors.white24;
+      default: icon = Icons.history; color = AppColors.textPrimary.withOpacity(0.26);
     }
     return Container(
       padding: const EdgeInsets.all(8),

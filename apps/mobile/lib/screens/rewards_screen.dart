@@ -69,12 +69,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Achievements", 
                     style: TextStyle(
                       fontSize: 28, 
                       fontWeight: FontWeight.bold, 
-                      color: Colors.white, 
+                      color: AppColors.textPrimary, 
                       letterSpacing: -1
                     )
                   ),
@@ -97,22 +97,22 @@ class _RewardsScreenState extends State<RewardsScreen> {
                           label: "Current Streak", 
                           value: "$_streak", 
                           icon: Icons.local_fire_department_rounded, 
-                          color: Colors.orange
+                          color: AppColors.secondary
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 40),
-                  const Text(
+                  Text(
                     "Unlocked Badges", 
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
                   ),
                   const SizedBox(height: 24),
                   _buildBadgeGrid(),
                   const SizedBox(height: 40),
-                  const Text(
+                  Text(
                     "Unlockable Rewards", 
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
                   ),
                   const SizedBox(height: 24),
                   _buildRewardsList(),
@@ -137,13 +137,13 @@ class _RewardsScreenState extends State<RewardsScreen> {
             children: [
               Text(
                 "LEVEL $level", 
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.primary, 
                   fontWeight: FontWeight.w900, 
                   letterSpacing: 1.5
                 )
               ),
-              const Text(
+              Text(
                 "Pioneer", 
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12)
               ),
@@ -155,7 +155,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: AppColors.primary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -180,7 +180,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
           const SizedBox(height: 12),
           Text(
             "${500 - (_points % 500)} points to Level ${level + 1}", 
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 11)
           ),
         ],
       ),
@@ -188,7 +188,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
   }
 
   Widget _buildBadgeGrid() {
-    if (_badges.isEmpty) return const Center(child: Text("Focus more to unlock your first badge.", style: TextStyle(color: Colors.white38)));
+    if (_badges.isEmpty) return Center(child: Text("Focus more to unlock your first badge.", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.38))));
     
     return GridView.builder(
       shrinkWrap: true,
@@ -208,7 +208,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.glassBase,
+                color: AppColors.glassBase(context),
                 shape: BoxShape.circle,
                 border: Border.all(color: badgeInfo.color.withOpacity(0.2)),
                 boxShadow: [
@@ -220,7 +220,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
             const SizedBox(height: 8),
             Text(
               badgeInfo.name, 
-              style: const TextStyle(color: Colors.white70, fontSize: 10), 
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 10), 
               textAlign: TextAlign.center
             ),
           ],
@@ -243,7 +243,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
         decoration: BoxDecoration(
           color: AppColors.darkSurface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: AppColors.primary.withOpacity(0.05)),
         ),
         child: Row(
           children: [
@@ -260,8 +260,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(reward['name'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text("${reward['cost']} points", style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text(reward['name'] as String, style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+                  Text("${reward['cost']} points", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
@@ -269,11 +269,11 @@ class _RewardsScreenState extends State<RewardsScreen> {
               onPressed: _points >= (reward['cost'] as int) ? () {} : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                disabledBackgroundColor: Colors.white10,
+                disabledBackgroundColor: AppColors.textPrimary.withOpacity(0.12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              child: const Text("Unlock", style: TextStyle(color: Colors.white, fontSize: 12)),
+              child: Text("Unlock", style: TextStyle(color: AppColors.textPrimary, fontSize: 12)),
             ),
           ],
         ),
@@ -283,12 +283,12 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   _BadgeMetadata _getBadgeInfo(String id) {
     switch (id) {
-      case 'FocusRookie': return _BadgeMetadata("Focus Rookie", Icons.auto_awesome_rounded, Colors.blueAccent);
-      case 'Focused': return _BadgeMetadata("The Focused", Icons.center_focus_strong_rounded, Colors.greenAccent);
-      case 'DeepWorker': return _BadgeMetadata("Deep Worker", Icons.work_history_rounded, Colors.orangeAccent);
-      case 'FlowState': return _BadgeMetadata("Flow State", Icons.waves_rounded, Colors.purpleAccent);
-      case 'Marathoner': return _BadgeMetadata("Marathoner", Icons.directions_run_rounded, Colors.redAccent);
-      default: return _BadgeMetadata("Pioneer", Icons.emoji_events_rounded, Colors.amber);
+      case 'FocusRookie': return _BadgeMetadata("Focus Rookie", Icons.auto_awesome_rounded, AppColors.primary);
+      case 'Focused': return _BadgeMetadata("The Focused", Icons.center_focus_strong_rounded, AppColors.secondary);
+      case 'DeepWorker': return _BadgeMetadata("Deep Worker", Icons.work_history_rounded, AppColors.primary);
+      case 'FlowState': return _BadgeMetadata("Flow State", Icons.waves_rounded, AppColors.secondary);
+      case 'Marathoner': return _BadgeMetadata("Marathoner", Icons.directions_run_rounded, AppColors.primary);
+      default: return _BadgeMetadata("Pioneer", Icons.emoji_events_rounded, AppColors.secondary);
     }
   }
 }
@@ -318,11 +318,11 @@ class _GlassMetricTile extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value, 
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
           ),
           Text(
             label, 
-            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)
+            style: TextStyle(fontSize: 10, color: AppColors.textSecondary)
           ),
         ],
       ),

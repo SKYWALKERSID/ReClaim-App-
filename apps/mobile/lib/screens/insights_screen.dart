@@ -192,7 +192,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: _isScreenTimeExpanded ? AppColors.primary.withOpacity(0.3) : Colors.white.withOpacity(0.05),
+            color: _isScreenTimeExpanded ? AppColors.primary.withOpacity(0.3) : AppColors.primary.withOpacity(0.05),
             width: _isScreenTimeExpanded ? 2 : 1,
           ),
           boxShadow: _isScreenTimeExpanded ? [
@@ -211,12 +211,12 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               children: [
                 Text(
                   _selectedCategory == null ? "Total Screen Time" : "$_selectedCategory Time",
-                  style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)
                 ),
                 AnimatedRotation(
                   turns: _isScreenTimeExpanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 300),
-                  child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white38),
+                  child: Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textPrimary.withOpacity(0.38)),
                 ),
               ],
             ),
@@ -231,7 +231,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                     children: [
                       Text(
                         _formatUsage(totalUsage),
-                        style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold)
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -277,12 +277,12 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Divider(color: Colors.white10, height: 1),
+                      const Divider(color: AppColors.textTertiary, height: 1),
                       const SizedBox(height: 20),
-                      const Text(
+                      Text(
                         "CATEGORICAL BREAKDOWN",
                         style: TextStyle(
-                          color: Colors.white38,
+                          color: AppColors.textTertiary,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.2,
@@ -300,10 +300,10 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                         );
                       }),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         "APP BREAKDOWN",
                         style: TextStyle(
-                          color: Colors.white38,
+                          color: AppColors.textTertiary,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 1.2,
@@ -321,7 +321,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                           category: cat,
                           icon: _iconCache[pkg] != null 
                             ? Image(image: _iconCache[pkg]!, width: 16, height: 16)
-                            : const Icon(Icons.android, size: 16, color: Colors.white38),
+                            : Icon(Icons.android, size: 16, color: AppColors.textPrimary.withOpacity(0.38)),
                         );
                       }),
                     ],
@@ -359,7 +359,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                     Flexible(
                       child: Text(
                         label,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -383,7 +383,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               ),
               Text(
                 usage,
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
             ],
           ),
@@ -392,7 +392,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
-              backgroundColor: Colors.white.withOpacity(0.05),
+              backgroundColor: AppColors.primary.withOpacity(0.05),
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 4,
             ),
@@ -483,7 +483,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
             padding: const EdgeInsets.only(right: 12),
             child: FilterChip(
               label: Text(cat['label'] as String),
-              avatar: Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : Colors.white38),
+              avatar: Icon(cat['icon'] as IconData, size: 16, color: isSelected ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.38)),
               selected: isSelected,
               onSelected: (selected) {
                 setState(() {
@@ -491,17 +491,17 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                 });
                 _loadData();
               },
-              backgroundColor: Colors.white.withOpacity(0.03),
+              backgroundColor: AppColors.primary.withOpacity(0.03),
               selectedColor: AppColors.primary,
-              checkmarkColor: Colors.white,
+              checkmarkColor: AppColors.textPrimary,
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.white60,
+                color: isSelected ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.54),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.08)),
+                side: BorderSide(color: isSelected ? AppColors.primary : AppColors.primary.withOpacity(0.06)),
               ),
             ),
           );
@@ -515,9 +515,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       height: 48,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03), 
+        color: AppColors.primary.withOpacity(0.03), 
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.06)),
       ),
       child: Row(
         children: ["Day", "Week", "Month"].map((tab) => Expanded(
@@ -537,7 +537,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               child: Text(
                 tab, 
                 style: TextStyle(
-                  color: _activeTab == tab ? Colors.white : Colors.white38, 
+                  color: _activeTab == tab ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.38), 
                   fontWeight: _activeTab == tab ? FontWeight.w600 : FontWeight.normal,
                 )
               ),
@@ -554,7 +554,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Recommended for You", style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
+        Text("Recommended for You", style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 16),
         ..._recommendations.map((tip) => Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -566,12 +566,12 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           ),
           child: Row(
             children: [
-              const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
+              Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   tip,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 13, height: 1.4),
                 ),
               ),
             ],
@@ -598,7 +598,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,21 +606,21 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+              Text(title, style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: AppColors.primary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text(value, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                child: Text(value, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             periodLabel == "Day" ? "Today" : "Last $periodLabel",
-            style: const TextStyle(color: Colors.white38, fontSize: 12),
+            style: TextStyle(color: AppColors.textTertiary, fontSize: 12),
           ),
           const SizedBox(height: 16),
           Row(
@@ -634,9 +634,9 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                     RichText(
                       text: TextSpan(
                         children: [
-                          TextSpan(text: value, style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                          TextSpan(text: value, style: TextStyle(color: AppColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold)),
                           if (subValue != null)
-                            TextSpan(text: subValue, style: const TextStyle(color: Colors.white38, fontSize: 18)),
+                            TextSpan(text: subValue, style: TextStyle(color: AppColors.textTertiary, fontSize: 18)),
                         ],
                       ),
                     ),
@@ -675,26 +675,26 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Top Distracting Apps", style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
+          Text("Top Distracting Apps", style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
-          Text(_activeTab == "Day" ? "Today" : "Last $_activeTab", style: const TextStyle(color: Colors.white38, fontSize: 12)),
+          Text(_activeTab == "Day" ? "Today" : "Last $_activeTab", style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
           const SizedBox(height: 12),
           if (topApps.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(child: Text("No distracting usage found", style: TextStyle(color: Colors.white24))),
+              child: Center(child: Text("No distracting usage found", style: TextStyle(color: AppColors.textPrimary.withOpacity(0.26)))),
             ),
           ...topApps.map((app) {
             final pkg = app['package_name'] as String;
             return UsageBar(
               icon: _iconCache[pkg] != null 
                 ? Image(image: _iconCache[pkg]!, width: 22, height: 22)
-                : const Icon(Icons.android, size: 22, color: Colors.white54),
+                : Icon(Icons.android, size: 22, color: AppColors.textPrimary.withOpacity(0.54)),
               title: app['label'] as String,
               duration: _formatUsage(app['usage_seconds'] as int),
               progress: (app['usage_seconds'] as int) / maxUsage,
@@ -713,7 +713,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Daily Habits", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text("Daily Habits", style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         IntrinsicHeight(
           child: Row(
@@ -771,7 +771,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,17 +783,17 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
               if (!isWide) Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: const Text("BRAIN", style: TextStyle(color: Colors.white38, fontSize: 8, fontWeight: FontWeight.bold)),
+                child: Text("BRAIN", style: TextStyle(color: AppColors.textTertiary, fontSize: 8, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
           if (useSpacer) const Spacer(),
           const SizedBox(height: 16),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(title, style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
-          Text(description, style: const TextStyle(color: Colors.white24, fontSize: 11)),
+          Text(description, style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
           if (useSpacer) const Spacer(),
         ],
       ),
@@ -819,7 +819,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                     "Hi, $userName",
                     style: TextStyle(
                       fontSize: 20,
-                      color: Colors.white.withOpacity(0.5),
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.5,
                     ),
@@ -851,7 +851,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
             final double glowIntensity = 6.0 + (math.sin(_backgroundPulseController.value * 2 * math.pi) + 1.0) * 6.0;
             return RichText(
               text: TextSpan(
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 34,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -1.0,
@@ -859,7 +859,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                   fontFamily: 'Inter',
                 ),
                 children: [
-                  const TextSpan(text: "Stay ", style: TextStyle(color: Colors.white)),
+                  const TextSpan(text: "Stay ", style: TextStyle(color: AppColors.textPrimary)),
                   TextSpan(
                     text: "on track,", 
                     style: TextStyle(
@@ -876,7 +876,7 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
                       ],
                     ),
                   ),
-                  const TextSpan(text: "\navoid ", style: TextStyle(color: Colors.white)),
+                  const TextSpan(text: "\navoid ", style: TextStyle(color: AppColors.textPrimary)),
                   TextSpan(
                     text: "distractions.", 
                     style: TextStyle(
@@ -905,13 +905,13 @@ class _InsightsScreenState extends State<InsightsScreen> with WidgetsBindingObse
   Widget _buildHeaderIcon({required IconData icon, required VoidCallback onTap}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: AppColors.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.08)),
       ),
       child: IconButton(
         onPressed: onTap,
-        icon: Icon(icon, color: Colors.white70, size: 20),
+        icon: Icon(icon, color: AppColors.textSecondary, size: 20),
         constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         padding: EdgeInsets.zero,
       ),
@@ -941,7 +941,7 @@ class _TopAppRow extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
                 child: icon != null
                   ? Image(image: icon!, width: 22, height: 22, fit: BoxFit.cover)
-                  : const Icon(Icons.android, size: 22, color: Colors.white54),
+                  : Icon(Icons.android, size: 22, color: AppColors.textPrimary.withOpacity(0.54)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -951,8 +951,8 @@ class _TopAppRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white, 
+                        style: TextStyle(
+                          color: AppColors.textPrimary, 
                           fontSize: 14, 
                           fontWeight: FontWeight.w400,
                         ),
@@ -963,8 +963,8 @@ class _TopAppRow extends StatelessWidget {
                     const SizedBox(width: 12),
                     Text(
                       time,
-                      style: const TextStyle(
-                        color: Colors.white60, 
+                      style: TextStyle(
+                        color: AppColors.textSecondary, 
                         fontSize: 13,
                         fontFeatures: [FontFeature.tabularFigures()],
                       ),
@@ -980,7 +980,7 @@ class _TopAppRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
               minHeight: 4,
-              backgroundColor: Colors.white.withOpacity(0.05),
+              backgroundColor: AppColors.primary.withOpacity(0.05),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
             ),
           ),
@@ -1062,11 +1062,11 @@ class _GlassIconButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.glassBase,
+              color: AppColors.glassBase(context),
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.glassBorder),
+              border: Border.all(color: AppColors.glassBorder(context)),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: AppColors.textPrimary, size: 20),
           ),
         ),
       ),

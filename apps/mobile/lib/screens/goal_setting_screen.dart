@@ -66,7 +66,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF161620),
+      backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -75,9 +75,9 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Text(
+            Text(
               "Set Daily Goal",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -85,7 +85,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
                 data: const CupertinoThemeData(
                   brightness: Brightness.dark,
                   textTheme: CupertinoTextThemeData(
-                    pickerTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+                    pickerTextStyle: TextStyle(color: AppColors.textPrimary, fontSize: 20),
                   ),
                 ),
                 child: CupertinoTimerPicker(
@@ -104,11 +104,11 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.textPrimary,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text("Save Limit"),
+              child: Text("Save Limit"),
             ),
           ],
         ),
@@ -123,7 +123,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkSurface : AppColors.background,
       appBar: AppBar(
-        title: const Text("Set Your Boundaries"),
+        title: Text("Set Your Boundaries"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -132,22 +132,22 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "What's your name?",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _nameController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                fillColor: isDark ? AppColors.textPrimary.withOpacity(0.12) : Colors.grey.shade100,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Age",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -155,15 +155,15 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
             TextField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: AppColors.textPrimary),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: isDark ? Colors.white10 : Colors.grey.shade100,
+                fillColor: isDark ? AppColors.textPrimary.withOpacity(0.12) : Colors.grey.shade100,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Gender",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -171,19 +171,19 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                color: isDark ? AppColors.textPrimary.withOpacity(0.12) : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedGender,
-                  dropdownColor: Colors.grey[900],
+                  dropdownColor: AppColors.surface,
                   isExpanded: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
                   items: ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say']
                       .map((g) => DropdownMenuItem(
                             value: g,
-                            child: Text(g),
+                            child: Text(g, style: const TextStyle(color: AppColors.textPrimary)),
                           ))
                       .toList(),
                   onChanged: (val) {
@@ -193,7 +193,7 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
               ),
             ),
             const SizedBox(height: 40),
-            const Text(
+            Text(
               "Daily Screen Time Goal",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -203,25 +203,25 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white10 : Colors.grey.shade100,
+                  color: isDark ? AppColors.textPrimary.withOpacity(0.12) : Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.primary.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.timer_outlined, color: AppColors.primary),
+                    Icon(Icons.timer_outlined, color: AppColors.primary),
                     Text(
                       "${_goalHours.floor()}h ${((_goalHours - _goalHours.floor()) * 60).round()}m",
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                    const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+                    Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               "Once you exceed this limit, your 'Distracting' apps will be strictly blocked.",
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
@@ -230,13 +230,13 @@ class _GoalSettingScreenState extends State<GoalSettingScreen> {
               onPressed: _isSaving ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.textPrimary,
                 minimumSize: const Size(double.infinity, 56),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: _isSaving 
-                ? const CircularProgressIndicator(color: Colors.white)
-                : const Text("Save & Continue", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ? const CircularProgressIndicator(color: AppColors.textPrimary)
+                : Text("Save & Continue", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

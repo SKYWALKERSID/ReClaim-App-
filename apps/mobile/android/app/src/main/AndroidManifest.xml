@@ -109,6 +109,18 @@
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name="com.reclaim.app.widget.ReclaimWidgetReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.reclaim.app.ACTION_COMPLETE_HABIT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/reclaim_widget_info" />
+        </receiver>
 
     </application>
 </manifest>

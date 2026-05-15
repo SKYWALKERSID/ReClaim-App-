@@ -28,8 +28,8 @@ class UsageBar extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: AppColors.glassBase,
-              border: Border.all(color: AppColors.glassBorder),
+              color: AppColors.glassBase(context),
+              border: Border.all(color: AppColors.glassBorder(context)),
             ),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -47,7 +47,7 @@ class UsageBar extends StatelessWidget {
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
                           color: AppColors.textPrimary,
@@ -59,7 +59,7 @@ class UsageBar extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       duration,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
@@ -72,7 +72,7 @@ class UsageBar extends StatelessWidget {
                     Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: AppColors.primary.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(3),
                       ),
                     ),

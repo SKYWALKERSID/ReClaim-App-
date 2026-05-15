@@ -84,7 +84,7 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.shield_rounded,
                     color: AppColors.primary,
                     size: 40,
@@ -98,13 +98,13 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                     fontSize: 28,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 8.0,
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 40),
-                const Text(
+                Text(
                   'Enter 4-digit code',
-                  style: TextStyle(color: Colors.white60, fontSize: 16),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
                 
@@ -118,10 +118,10 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                       width: 52,
                       height: 62,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: AppColors.primary.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isFilled ? AppColors.primary : Colors.white.withOpacity(0.1),
+                          color: isFilled ? AppColors.primary : AppColors.primary.withOpacity(0.08),
                           width: isFilled ? 2 : 1,
                         ),
                       ),
@@ -131,11 +131,11 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                           width: isFilled ? 14 : 10,
                           height: isFilled ? 14 : 10,
                           decoration: BoxDecoration(
-                            color: isFilled ? Colors.white : Colors.white12,
+                            color: isFilled ? AppColors.textPrimary : AppColors.textPrimary.withOpacity(0.12),
                             shape: BoxShape.circle,
                             boxShadow: isFilled ? [
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.5),
+                                color: AppColors.textSecondary,
                                 blurRadius: 10,
                               )
                             ] : [],
@@ -148,7 +148,7 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
                 const SizedBox(height: 20),
                 TextButton(
                   onPressed: _showForgotPinDialog,
-                  child: const Text('Forgot PIN', style: TextStyle(color: Colors.white38, fontSize: 14)),
+                  child: Text('Forgot PIN', style: TextStyle(color: AppColors.textTertiary, fontSize: 14)),
                 ),
                 
                 const SizedBox(height: 20),
@@ -230,8 +230,8 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
           alignment: Alignment.center,
           child: Text(
             number,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppColors.textPrimary,
               fontSize: 30,
               fontWeight: FontWeight.w400,
             ),
@@ -247,12 +247,12 @@ class _SafeCodeSetupScreenState extends State<SafeCodeSetupScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(40),
-        splashColor: Colors.white10,
+        splashColor: AppColors.textPrimary.withOpacity(0.12),
         child: Container(
           width: 70,
           height: 70,
           alignment: Alignment.center,
-          child: Icon(icon, color: Colors.white70, size: 28),
+          child: Icon(icon, color: AppColors.textSecondary, size: 28),
         ),
       ),
     );
