@@ -1,7 +1,6 @@
 # ReClaim™ — Behavioral Intelligence & Digital Autonomy
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![Platform: Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)]()
 [![Framework: Flutter](https://img.shields.io/badge/Framework-Flutter-02569B.svg?logo=flutter&logoColor=white)]()
 
