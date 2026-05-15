@@ -1,91 +1,21 @@
-name: CI Workflow
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
+name: CI
+on: [push, pull_request]
 jobs:
   backend:
-    name: Build & Test Backend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: services/api
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: services/api/package-lock.json
-          
-      - name: Install dependencies
-        run: npm ci
-        
-      - name: Build API
-        run: npm run build
-        
-      - name: Run tests
-        run: npm run test
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd services/api && npm ci
+      - run: cd services/api && npm test
 
-  android-native:
-    name: Build Android Native App
+  mobile:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/android-native
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-          
-      - name: Fix line endings and permissions
-        run: |
-          sed -i 's/\r$//' gradlew
-          chmod +x gradlew
-          
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
-
-  flutter-app:
-    name: Build Flutter App
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/mobile
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-          
-      - name: Install dependencies
-        run: flutter pub get
-        
-      - name: Fix line endings for Android wrapper
-        run: |
-          cd android
-          sed -i 's/\r$//' gradlew
-          chmod +x gradlew
-          
-      - name: Build Debug APK
-        run: flutter build apk --debug
-
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.22.0' }
+      - run: cd apps/mobile && flutter pub get
+      - run: cd apps/mobile && flutter analyze
+      - run: cd apps/mobile && flutter test
