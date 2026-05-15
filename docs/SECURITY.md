@@ -13,7 +13,7 @@ ReClaim is currently in a pre-release state. We support the latest commit on the
 
 We take the security of ReClaim seriously. If you discover a security vulnerability, please do not open a public issue. Instead, follow these steps:
 
-1. Send an email to the maintainers (security@reclaim.app — *Placeholder*).
+1. Send an email to the maintainers (siddhesh.jabalpur49697@gmail.com).
 2. Provide a detailed description of the vulnerability and steps to reproduce it.
 3. Allow up to 48 hours for a response.
 4. We will coordinate a fix and follow responsible disclosure practices.
@@ -35,6 +35,12 @@ ReClaim implements several layers of defense to protect user data and behavioral
 - **Helmet.js**: Implements various HTTP headers for security (CSP, HSTS, etc.).
 - **Rate Limiting**: Brute-force protection on authentication and sensitive ingestion endpoints.
 - **Zod Validation**: Strict schema enforcement for all incoming payloads to prevent injection attacks.
+
+### 4. AI Coaching Security (Gemini Integration)
+- **Input Sanitization**: All user messages are stripped of XML/HTML tags and jailbreak patterns before being processed by the AI model.
+- **Crisis Guardrails**: Real-time keyword monitoring detects distress or self-harm triggers, immediately appending standardized crisis support resources to AI responses.
+- **Server-Side Sessions**: Chat history is maintained securely on the server (linked to User ID) rather than client-side, preventing context manipulation.
+- **Audit Logging**: All AI interactions are logged with token usage and status codes to monitor for anomalous behavior or costs.
 
 ## Data Privacy
 
